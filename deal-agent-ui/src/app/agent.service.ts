@@ -7,7 +7,7 @@ export type AgentEvent =
 @Injectable({ providedIn: 'root' })
 export class AgentService {
   // Point directly at your orchestrator (Node) that serves /run, /events/:runId, /result/:runId
-  private base = 'http://localhost:3001';
+  private base = 'https://realestate-ai-agent.onrender.com';
 
   async startRun(query: string): Promise<string> {
     const r = await fetch(`${this.base}/run`, {

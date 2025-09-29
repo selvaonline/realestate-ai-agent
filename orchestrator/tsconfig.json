@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "Bundler",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -11,8 +11,13 @@
     "skipLibCheck": true,
     "rootDir": "src",
     "outDir": "dist",
-    "noEmit": false
+    "noEmit": false,
+    "strict": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/app/**", "../deal-agent-ui/**", "**/*.spec.ts"]
+  "exclude": [
+    "src/app/**",
+    "../deal-agent-ui/**",
+    "**/*.spec.ts"
+  ]
 }

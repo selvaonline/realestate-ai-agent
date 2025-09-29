@@ -3,11 +3,11 @@ FROM mcr.microsoft.com/playwright:v1.46.0-jammy
 
 WORKDIR /app
 
-# Install dependencies first for better caching
+# Install deps first for caching
 COPY package*.json ./
 RUN npm ci
 
-# Ensure browsers are available (base image already has them; keep for safety)
+# Browsers (base has them, keep for safety)
 RUN npx playwright install --with-deps chromium webkit
 
 # Copy source and build
@@ -16,10 +16,10 @@ COPY src ./src
 ENV NODE_ENV=production
 RUN npx tsc
 
-# Service port (Render will set $PORT, we use it in index.ts)
+# Expose (Render provides $PORT; server uses process.env.PORT || 3001)
 EXPOSE 3001
 
-# Headless in cloud; devtools off
+# Headless in cloud
 ENV BROWSER_HEADED=false \
     BROWSER_ENGINE=chromium \
     BROWSER_DEVTOOLS=false

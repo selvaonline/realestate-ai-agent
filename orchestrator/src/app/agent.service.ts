@@ -1,0 +1,34 @@
+import { Injectable } from '@angular/core';
+
+export type AgentEvent =
+  | { kind: 'run_started'|'run_finished'|'status'|'wait'|'nav'|'action'|'shot'|'extracted'|'fallback'|'heartbeat';
+      runId: string; t: number; [k: string]: any };
+
+@Injectable({ providedIn: 'root' })
+export class AgentService {
+  // point straight at orchestrator for SSE/results
+  private base = 'http://localhost:3001';
+
+  async startRun(query: string): Promise<string> {
+    const r = await fetch(`${this.base}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ query })
+    });
+    const j = await r.json();
+    if (!j.runId) throw new Error('no runId');
+    return j.runId;
+  }
+
+  openEvents(runId: string, onEvent: (ev: AgentEvent) => void) {
+    const es = new EventSource(`${this.base}/events/${runId}`);
+    es.onmessage = (m) => { try { onEvent(JSON.parse(m.data)); } catch {} };
+    return () => es.close();
+  }
+
+  async getResult(runId: string) {
+    const r = await fetch(`${this.base}/result/${runId}`);
+    if (!r.ok) throw new Error('result not ready');
+    return r.json() as Promise<{ plan:string; deals:any[] }>;
+  }
+}

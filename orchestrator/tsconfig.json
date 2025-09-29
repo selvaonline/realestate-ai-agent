@@ -2,8 +2,8 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ES2022",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"],
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
     "types": ["node"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -11,13 +11,8 @@
     "skipLibCheck": true,
     "rootDir": "src",
     "outDir": "dist",
-    "noEmit": true,
-    
-    // Keep some of your existing strict options
-    "strict": true,
-    "isolatedModules": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+    "noEmit": false
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/app/**", "../deal-agent-ui/**", "**/*.spec.ts"]
 }

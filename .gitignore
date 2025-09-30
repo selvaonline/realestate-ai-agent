@@ -29,6 +29,10 @@ test-results/
 **/.env.*
 !.env.example
 
+# BUT keep Angular environment files (needed for build)
+!**/src/environments/environment.ts
+!**/src/environments/environment.prod.ts
+
 # Logs
 logs
 *.log

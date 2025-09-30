@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from '../environments/environment';
 
 export type AgentEvent =
   | { kind: 'run_started'|'run_finished'|'status'|'wait'|'nav'|'action'|'shot'|'extracted'|'fallback'|'heartbeat'|'thinking'|'source_found'|'answer_chunk'|'answer_complete';
@@ -7,7 +8,7 @@ export type AgentEvent =
 @Injectable({ providedIn: 'root' })
 export class AgentService {
   // Point directly at your orchestrator (Node) that serves /run, /events/:runId, /result/:runId
-  private base = 'http://localhost:3001';
+  private base = environment.apiUrl;
 
   async startRun(query: string): Promise<string> {
     const r = await fetch(`${this.base}/run`, {

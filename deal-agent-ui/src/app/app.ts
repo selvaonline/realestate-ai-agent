@@ -62,6 +62,14 @@ type Source = { id: number; title: string; url: string; snippet: string };
           </div>
         </div>
       </div>
+
+      <!-- Share Button -->
+      <div class="share-section" *ngIf="answerComplete() && answer()">
+        <button class="share-btn" (click)="shareResults()">
+          <span class="share-icon">🔗</span> Share Results
+        </button>
+        <span class="share-status" *ngIf="shareStatus()">{{ shareStatus() }}</span>
+      </div>
     </div>
 
     <!-- Legacy Timeline (expanded by default) -->
@@ -223,18 +231,55 @@ type Source = { id: number; title: string; url: string; snippet: string };
     }
     .source-content { flex: 1; }
     .source-title { 
-      color: #7ba3e8; 
+      color: #a8c5f0; 
       text-decoration: none; 
       font-size: 14px; 
       font-weight: 500;
       display: block;
       margin-bottom: 4px;
+      transition: color 0.2s;
     }
-    .source-title:hover { text-decoration: underline; }
+    .source-title:hover { 
+      color: #c9d7ff; 
+      text-decoration: underline; 
+    }
     .source-snippet { 
       color: #9fb0c0; 
       font-size: 13px; 
       line-height: 1.5;
+    }
+
+    /* Share section */
+    .share-section {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .share-btn {
+      background: #0e3e9b;
+      border: none;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .share-btn:hover { background: #1653c4; }
+    .share-icon { font-size: 16px; }
+    .share-status {
+      color: #5fc88f;
+      font-size: 13px;
+      animation: fadeOut 2s ease-out forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      70% { opacity: 1; }
+      100% { opacity: 0; }
     }
 
     /* Timeline details (collapsible) */
@@ -247,15 +292,28 @@ type Source = { id: number; title: string; url: string; snippet: string };
     }
     .timeline-details summary { 
       cursor: pointer; 
-      color: #7ba3e8; 
+      color: #8b9db5; 
       font-size: 14px;
       list-style: none;
+      transition: color 0.2s;
     }
     .timeline-details summary::-webkit-details-marker { display: none; }
-    .timeline-details summary:hover { text-decoration: underline; }
+    .timeline-details summary:hover { 
+      color: #a8c5f0;
+      text-decoration: underline; 
+    }
     
     .timeline { display:flex; flex-direction:column; gap:12px; margin-top:12px; }
     .card { background:#0b0f14; border:1px solid #1d2735; border-radius:8px; padding:10px; }
+    .card a { 
+      color: #a8c5f0; 
+      text-decoration: none; 
+      transition: color 0.2s;
+    }
+    .card a:hover { 
+      color: #c9d7ff; 
+      text-decoration: underline; 
+    }
     .status { display:flex; align-items:center; gap:8px; }
     .chip { background:#1d2735; color:#c9d7ff; padding:4px 8px; border-radius:999px; font-size:12px; }
     .chip.purple { background:#4a2c75; }
@@ -269,6 +327,15 @@ type Source = { id: number; title: string; url: string; snippet: string };
     .deals h3 { color: #c9d7ff; font-size: 18px; margin-bottom: 16px; }
     .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
     .deal { background:#0f131a; border:1px solid #1d2735; border-radius:12px; padding:12px; }
+    .deal a {
+      color: #a8c5f0;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .deal a:hover {
+      color: #c9d7ff;
+      text-decoration: underline;
+    }
     .kv { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin:8px 0; }
     .addr { color:#99a9bd; font-size:13px; }
     img { border-radius:8px; margin-top:8px; }
@@ -282,8 +349,60 @@ export class App {
   sources = signal<Source[]>([]);
   answer = signal<string>('');
   answerComplete = signal(false);
+  shareStatus = signal<string>('');
 
   constructor(private svc: AgentService) {}
+
+  async shareResults() {
+    const query = this.q();
+    const answer = this.answer();
+    const sources = this.sources();
+    const deals = this.deals();
+    
+    // Build shareable text
+    let shareText = `Query: ${query}\n\n`;
+    shareText += `Answer:\n${answer.replace(/<[^>]*>/g, '')}\n\n`;
+    
+    if (sources.length) {
+      shareText += `Sources:\n`;
+      sources.forEach(src => {
+        shareText += `[${src.id}] ${src.title}\n${src.url}\n\n`;
+      });
+    }
+    
+    if (deals.length) {
+      shareText += `\nDeals Found:\n`;
+      deals.forEach(deal => {
+        shareText += `- ${deal.title || 'Property'}\n`;
+        shareText += `  Address: ${deal.address || 'N/A'}\n`;
+        shareText += `  Price: $${deal.askingPrice?.toLocaleString() || 'N/A'}\n`;
+        shareText += `  Cap Rate: ${((deal.capRate || deal.underwrite?.capRate) * 100)?.toFixed(2) || 'N/A'}%\n`;
+        shareText += `  URL: ${deal.url}\n\n`;
+      });
+    }
+    
+    try {
+      // Try Web Share API first (mobile/modern browsers)
+      if (navigator.share) {
+        await navigator.share({
+          title: 'RealEstate Deal Agent Results',
+          text: shareText,
+        });
+        this.shareStatus.set('✓ Shared!');
+      } else {
+        // Fallback to clipboard
+        await navigator.clipboard.writeText(shareText);
+        this.shareStatus.set('✓ Copied to clipboard!');
+      }
+      
+      // Clear status after 2 seconds
+      setTimeout(() => this.shareStatus.set(''), 2000);
+    } catch (err) {
+      console.error('Share failed:', err);
+      this.shareStatus.set('✗ Share failed');
+      setTimeout(() => this.shareStatus.set(''), 2000);
+    }
+  }
 
   async run() {
     this.cards.set([]);
@@ -291,6 +410,7 @@ export class App {
     this.sources.set([]);
     this.answer.set('');
     this.answerComplete.set(false);
+    this.shareStatus.set('');
     this.busy.set(true);
     try {
       const runId = await this.svc.startRun(this.q());

@@ -2,21 +2,31 @@
 
 An intelligent agent that finds and analyzes commercial real estate investment opportunities using a **Perplexity-style interface** with transparent reasoning, source citations, and streaming answers.
 
+##Demo Question
+Find retail centers under $20M, 8%+ cap, strong demographics, repositioning opportunity
+
+Find retail centers under $20M, 8%+ cap, strong demographics, repositioning opportunity
+
+Find medical office buildings or urgent care facilities, cap rate 7%+
+
 ## ✨ Features
 
 ### 🤖 Intelligent Agent Flow
+
 - **Transparent Thinking** - See the agent's reasoning process in real-time
 - **Source Citations** - Numbered references [1], [2], [3] for all information
 - **Streaming Answers** - Progressive text generation with inline citations
 - **Multi-Source Search** - Aggregates from LoopNet, Crexi, and broker sites
 
 ### 📊 Property Analysis
+
 - **Automated Extraction** - Property details, pricing, NOI, cap rate
 - **Financial Underwriting** - DSCR, cash flow, ROI calculations
 - **Visual Confirmation** - Screenshots of source listings
 - **Deal Cards** - Clean presentation of investment opportunities
 
 ### 🎨 Modern UI
+
 - **Perplexity-Inspired Design** - Clean, professional, engaging
 - **Progressive Disclosure** - Thinking → Sources → Answer → Deals
 - **Responsive Layout** - Works on desktop and mobile
@@ -25,6 +35,7 @@ An intelligent agent that finds and analyzes commercial real estate investment o
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - OpenAI API key
 - Serper API key (for web search)
@@ -72,12 +83,14 @@ open http://localhost:4200
 ## 🎯 How It Works
 
 ### 1. **Query Understanding**
+
 ```
 User: "Find multifamily deals in Dallas with cap rate > 6%"
 Agent: 🔍 Understanding your query...
 ```
 
 ### 2. **Source Discovery**
+
 ```
 Agent: 🔍 Searching commercial real estate listings...
 
@@ -88,6 +101,7 @@ Sources found:
 ```
 
 ### 3. **Data Extraction**
+
 ```
 Agent: 🔍 Analyzing property listings...
       🌐 Navigating to crexi.com...
@@ -95,14 +109,16 @@ Agent: 🔍 Analyzing property listings...
 ```
 
 ### 4. **Answer Synthesis**
+
 ```
-Found a promising listing [1]: **Crexi Multifamily Property** 
-located at 123 Main St, Dallas, TX. The asking price is 
-$2,500,000. Net Operating Income (NOI) is $200,000. 
+Found a promising listing [1]: **Crexi Multifamily Property**
+located at 123 Main St, Dallas, TX. The asking price is
+$2,500,000. Net Operating Income (NOI) is $200,000.
 The cap rate is 8.00%. DSCR is 1.45. • • •
 ```
 
 ### 5. **Source Attribution**
+
 ```
 Sources:
 [1] Crexi - Multifamily Property Dallas
@@ -140,6 +156,7 @@ Sources:
 ## 🛠️ Tech Stack
 
 ### Backend
+
 - **Node.js + TypeScript** - Runtime and type safety
 - **Express** - HTTP server
 - **LangChain** - Agent orchestration
@@ -148,6 +165,7 @@ Sources:
 - **Serper** - Web search API
 
 ### Frontend
+
 - **Angular 17** - Framework with signals
 - **TypeScript** - Type safety
 - **Server-Sent Events** - Real-time streaming
@@ -156,6 +174,7 @@ Sources:
 ## 📊 Example Output
 
 ### Thinking Steps
+
 ```
 🔍 Understanding your query...
 🔍 Searching commercial real estate listings...
@@ -163,14 +182,16 @@ Sources:
 ```
 
 ### Answer with Citations
+
 ```
-Found a promising listing [1]: **Vista Ridge Apartments** located 
-at 5847 Forest Ln, Dallas, TX 75230. The asking price is $16,500,000. 
-Net Operating Income (NOI) is $1,251,642. The cap rate is 7.58%. 
+Found a promising listing [1]: **Vista Ridge Apartments** located
+at 5847 Forest Ln, Dallas, TX 75230. The asking price is $16,500,000.
+Net Operating Income (NOI) is $1,251,642. The cap rate is 7.58%.
 DSCR is 1.52.
 ```
 
 ### Sources
+
 ```
 [1] Crexi - Vista Ridge Apartments
     Dallas multifamily investment opportunity...
@@ -197,6 +218,7 @@ BROWSER_DEVTOOLS=false         # Open DevTools
 ### Customization
 
 See [Developer Guide](./docs/DEVELOPER_GUIDE.md) for:
+
 - Adding new event types
 - Customizing thinking messages
 - Styling the UI
@@ -205,16 +227,19 @@ See [Developer Guide](./docs/DEVELOPER_GUIDE.md) for:
 ## 🐛 Troubleshooting
 
 ### Events not showing in UI
+
 1. Check browser console for errors
 2. Verify SSE connection in Network tab
 3. Ensure backend is running on port 3001
 
 ### No search results
+
 1. Verify `SERPER_API_KEY` is set
 2. Check query format (be specific)
 3. Try broader search terms
 
 ### Browser automation failing
+
 1. Install Playwright browsers: `npx playwright install`
 2. Try different engine: `BROWSER_ENGINE=webkit`
 3. Enable headed mode for debugging: `BROWSER_HEADED=true`

@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 
 export type AgentEvent =
-  | { kind: 'run_started'|'run_finished'|'status'|'wait'|'nav'|'action'|'shot'|'extracted'|'fallback'|'heartbeat';
+  | { kind: 'run_started'|'run_finished'|'status'|'wait'|'nav'|'action'|'shot'|'extracted'|'fallback'|'heartbeat'|'thinking'|'source_found'|'answer_chunk'|'answer_complete';
       runId: string; t: number; [k: string]: any };
 
 @Injectable({ providedIn: 'root' })
 export class AgentService {
   // Point directly at your orchestrator (Node) that serves /run, /events/:runId, /result/:runId
-  private base = 'https://realestate-ai-agent.onrender.com';
+  private base = 'http://localhost:3001';
 
   async startRun(query: string): Promise<string> {
     const r = await fetch(`${this.base}/run`, {

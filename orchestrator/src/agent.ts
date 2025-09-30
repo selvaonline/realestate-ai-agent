@@ -5,15 +5,31 @@ import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
 import type { Deal } from "./lib/types.js";
 
-/** ✅ Optional: set a PUBLIC Crexi detail URL to guarantee a demo result */
-const DEMO_FALLBACK_URL = "https://www.crexi.com/properties/2164390/texas-7-eleven"; // e.g. "https://www.crexi.com/property/<id>/<slug>"
+/** ✅ Fallback URLs - Crexi only (reliable, not blocked) */
+const DEMO_FALLBACK_URLS = [
+  // Crexi - works reliably, not blocked
+  "https://www.crexi.com/properties/2164390/texas-7-eleven",
+  "https://www.crexi.com/properties/tenants/CVS_Pharmacy",
+  "https://www.crexi.com/properties/tenants/7-Eleven",
+  "https://www.crexi.com/properties/tenants/Walgreens",
+  
+  // If all real URLs fail, we'll create mock data as last resort
+];
 
-/** Detail-page patterns */
+/** Detail-page patterns - Crexi prioritized (not blocked) */
 const DETAIL_PATTERNS = [
-  /loopnet\.com\/Listing\//i,
+  // Crexi - works best, prioritize these
   /crexi\.com\/property\//i,
+  /crexi\.com\/properties\//i,
   /crexi\.com\/sale\/properties\/[^/?#]+\/[^/?#]+/i,
   /crexi\.com\/lease\/properties\/[^/?#]+\/[^/?#]+/i,
+  // Other platforms (may have bot detection)
+  /realtor\.com\/realestateandhomes-detail\//i,
+  /realtor\.com\/commercial\//i,
+  /propertyshark\.com\/.*\/Property\//i,
+  /realnex\.com\/listing\//i,
+  // LoopNet - keep pattern but deprioritized (often blocked)
+  /loopnet\.com\/Listing\//i,
 ];
 const isDetailUrl = (u: string) => DETAIL_PATTERNS.some((rx) => rx.test(u));
 
@@ -87,59 +103,105 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     }
   }
 
-  // ── Plan text for UI ─────────────────────────────────────────────────────────
-  emit(ctx, "status", { label: "Setting up my desktop" });
-  emit(ctx, "wait", { label: "Waiting for search results" });
+  // ── Perplexity-style flow: Thinking → Searching → Sources → Answer ──────────
+  emit(ctx, "thinking", { text: "Understanding your query..." });
+  
+  // Simple plan - no LLM needed, we know what to search
+  const plan = `Searching Crexi.com for: ${q}`;
 
-  const sys =
-    "You are a CRE deal scout. Given a goal, propose 2-3 concise web search queries for public sale listings (LoopNet/Crexi/brokers). Return them as a short bullet list.";
-  const planMsg = await llm.invoke([
-    { role: "system", content: sys },
-    { role: "user", content: q },
-  ]);
-  const plan =
-    typeof planMsg.content === "string" ? planMsg.content : JSON.stringify(planMsg.content);
-
+  emit(ctx, "thinking", { text: "Searching Crexi commercial real estate listings..." });
+  
   const deals: Deal[] = [];
+  const sources: Array<{ id: number; title: string; url: string; snippet: string }> = [];
+  let sourceId = 0;
 
-  // ── Search: detail-first → nudge → general ───────────────────────────────────
-  const detailQuery =
-    `${q} (` +
-    `(site:loopnet.com inurl:/Listing/) OR ` +
-    `(site:crexi.com inurl:/property/) OR ` +
-    `(site:crexi.com inurl:/sale/properties/) OR ` +
-    `(site:crexi.com inurl:/lease/properties/)` +
-    `)`;
-  emit(ctx, "status", { label: "Searching detail listings" });
+  // ── Search: detail-first → broader → general ───────────────────────────────────
+  // Strategy 1: Focused search - Crexi preferred but not strict site: restriction
+  const detailQuery = `${q} crexi.com commercial real estate for sale`;
+  
+  console.log("[agent] Search strategy 1:", detailQuery);
   const detail = (JSON.parse(String(await webSearch.invoke(detailQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
-  let candidates = detail.filter((r) => r?.url && isDetailUrl(r.url));
-
-  if (!candidates.length) {
-    const nudgeQuery =
-      `${q} Dallas multifamily ` +
-      `(("cap rate" OR NOI) AND (site:loopnet.com inurl:/Listing/ OR site:crexi.com inurl:/property/))`;
-    emit(ctx, "status", { label: "Broadening search" });
-    const nudge = (JSON.parse(String(await webSearch.invoke(nudgeQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
-    candidates = nudge.filter((r) => r?.url && isDetailUrl(r.url));
+  console.log(`[agent] Strategy 1 returned ${detail.length} results`);
+  // Prioritize Crexi URLs first, then others
+  const crexiCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
+  const otherCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
+  let candidates = [...crexiCandidates, ...otherCandidates];
+  console.log(`[agent] Strategy 1 detail URLs: ${candidates.length} (${crexiCandidates.length} Crexi, ${otherCandidates.length} other)`);
+  
+  // Emit sources found
+  for (const candidate of candidates.slice(0, 5)) {
+    sourceId++;
+    const source = { id: sourceId, ...candidate };
+    sources.push(source);
+    emit(ctx, "source_found", { source });
   }
 
-  if (!candidates.length) {
-    const generalQuery = `${q} multifamily "cap rate" "for sale"`;
-    emit(ctx, "status", { label: "General search" });
+  // Strategy 2: Broader Crexi search with tenants
+  if (candidates.length < 3) {
+    emit(ctx, "thinking", { text: "Expanding search criteria..." });
+    const broaderQuery = `${q} crexi properties tenants commercial`;
+    console.log("[agent] Search strategy 2:", broaderQuery);
+    const broader = (JSON.parse(String(await webSearch.invoke(broaderQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
+    console.log(`[agent] Strategy 2 returned ${broader.length} results`);
+    const broaderCrexi = broader.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
+    const broaderOther = broader.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
+    const broaderCandidates = [...broaderCrexi, ...broaderOther];
+    console.log(`[agent] Strategy 2 detail URLs: ${broaderCandidates.length}`);
+    
+    // Add new sources and candidates
+    for (const candidate of broaderCandidates) {
+      if (!candidates.find(c => c.url === candidate.url)) {
+        candidates.push(candidate);
+        if (candidates.length <= 5 && !sources.find(s => s.url === candidate.url)) {
+          sourceId++;
+          const source = { id: sourceId, ...candidate };
+          sources.push(source);
+          emit(ctx, "source_found", { source });
+        }
+      }
+    }
+  }
+
+  // Strategy 3: General search - cast wider net but filter out LoopNet
+  if (candidates.length < 2) {
+    emit(ctx, "thinking", { text: "Trying broader search..." });
+    const generalQuery = `${q} commercial real estate for sale`;
+    console.log("[agent] Search strategy 3:", generalQuery);
     const general = (JSON.parse(String(await webSearch.invoke(generalQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
-    candidates = general.filter((r) => r?.url && isDetailUrl(r.url));
+    console.log(`[agent] Strategy 3 returned ${general.length} results`);
+    const generalCrexi = general.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
+    const generalOther = general.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
+    const generalCandidates = [...generalCrexi, ...generalOther];
+    console.log(`[agent] Strategy 3 detail URLs: ${generalCandidates.length}`);
+    
+    // Add new sources and candidates
+    for (const candidate of generalCandidates) {
+      if (!candidates.find(c => c.url === candidate.url)) {
+        candidates.push(candidate);
+        if (candidates.length <= 5 && !sources.find(s => s.url === candidate.url)) {
+          sourceId++;
+          const source = { id: sourceId, ...candidate };
+          sources.push(source);
+          emit(ctx, "source_found", { source });
+        }
+      }
+    }
   }
-
-  emit(ctx, "status", {
-    label: candidates.length ? "Found detail candidates" : "No detail candidates; will use fallback",
-    note: candidates.slice(0, 3).map((c) => c.url).join("\n"),
-  });
+  
+  console.log(`[agent] Total candidates after all searches: ${candidates.length}`);
 
   // ── Try first few detail URLs ────────────────────────────────────────────────
-  const urls = candidates.map((c) => c.url).slice(0, 6);
+  if (candidates.length > 0) {
+    emit(ctx, "thinking", { text: "Analyzing property listings..." });
+  }
+  
+  const urls = candidates.map((c) => c.url).slice(0, 8);
   const tried: string[] = [];
+  let extractionSucceeded = false;
+  
   for (const url of urls) {
     tried.push(url);
+    console.log(`[agent] Attempting to extract from: ${url}`);
     emit(ctx, "nav", { url, label: "Navigating" });
     try {
       const { ext, uw } = await tryExtractOnce(url);
@@ -147,15 +209,44 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       const meaningful =
         !!ext?.title || !!ext?.address || ext?.askingPrice != null || ext?.noi != null || ext?.capRate != null;
 
+      console.log(`[agent] Extraction result - blocked: ${blocked}, meaningful: ${meaningful}, title: ${ext?.title}`);
+
       if (blocked || !meaningful) {
-        emit(ctx, "status", { label: "Skipping blocked or empty page" });
+        console.log(`[agent] Skipping ${url} - blocked or no data`);
         continue;
       }
 
+      console.log(`[agent] Successfully extracted from: ${url}`);
+      extractionSucceeded = true;
+      
       emit(ctx, "shot", { label: "Detail page", b64: ext.screenshotBase64 || null });
       emit(ctx, "extracted", {
         summary: { title: ext.title, address: ext.address, price: ext.askingPrice, noi: ext.noi, cap: ext.capRate ?? uw.capRate },
       });
+
+      // Stream answer with citations
+      const sourceIdx = sources.findIndex(s => s.url === (ext.finalUrl || url));
+      const citationNum = sourceIdx >= 0 ? sourceIdx + 1 : null;
+      
+      emit(ctx, "answer_chunk", { text: `Found a promising listing${citationNum ? ` [${citationNum}]` : ''}: ` });
+      emit(ctx, "answer_chunk", { text: `**${ext.title || 'Property'}** located at ${ext.address || 'address unavailable'}. ` });
+      
+      if (ext.askingPrice) {
+        emit(ctx, "answer_chunk", { text: `The asking price is $${ext.askingPrice.toLocaleString()}. ` });
+      }
+      
+      if (ext.noi) {
+        emit(ctx, "answer_chunk", { text: `Net Operating Income (NOI) is $${ext.noi.toLocaleString()}. ` });
+      }
+      
+      const finalCapRate = ext.capRate ?? uw.capRate;
+      if (finalCapRate) {
+        emit(ctx, "answer_chunk", { text: `The cap rate is ${(finalCapRate * 100).toFixed(2)}%. ` });
+      }
+      
+      if (uw.dscr) {
+        emit(ctx, "answer_chunk", { text: `DSCR is ${uw.dscr.toFixed(2)}. ` });
+      }
 
       deals.push({
         title: ext.title,
@@ -171,38 +262,100 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       });
       break; // stop after first success
     } catch (e) {
-      console.warn("[agent] extract failed:", url, e);
+      console.error("[agent] extract failed:", url, e);
     }
   }
+  
+  console.log(`[agent] Extraction attempts complete. Success: ${extractionSucceeded}, Deals: ${deals.length}`);
 
-  // ── Demo fallback (detail URL strongly recommended) ──────────────────────────
-  if (deals.length === 0 && DEMO_FALLBACK_URL) {
-    emit(ctx, "fallback", { label: "Using fallback listing" });
-    const { ext, uw } = await tryExtractOnce(DEMO_FALLBACK_URL);
-    const blocked = ext?.blocked || /access denied/i.test(ext?.title || "");
-    const meaningful =
-      !!ext?.title || !!ext?.address || ext?.askingPrice != null || !!ext?.noi || !!ext?.capRate;
+  // ── Demo fallback (always triggers if no deals found) ──────────────────────────
+  if (deals.length === 0 && DEMO_FALLBACK_URLS.length > 0) {
+    console.log(`[agent] No deals found, trying ${DEMO_FALLBACK_URLS.length} fallback URLs`);
+    emit(ctx, "thinking", { text: "Using demonstration listing..." });
+    
+    // Try each fallback URL until one works
+    for (const fallbackUrl of DEMO_FALLBACK_URLS) {
+      console.log(`[agent] Trying fallback URL: ${fallbackUrl}`);
+      try {
+        const { ext, uw } = await tryExtractOnce(fallbackUrl);
+        const blocked = ext?.blocked || /access denied/i.test(ext?.title || "");
+        const meaningful =
+          !!ext?.title || !!ext?.address || ext?.askingPrice != null || !!ext?.noi || !!ext?.capRate;
 
-    if (!blocked && meaningful) {
-      emit(ctx, "shot", { label: "Fallback detail", b64: ext.screenshotBase64 || null });
-      emit(ctx, "extracted", {
-        summary: { title: ext.title, address: ext.address, price: ext.askingPrice, noi: ext.noi, cap: ext.capRate ?? uw.capRate },
-      });
+        console.log(`[agent] Fallback extraction - blocked: ${blocked}, meaningful: ${meaningful}`);
 
+        if (!blocked && meaningful) {
+          emit(ctx, "shot", { label: "Fallback detail", b64: ext.screenshotBase64 || null });
+          emit(ctx, "extracted", {
+            summary: { title: ext.title, address: ext.address, price: ext.askingPrice, noi: ext.noi, cap: ext.capRate ?? uw.capRate },
+          });
+
+          // Stream answer for fallback
+          emit(ctx, "answer_chunk", { text: `Here's a demonstration listing: ` });
+          emit(ctx, "answer_chunk", { text: `**${ext.title || 'Property'}** located at ${ext.address || 'address unavailable'}. ` });
+          
+          if (ext.askingPrice) {
+            emit(ctx, "answer_chunk", { text: `The asking price is $${ext.askingPrice.toLocaleString()}. ` });
+          }
+          
+          const finalCapRate = ext.capRate ?? uw.capRate;
+          if (finalCapRate) {
+            emit(ctx, "answer_chunk", { text: `The cap rate is ${(finalCapRate * 100).toFixed(2)}%. ` });
+          }
+
+          deals.push({
+            title: ext.title,
+            url: ext.finalUrl || fallbackUrl,
+            source: new URL(ext.finalUrl || fallbackUrl).hostname,
+            address: ext.address,
+            askingPrice: ext.askingPrice,
+            noi: ext.noi,
+            capRate: ext.capRate ?? uw.capRate,
+            screenshotBase64: ext.screenshotBase64,
+            underwrite: uw,
+            raw: { plan, fallback: true, autoDrilled: ext.autoDrilled ?? false },
+          });
+          console.log(`[agent] Fallback extraction succeeded from: ${fallbackUrl}`);
+          break; // Success, stop trying other URLs
+        } else {
+          console.log(`[agent] Fallback URL ${fallbackUrl} failed - blocked: ${blocked}, meaningful: ${meaningful}`);
+        }
+      } catch (e) {
+        console.error(`[agent] Fallback URL ${fallbackUrl} error:`, e);
+      }
+    }
+    
+    // If all fallback URLs failed, create a mock deal
+    if (deals.length === 0) {
+      console.log(`[agent] All fallback URLs failed, creating mock demonstration deal`);
+      emit(ctx, "answer_chunk", { text: `Here's a demonstration example (mock data): ` });
+      emit(ctx, "answer_chunk", { text: `**Sample Commercial Property** located at 123 Main St, Dallas, TX 75201. ` });
+      emit(ctx, "answer_chunk", { text: `The asking price is $5,000,000. ` });
+      emit(ctx, "answer_chunk", { text: `The cap rate is 6.50%. ` });
+      
       deals.push({
-        title: ext.title,
-        url: ext.finalUrl || DEMO_FALLBACK_URL,
-        source: new URL(ext.finalUrl || DEMO_FALLBACK_URL).hostname,
-        address: ext.address,
-        askingPrice: ext.askingPrice,
-        noi: ext.noi,
-        capRate: ext.capRate ?? uw.capRate,
-        screenshotBase64: ext.screenshotBase64,
-        underwrite: uw,
-        raw: { plan, fallback: true, autoDrilled: ext.autoDrilled ?? false },
+        title: "Sample Commercial Property (Mock Data)",
+        url: "https://www.crexi.com",
+        source: "www.crexi.com",
+        address: "123 Main St, Dallas, TX 75201",
+        askingPrice: 5000000,
+        noi: 325000,
+        capRate: 0.065,
+        screenshotBase64: null,
+        underwrite: { capRate: 0.065, dscr: 1.25, loanAmt: 3750000, debtSvc: 225000 },
+        raw: { plan, fallback: true, mock: true, autoDrilled: false },
       });
+      console.log(`[agent] Mock deal created as last resort`);
     }
+  } else if (deals.length === 0) {
+    console.log(`[agent] No deals found and no fallback URLs configured`);
+    emit(ctx, "answer_chunk", { text: "I couldn't find any matching commercial real estate listings. " });
+    emit(ctx, "answer_chunk", { text: "Try a broader search query or paste a direct property URL from Crexi or LoopNet." });
   }
+  
+  console.log(`[agent] Final deals count: ${deals.length}`);
+  
+  emit(ctx, "answer_complete", {});
 
   return { plan, deals, toolResult: null };
 }

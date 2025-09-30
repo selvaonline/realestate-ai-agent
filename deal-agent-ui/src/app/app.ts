@@ -3,14 +3,17 @@ import { CommonModule } from '@angular/common';
 import { AgentService, AgentEvent } from './agent.service';
 
 type Card = {
-  kind: 'status'|'wait'|'nav'|'action'|'fallback'|'shot'|'extracted'|'started'|'finished';
+  kind: 'status'|'wait'|'nav'|'action'|'fallback'|'shot'|'extracted'|'started'|'finished'|'thinking'|'source'|'answer';
   label?: string;
   note?: string;
   url?: string;
   b64?: string;
   summary?: any;
+  source?: { id: number; title: string; url: string; snippet: string };
   t: number;
 };
+
+type Source = { id: number; title: string; url: string; snippet: string };
 
 @Component({
   selector: 'app-root',
@@ -22,57 +25,98 @@ type Card = {
 
     <div class="ask">
       <input #qinput [value]="q()" (input)="q.set(qinput.value)"
-             placeholder="Ask e.g. Find multifamily deals in Dallas cap > 6%" />
+             placeholder="Ask e.g. Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M." />
       <button (click)="run()" [disabled]="busy()">{{ busy() ? 'Running...' : 'Search' }}</button>
     </div>
 
-    <div class="timeline" *ngIf="cards().length">
-      <div class="card" *ngFor="let c of cards()">
-        <ng-container [ngSwitch]="c.kind">
+    <!-- Perplexity-style Answer Section -->
+    <div class="perplexity-section" *ngIf="answer() || sources().length">
+      <!-- Thinking Steps -->
+      <div class="thinking-steps" *ngIf="!answerComplete()">
+        <div class="thinking-item" *ngFor="let c of cards()">
+          <ng-container *ngIf="c.kind === 'thinking'">
+            <div class="thinking-text">
+              <span class="thinking-icon">🔍</span>
+              {{ c.label }}
+            </div>
+          </ng-container>
+        </div>
+      </div>
 
-          <div *ngSwitchCase="'started'" class="status">
-            <span class="chip">Setting up my desktop</span>
+      <!-- Streaming Answer with Citations -->
+      <div class="answer-section" *ngIf="answer()">
+        <div class="answer-text" [innerHTML]="answer()"></div>
+        <div class="typing-indicator" *ngIf="!answerComplete()">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <!-- Sources -->
+      <div class="sources-section" *ngIf="sources().length && answerComplete()">
+        <h3>Sources</h3>
+        <div class="source-item" *ngFor="let src of sources()">
+          <div class="source-num">[{{ src.id }}]</div>
+          <div class="source-content">
+            <a [href]="src.url" target="_blank" class="source-title">{{ src.title }}</a>
+            <div class="source-snippet">{{ src.snippet }}</div>
           </div>
-
-          <div *ngSwitchCase="'status'" class="status">
-            <span class="chip">{{c.label}}</span>
-            <div class="note" *ngIf="c.note">{{c.note}}</div>
-          </div>
-
-          <div *ngSwitchCase="'wait'" class="status">
-            <span class="chip hollow">Waiting</span> {{c.label}} <span class="dots"></span>
-          </div>
-
-          <div *ngSwitchCase="'nav'" class="status">
-            <span class="chip blue">Navigating</span>
-            <a *ngIf="c.url" [href]="c.url" target="_blank">{{c.label || c.url}}</a>
-          </div>
-
-          <div *ngSwitchCase="'action'" class="status">
-            <span class="chip yellow">Action</span> {{c.label}}
-          </div>
-
-          <div *ngSwitchCase="'fallback'" class="status">
-            <span class="chip orange">Fallback</span> {{c.label}}
-          </div>
-
-          <div *ngSwitchCase="'shot'" class="shot">
-            <div class="frame"><img [src]="'data:image/png;base64,'+c.b64" alt="screenshot" /></div>
-            <div class="caption">{{c.label}}</div>
-          </div>
-
-          <div *ngSwitchCase="'extracted'" class="extracted">
-            <div class="chip green">Extracted</div>
-            <pre>{{ c.summary | json }}</pre>
-          </div>
-
-          <div *ngSwitchCase="'finished'" class="status">
-            <span class="chip green">Done</span>
-          </div>
-
-        </ng-container>
+        </div>
       </div>
     </div>
+
+    <!-- Legacy Timeline (expanded by default) -->
+    <details class="timeline-details" *ngIf="cards().length" open>
+      <summary>View detailed timeline</summary>
+      <div class="timeline">
+        <div class="card" *ngFor="let c of cards()">
+          <ng-container [ngSwitch]="c.kind">
+
+            <div *ngSwitchCase="'thinking'" class="status">
+              <span class="chip purple">Thinking</span> {{c.label}}
+            </div>
+
+            <div *ngSwitchCase="'source'" class="source-card">
+              <span class="chip blue">Source [{{c.source?.id}}]</span>
+              <a [href]="c.source?.url" target="_blank">{{c.source?.title}}</a>
+            </div>
+
+            <div *ngSwitchCase="'answer'" class="answer-card">
+              <div class="chip green">Answer</div>
+              <div [innerHTML]="c.label"></div>
+            </div>
+
+            <div *ngSwitchCase="'started'" class="status">
+              <span class="chip">Setting up my desktop</span>
+            </div>
+
+            <div *ngSwitchCase="'status'" class="status">
+              <span class="chip">{{c.label}}</span>
+              <div class="note" *ngIf="c.note">{{c.note}}</div>
+            </div>
+
+            <div *ngSwitchCase="'nav'" class="status">
+              <span class="chip blue">Navigating</span>
+              <a *ngIf="c.url" [href]="c.url" target="_blank">{{c.label || c.url}}</a>
+            </div>
+
+            <div *ngSwitchCase="'shot'" class="shot">
+              <div class="frame"><img [src]="'data:image/png;base64,'+c.b64" alt="screenshot" /></div>
+              <div class="caption">{{c.label}}</div>
+            </div>
+
+            <div *ngSwitchCase="'extracted'" class="extracted">
+              <div class="chip green">Extracted</div>
+              <pre>{{ c.summary | json }}</pre>
+            </div>
+
+            <div *ngSwitchCase="'finished'" class="status">
+              <span class="chip green">Done</span>
+            </div>
+
+          </ng-container>
+        </div>
+      </div>
+    </details>
 
     <div class="deals" *ngIf="deals().length">
       <h3>Deals</h3>
@@ -97,26 +141,132 @@ type Card = {
     :host { color:#e9eef5; background:#0b0f14; min-height:100vh; display:block; }
     .shell { max-width: 920px; margin: 0 auto; padding: 20px; }
     .header { font-weight:700; font-size:20px; color:#c9d7ff; margin-bottom: 12px; }
-    .ask { display:flex; gap:8px; margin-bottom:16px; }
+    .ask { display:flex; gap:8px; margin-bottom:20px; }
     input { flex:1; background:#0f131a; border:1px solid #1d2735; color:#e9eef5; padding:10px 12px; border-radius:8px; }
     button { background:#2f5cff; border:none; color:#fff; padding:10px 16px; border-radius:8px; cursor:pointer; }
     button[disabled]{ opacity:.6; cursor:not-allowed; }
-    .timeline { display:flex; flex-direction:column; gap:12px; margin-top:8px; }
-    .card { background:#0f131a; border:1px solid #1d2735; border-radius:12px; padding:12px; }
+
+    /* Perplexity-style sections */
+    .perplexity-section { margin-top: 24px; }
+    
+    .thinking-steps { margin-bottom: 16px; }
+    .thinking-item { margin-bottom: 8px; }
+    .thinking-text { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      color: #9fb0c0; 
+      font-size: 14px;
+      padding: 8px 0;
+    }
+    .thinking-icon { font-size: 16px; }
+
+    .answer-section { 
+      background: #0f131a; 
+      border: 1px solid #1d2735; 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+    .answer-text { color: #e9eef5; font-size: 15px; }
+    
+    .typing-indicator { 
+      display: flex; 
+      gap: 4px; 
+      margin-top: 12px; 
+    }
+    .typing-indicator span {
+      width: 8px;
+      height: 8px;
+      background: #5b7a9f;
+      border-radius: 50%;
+      animation: typing 1.4s infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing {
+      0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-4px); }
+    }
+
+    .sources-section { 
+      background: #0f131a; 
+      border: 1px solid #1d2735; 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin-bottom: 20px;
+    }
+    .sources-section h3 { 
+      color: #c9d7ff; 
+      font-size: 16px; 
+      margin: 0 0 16px 0; 
+      font-weight: 600;
+    }
+    .source-item { 
+      display: flex; 
+      gap: 12px; 
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #1d2735;
+    }
+    .source-item:last-child { 
+      border-bottom: none; 
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .source-num { 
+      color: #5b7a9f; 
+      font-size: 13px; 
+      font-weight: 600;
+      min-width: 28px;
+    }
+    .source-content { flex: 1; }
+    .source-title { 
+      color: #7ba3e8; 
+      text-decoration: none; 
+      font-size: 14px; 
+      font-weight: 500;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .source-title:hover { text-decoration: underline; }
+    .source-snippet { 
+      color: #9fb0c0; 
+      font-size: 13px; 
+      line-height: 1.5;
+    }
+
+    /* Timeline details (collapsible) */
+    .timeline-details { 
+      margin-top: 20px; 
+      background: #0f131a; 
+      border: 1px solid #1d2735; 
+      border-radius: 12px; 
+      padding: 16px;
+    }
+    .timeline-details summary { 
+      cursor: pointer; 
+      color: #7ba3e8; 
+      font-size: 14px;
+      list-style: none;
+    }
+    .timeline-details summary::-webkit-details-marker { display: none; }
+    .timeline-details summary:hover { text-decoration: underline; }
+    
+    .timeline { display:flex; flex-direction:column; gap:12px; margin-top:12px; }
+    .card { background:#0b0f14; border:1px solid #1d2735; border-radius:8px; padding:10px; }
     .status { display:flex; align-items:center; gap:8px; }
     .chip { background:#1d2735; color:#c9d7ff; padding:4px 8px; border-radius:999px; font-size:12px; }
-    .chip.hollow { background:transparent; border:1px solid #334154; }
+    .chip.purple { background:#4a2c75; }
     .chip.blue { background:#0e3e9b; }
-    .chip.yellow { background:#8b6b0e; }
-    .chip.orange { background:#8b3d0e; }
     .chip.green { background:#0e6b36; }
-    .note { color:#9fb0c0; font-size:12px; }
-    .dots::after { content:'...'; animation: blink 1.2s infinite; }
-    @keyframes blink { 50% { opacity:0.3 } }
     .frame { background:#0b0f14; border:1px solid #1d2735; border-radius:8px; overflow:hidden; }
     .frame img { width:100%; display:block; }
     .caption { font-size:12px; color:#9fb0c0; margin-top:6px; }
-    .deals { margin-top: 18px; }
+    
+    .deals { margin-top: 24px; }
+    .deals h3 { color: #c9d7ff; font-size: 18px; margin-bottom: 16px; }
     .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
     .deal { background:#0f131a; border:1px solid #1d2735; border-radius:12px; padding:12px; }
     .kv { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin:8px 0; }
@@ -125,16 +275,22 @@ type Card = {
   `]
 })
 export class App {
-  q = signal('Find multifamily deals in Dallas cap > 6%');
+  q = signal('Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M.');
   busy = signal(false);
   cards = signal<Card[]>([]);
   deals = signal<any[]>([]);
+  sources = signal<Source[]>([]);
+  answer = signal<string>('');
+  answerComplete = signal(false);
 
   constructor(private svc: AgentService) {}
 
   async run() {
     this.cards.set([]);
     this.deals.set([]);
+    this.sources.set([]);
+    this.answer.set('');
+    this.answerComplete.set(false);
     this.busy.set(true);
     try {
       const runId = await this.svc.startRun(this.q());
@@ -161,6 +317,20 @@ export class App {
   onEvent(ev: AgentEvent) {
     const push = (c: Card) => this.cards.update(arr => [...arr, c]);
     switch (ev.kind) {
+      case 'thinking':
+        push({ kind:'thinking', label: ev['text'], t:ev.t });
+        break;
+      case 'source_found':
+        this.sources.update(arr => [...arr, ev['source']]);
+        push({ kind:'source', source: ev['source'], t:ev.t });
+        break;
+      case 'answer_chunk':
+        this.answer.update(curr => curr + ev['text']);
+        break;
+      case 'answer_complete':
+        this.answerComplete.set(true);
+        push({ kind:'answer', label: this.answer(), t:ev.t });
+        break;
       case 'status':   push({ kind:'status', label: ev['label'], note: ev['note'], t:ev.t }); break;
       case 'wait':     push({ kind:'wait', label: ev['label'], t:ev.t }); break;
       case 'nav':      push({ kind:'nav', label: (ev['label'] || ev['url']), url: ev['url'], t:ev.t }); break;

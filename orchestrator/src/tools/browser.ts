@@ -178,20 +178,38 @@ async function launchContext(mode: "mobile" | "desktop") {
     const browser = await chromium.launch({
       headless: !headed,
       devtools,
-      args: ["--disable-blink-features=AutomationControlled", headed ? "--start-maximized" : ""].filter(Boolean),
+      args: [
+        "--disable-blink-features=AutomationControlled",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--disable-site-isolation-trials",
+        "--disable-web-security",
+        headed ? "--start-maximized" : ""
+      ].filter(Boolean),
     });
     const ctx = await browser.newContext({
-      viewport: headed ? null : { width: 1366, height: 900 }, // null = use window size (maximized)
+      viewport: headed ? null : { width: 1920, height: 1080 }, // Better resolution
       ignoreHTTPSErrors: true,
-      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122 Safari/537.36",
-      extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      extraHTTPHeaders: { 
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"macOS"',
+      },
     });
     await ctx.addInitScript(() => {
       Object.defineProperty(navigator, "webdriver", { get: () => false });
       // @ts-ignore
       window.chrome = { runtime: {} };
       Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
-      Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3] });
+      Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+      Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
+      Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 8 });
+      Object.defineProperty(navigator, "deviceMemory", { get: () => 8 });
+      Object.defineProperty(navigator, "maxTouchPoints", { get: () => 0 });
+      // @ts-ignore
+      delete navigator.__proto__.webdriver;
     });
     const page = await ctx.newPage();
     return { ctx, page, close: () => browser.close() };
@@ -213,12 +231,16 @@ async function gotoWithGrace(page: Page, u: string) {
     try { await page.goto(u, { waitUntil: "load", timeout: 60000 }); } catch {}
   }
   try { await page.waitForLoadState("networkidle", { timeout: 5000 }); } catch {}
+  // Human-like behavior: wait, then scroll
+  try { await page.waitForTimeout(1500); } catch {}
   try {
     for (let i = 0; i < 3; i++) {
       await page.mouse.wheel(0, 800);
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(500);
     }
   } catch {}
+  // Additional wait for dynamic content
+  try { await page.waitForTimeout(1000); } catch {}
 }
 
 function toNum(v: any) {

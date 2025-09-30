@@ -57,7 +57,6 @@ app.post("/run", async (req, res) => {
       });
 
       results.set(runId, out); // cache final result
-      pub(runId, { kind: "extracted", runId, summary: { deals: out.deals?.length ?? 0 }, t: Date.now() });
       pub(runId, { kind: "run_finished", runId, ok: true, t: Date.now() });
     } catch (e: any) {
       console.error("[/run worker] error:", e?.stack || e?.message || e);

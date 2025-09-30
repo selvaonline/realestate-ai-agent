@@ -160,16 +160,37 @@ async function launchContext(mode: "mobile" | "desktop") {
   const useWebkit   = engine ? engine === "webkit"   : mode === "mobile";
   const useChromium = engine ? engine === "chromium" : mode === "desktop";
 
+  // Bright Data proxy configuration
+  const brightDataUser = process.env.BRIGHTDATA_USERNAME;
+  const brightDataPass = process.env.BRIGHTDATA_PASSWORD;
+  const brightDataHost = process.env.BRIGHTDATA_HOST || "brd.superproxy.io:22225";
+  const useBrightData = !!(brightDataUser && brightDataPass);
+  
+  if (useBrightData) {
+    console.log("[browser] Using Bright Data residential proxy");
+  }
+
   if (useWebkit) {
     const browser = await webkit.launch({ headless: !headed });
-    const ctx = await browser.newContext({
+    const contextOptions: any = {
       viewport: mode === "mobile" ? { width: 390, height: 844 } : { width: 1366, height: 900 },
       userAgent: mode === "mobile"
         ? "Mozilla/5.0 (iPhone; CPU iPhone OS 16_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
         : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
       extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
       ignoreHTTPSErrors: true,
-    });
+    };
+    
+    // Add Bright Data proxy if configured
+    if (useBrightData) {
+      contextOptions.proxy = {
+        server: `http://${brightDataHost}`,
+        username: brightDataUser,
+        password: brightDataPass,
+      };
+    }
+    
+    const ctx = await browser.newContext(contextOptions);
     const page = await ctx.newPage();
     return { ctx, page, close: () => browser.close() };
   }
@@ -186,8 +207,9 @@ async function launchContext(mode: "mobile" | "desktop") {
         headed ? "--start-maximized" : ""
       ].filter(Boolean),
     });
-    const ctx = await browser.newContext({
-      viewport: headed ? null : { width: 1920, height: 1080 }, // Better resolution
+    
+    const contextOptions: any = {
+      viewport: headed ? null : { width: 1920, height: 1080 },
       ignoreHTTPSErrors: true,
       userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       extraHTTPHeaders: { 
@@ -197,7 +219,19 @@ async function launchContext(mode: "mobile" | "desktop") {
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
       },
-    });
+    };
+    
+    // Add Bright Data proxy if configured
+    if (useBrightData) {
+      contextOptions.proxy = {
+        server: `http://${brightDataHost}`,
+        username: brightDataUser,
+        password: brightDataPass,
+      };
+    }
+    
+    const ctx = await browser.newContext(contextOptions);
+    
     await ctx.addInitScript(() => {
       Object.defineProperty(navigator, "webdriver", { get: () => false });
       // @ts-ignore

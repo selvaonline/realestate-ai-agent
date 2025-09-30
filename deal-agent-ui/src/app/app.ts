@@ -24,8 +24,9 @@ type Source = { id: number; title: string; url: string; snippet: string };
     <div class="header">RealEstate Deal Agent</div>
 
     <div class="ask">
-      <input #qinput [value]="q()" (input)="q.set(qinput.value)"
-             placeholder="Ask e.g. Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M." />
+      <input #qinput [value]="q()" (input)="q.set(qinput.value); stopTyping();"
+             [placeholder]="typingPlaceholder()" 
+             (focus)="stopTyping()" />
       <button (click)="run()" [disabled]="busy()">{{ busy() ? 'Running...' : 'Search' }}</button>
     </div>
 
@@ -143,16 +144,18 @@ type Source = { id: number; title: string; url: string; snippet: string };
         </div>
       </div>
     </div>
-  </div>
   `,
   styles: [`
     :host { color:#e9eef5; background:#0b0f14; min-height:100vh; display:block; }
     .shell { max-width: 920px; margin: 0 auto; padding: 20px; }
     .header { font-weight:700; font-size:20px; color:#c9d7ff; margin-bottom: 12px; }
-    .ask { display:flex; gap:8px; margin-bottom:20px; }
-    input { flex:1; background:#0f131a; border:1px solid #1d2735; color:#e9eef5; padding:10px 12px; border-radius:8px; }
-    button { background:#2f5cff; border:none; color:#fff; padding:10px 16px; border-radius:8px; cursor:pointer; }
-    button[disabled]{ opacity:.6; cursor:not-allowed; }
+    .ask { display:flex; gap:12px; margin:20px 0; }
+    input { flex:1; padding:12px 16px; background:#0f131a; border:1px solid #1d2735; border-radius:8px; color:#e9eef5; font-size:15px; }
+    input::placeholder { color: #9fb0c0; opacity: 1; }
+    input:focus { outline:none; border-color:#2f5cff; }
+    button { padding:12px 24px; background:#2f5cff; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:15px; }
+    button:hover:not(:disabled) { background:#4169ff; }
+    button:disabled { opacity:0.6; cursor:not-allowed; }
 
     /* Perplexity-style sections */
     .perplexity-section { margin-top: 24px; }
@@ -342,7 +345,7 @@ type Source = { id: number; title: string; url: string; snippet: string };
   `]
 })
 export class App {
-  q = signal('Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M.');
+  q = signal('');
   busy = signal(false);
   cards = signal<Card[]>([]);
   deals = signal<any[]>([]);
@@ -350,8 +353,83 @@ export class App {
   answer = signal<string>('');
   answerComplete = signal(false);
   shareStatus = signal<string>('');
+  typingPlaceholder = signal<string>('Ask a question...');
+  private typingInterval: any = null;
+  private isTypingActive = true;
+  private currentExampleIndex = 0;
 
-  constructor(private svc: AgentService) {}
+  private exampleQueries = [
+    'Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M',
+    'CVS pharmacy properties for sale in Texas',
+    'Find retail centers under $20M, 8%+ cap, repositioning opportunity',
+    'Medical office buildings with hospital affiliation, cap rate 6-8%',
+    '7-Eleven investment properties in Sun Belt markets',
+    'Walgreens NNN lease, 15+ year lease term, investment grade',
+    'Find shopping centers with grocery anchor, 7%+ cap rate',
+  ];
+
+  constructor(private svc: AgentService) {
+    this.startTypingAnimation();
+  }
+
+  ngOnDestroy() {
+    this.stopTyping();
+  }
+
+  private startTypingAnimation() {
+    let queryIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    const typingSpeed = 80;
+    const deletingSpeed = 40;
+    const pauseBeforeDelete = 2000;
+    const pauseBeforeNext = 500;
+
+    const type = () => {
+      if (!this.isTypingActive) return;
+
+      const currentQuery = this.exampleQueries[queryIndex];
+      this.currentExampleIndex = queryIndex; // Track current example
+      
+      if (!isDeleting && charIndex <= currentQuery.length) {
+        // Typing forward
+        this.typingPlaceholder.set(currentQuery.substring(0, charIndex) + '|');
+        charIndex++;
+        
+        if (charIndex > currentQuery.length) {
+          // Finished typing, pause then start deleting
+          setTimeout(() => {
+            isDeleting = true;
+            type();
+          }, pauseBeforeDelete);
+          return;
+        }
+      } else if (isDeleting && charIndex > 0) {
+        // Deleting backward
+        charIndex--;
+        this.typingPlaceholder.set(currentQuery.substring(0, charIndex) + '|');
+      } else if (isDeleting && charIndex === 0) {
+        // Finished deleting, move to next query
+        isDeleting = false;
+        queryIndex = (queryIndex + 1) % this.exampleQueries.length;
+        setTimeout(type, pauseBeforeNext);
+        return;
+      }
+      
+      const speed = isDeleting ? deletingSpeed : typingSpeed;
+      this.typingInterval = setTimeout(type, speed);
+    };
+
+    type();
+  }
+
+  stopTyping() {
+    this.isTypingActive = false;
+    if (this.typingInterval) {
+      clearTimeout(this.typingInterval);
+      this.typingInterval = null;
+    }
+  }
 
   async shareResults() {
     const query = this.q();
@@ -405,6 +483,15 @@ export class App {
   }
 
   async run() {
+    let query = this.q().trim();
+    
+    // If empty, use the current example query from animation
+    if (!query) {
+      query = this.exampleQueries[this.currentExampleIndex];
+      this.q.set(query); // Fill the input with the example
+      this.stopTyping(); // Stop animation
+    }
+    
     this.cards.set([]);
     this.deals.set([]);
     this.sources.set([]);
@@ -413,7 +500,7 @@ export class App {
     this.shareStatus.set('');
     this.busy.set(true);
     try {
-      const runId = await this.svc.startRun(this.q());
+      const runId = await this.svc.startRun(query);
       this.cards.update(c => [...c, { kind:'started', label:'Setting up my desktop', t:Date.now() }]);
       const stop = this.svc.openEvents(runId, (ev: AgentEvent) => this.onEvent(ev));
       const poll = setInterval(async () => {
@@ -430,7 +517,7 @@ export class App {
       }, 400);
     } catch (e) {
       this.busy.set(false);
-      alert('Run failed');
+      alert('Run failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
     }
   }
 

@@ -7,27 +7,46 @@ export const browseAndExtract = new DynamicTool({
   description:
     "Open a URL and extract listing fields (title, price, address, capRate, noi). Input: {url:string, selectors?:object}",
   func: async (input: string) => {
+    console.log("[browse_and_extract] 🚀 Starting browser extraction");
     const { url, selectors } = JSON.parse(input);
+    console.log("[browse_and_extract] 📍 Target URL:", url);
 
     // 1) Try mobile Safari (WebKit) first — friendlier on some CRE sites
-    const wk = await runOnce("mobile", url, selectors).catch(() => null);
-    if (wk && wk.blocked !== true) return JSON.stringify(wk);
+    console.log("[browse_and_extract] 📱 Trying mobile WebKit first...");
+    const wk = await runOnce("mobile", url, selectors).catch((e) => {
+      console.log("[browse_and_extract] ⚠️ Mobile WebKit failed:", e.message);
+      return null;
+    });
+    
+    if (wk && wk.blocked !== true) {
+      console.log("[browse_and_extract] ✅ Mobile WebKit succeeded!");
+      return JSON.stringify(wk);
+    }
 
     // 2) Fallback to desktop Chromium
-    const ch = await runOnce("desktop", url, selectors).catch(() => null);
-    return JSON.stringify(
-      ch ?? {
-        title: null,
-        address: null,
-        askingPrice: null,
-        noi: null,
-        capRate: null,
-        screenshotBase64: null,
-        autoDrilled: false,
-        finalUrl: url,
-        blocked: true,
-      }
-    );
+    console.log("[browse_and_extract] 🖥️ Falling back to desktop Chromium...");
+    const ch = await runOnce("desktop", url, selectors).catch((e) => {
+      console.log("[browse_and_extract] ⚠️ Desktop Chromium failed:", e.message);
+      return null;
+    });
+    
+    if (ch) {
+      console.log("[browse_and_extract] ✅ Desktop Chromium succeeded!");
+      return JSON.stringify(ch);
+    }
+    
+    console.log("[browse_and_extract] ❌ Both browsers failed - returning blocked result");
+    return JSON.stringify({
+      title: null,
+      address: null,
+      askingPrice: null,
+      noi: null,
+      capRate: null,
+      screenshotBase64: null,
+      autoDrilled: false,
+      finalUrl: url,
+      blocked: true,
+    });
   },
 });
 
@@ -113,8 +132,18 @@ async function runOnce(
     }
 
     // Extract once
+    console.log("[extract] 📊 Starting data extraction...");
     let extracted = await extractOnce(page, selectors || {});
+    console.log("[extract] ✅ Initial extraction complete:", {
+      hasTitle: !!extracted.title,
+      hasAddress: !!extracted.address,
+      hasPrice: extracted.askingPrice !== null,
+      hasNOI: extracted.noi !== null,
+      hasCapRate: extracted.capRate !== null
+    });
+    
     let shot = await safeScreenshot(page);
+    console.log("[extract] 📸 Screenshot captured");
 
     // Second-chance auto-drill: if all nulls and not drilled yet, try one more time
     const allNull =
@@ -122,16 +151,23 @@ async function runOnce(
       extracted.askingPrice == null && extracted.noi == null && extracted.capRate == null;
 
     if (allNull && !autoDrilled) {
+      console.log("[extract] ⚠️ All fields null - attempting auto-drill to detail page...");
       const detailHref2 = await findDetailHref(page);
       if (detailHref2) {
+        console.log("[extract] 🔗 Found detail link:", detailHref2);
         autoDrilled = true;
         await gotoWithGrace(page, detailHref2);
         finalUrl = page.url();
+        console.log("[extract] 📊 Re-extracting from detail page...");
         extracted = await extractOnce(page, selectors || {});
         shot = await safeScreenshot(page);
+        console.log("[extract] ✅ Second extraction complete");
+      } else {
+        console.log("[extract] ⚠️ No detail link found for auto-drill");
       }
     }
 
+    console.log("[extract] 🎉 Extraction complete - returning results");
     return { ...extracted, screenshotBase64: shot, autoDrilled, finalUrl };
   } finally {
     await close();
@@ -257,49 +293,69 @@ async function launchContext(mode: "mobile" | "desktop") {
 }
 
 async function gotoWithGrace(page: Page, u: string) {
-  console.log("[browse] opening", u);
+  console.log("[browse] 🌐 Opening URL:", u);
   const startTime = Date.now();
   
   try {
+    console.log("[browse] ⏳ Waiting for page load (timeout: 45s)...");
     await page.goto(u, { waitUntil: "domcontentloaded", timeout: 45000 });
-    console.log(`[browse] page loaded in ${Date.now() - startTime}ms`);
+    console.log(`[browse] ✅ Page loaded successfully in ${Date.now() - startTime}ms`);
   } catch (e: any) {
-    console.warn("[browse] goto timeout/error:", e?.message);
+    console.warn(`[browse] ⚠️ Goto timeout/error after ${Date.now() - startTime}ms:`, e?.message);
     // Try simpler wait strategy
     try { 
+      console.log("[browse] 🔄 Retrying with simpler strategy...");
       await page.goto(u, { waitUntil: "commit", timeout: 30000 }); 
-      console.log(`[browse] page committed in ${Date.now() - startTime}ms`);
+      console.log(`[browse] ✅ Page committed in ${Date.now() - startTime}ms`);
     } catch (e2) {
-      console.error("[browse] complete failure to load:", e2);
+      console.error(`[browse] ❌ Complete failure to load after ${Date.now() - startTime}ms:`, e2);
       throw new Error(`Failed to load page: ${u}`);
     }
   }
   
   // Check for Cloudflare challenge
+  console.log("[browse] 🔍 Checking for Cloudflare challenge...");
   const pageContent = await page.content();
-  if (pageContent.includes('cloudflare') || pageContent.includes('Verify you are human')) {
-    console.log("[browse] Cloudflare challenge detected, waiting 10 seconds...");
-    await page.waitForTimeout(10000); // Wait for Cloudflare check to complete
+  const hasCloudflare = pageContent.includes('cloudflare') || pageContent.includes('Verify you are human');
+  
+  if (hasCloudflare) {
+    console.log("[browse] 🛡️ Cloudflare challenge DETECTED - waiting 10 seconds for auto-solve...");
+    await page.waitForTimeout(10000);
     
     // Check if we passed the challenge
     const finalContent = await page.content();
     if (finalContent.includes('Verify you are human')) {
-      console.error("[browse] Cloudflare challenge failed - still showing CAPTCHA");
+      console.error("[browse] ❌ Cloudflare challenge FAILED - still showing CAPTCHA");
+      console.error("[browse] 💡 Tip: Ensure BRIGHTDATA_* env vars are set for proxy bypass");
       // Don't throw - let extraction fail gracefully
     } else {
-      console.log("[browse] Cloudflare challenge passed!");
+      console.log("[browse] ✅ Cloudflare challenge PASSED!");
     }
+  } else {
+    console.log("[browse] ✅ No Cloudflare challenge detected");
   }
   
   // Wait for network to settle (but don't fail if it doesn't)
-  try { await page.waitForLoadState("networkidle", { timeout: 3000 }); } catch {}
+  console.log("[browse] ⏳ Waiting for network idle...");
+  try { 
+    await page.waitForLoadState("networkidle", { timeout: 3000 }); 
+    console.log("[browse] ✅ Network idle");
+  } catch {
+    console.log("[browse] ⚠️ Network not idle after 3s (continuing anyway)");
+  }
   
-  // Minimal human-like behavior (faster for cloud)
-  try { await page.waitForTimeout(1000); } catch {}
-  try {
+  // Minimal human-like behavior
+  console.log("[browse] 🖱️ Simulating human behavior...");
+  try { 
+    await page.waitForTimeout(1000);
     await page.mouse.wheel(0, 500);
     await page.waitForTimeout(300);
-  } catch {}
+    console.log("[browse] ✅ Human simulation complete");
+  } catch (e) {
+    console.log("[browse] ⚠️ Human simulation failed (non-critical)");
+  }
+  
+  console.log(`[browse] 🎉 Total time: ${Date.now() - startTime}ms`);
 }
 
 function toNum(v: any) {

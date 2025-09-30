@@ -358,18 +358,43 @@ export class App {
   private isTypingActive = true;
   private currentExampleIndex = 0;
 
-  private exampleQueries = [
-    'Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M',
-    'CVS pharmacy properties for sale in Texas',
-    'Find retail centers under $20M, 8%+ cap, repositioning opportunity',
-    'Medical office buildings with hospital affiliation, cap rate 6-8%',
-    '7-Eleven investment properties in Sun Belt markets',
-    'Walgreens NNN lease, 15+ year lease term, investment grade',
-    'Find shopping centers with grocery anchor, 7%+ cap rate',
-  ];
+  private exampleQueries: string[] = [];
+  private allPrompts: string[] = [];
 
   constructor(private svc: AgentService) {
-    this.startTypingAnimation();
+    this.loadPrompts();
+  }
+
+  private async loadPrompts() {
+    try {
+      const response = await fetch('/assets/search-prompts.json');
+      const data = await response.json();
+      
+      // Flatten all categories into one array
+      this.allPrompts = Object.values(data.categories).flat() as string[];
+      
+      // Randomly select 20 prompts for the typing animation
+      this.exampleQueries = this.getRandomPrompts(20);
+      
+      console.log(`[prompts] Loaded ${this.allPrompts.length} prompts from ${Object.keys(data.categories).length} categories`);
+      
+      // Start animation after prompts are loaded
+      this.startTypingAnimation();
+    } catch (error) {
+      console.error('[prompts] Failed to load prompts, using fallback:', error);
+      // Fallback prompts
+      this.exampleQueries = [
+        'Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M',
+        'CVS pharmacy properties for sale in Texas',
+        'Medical office buildings with hospital affiliation, cap rate 6-8%',
+      ];
+      this.startTypingAnimation();
+    }
+  }
+
+  private getRandomPrompts(count: number): string[] {
+    const shuffled = [...this.allPrompts].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
   }
 
   ngOnDestroy() {

@@ -1,0 +1,153 @@
+{
+  "categories": {
+    "retail_nnn": [
+      "Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M",
+      "CVS pharmacy properties for sale in Texas, 15+ year lease term",
+      "Walgreens NNN lease investment grade tenant, Sun Belt markets",
+      "7-Eleven convenience stores for sale, cap rate 5-6%, corporate guarantee",
+      "Dollar General NNN properties, rural markets, under $2M",
+      "Starbucks drive-thru locations, West Coast, cap rate 4.5-5.5%",
+      "Auto parts stores NNN lease, O'Reilly or AutoZone, Midwest",
+      "Fast food QSR properties, Chick-fil-A or Wendy's, cap rate 5-6%",
+      "Bank branches NNN, Wells Fargo or Chase, 10+ year lease",
+      "Urgent care medical NNN, corporate tenant, cap rate 6-7%"
+    ],
+    "multifamily": [
+      "Garden-style apartments 100-200 units, Dallas-Fort Worth, under $30M",
+      "Class B multifamily properties, Phoenix metro, value-add opportunity",
+      "Student housing near major universities, Texas or Florida, stabilized",
+      "Senior housing assisted living facilities, Southeast, NOI $500K+",
+      "Workforce housing complexes, Atlanta suburbs, 1970s-1980s vintage",
+      "Luxury apartments Class A, Austin downtown, lease-up stage",
+      "Affordable housing LIHTC properties, tax credit syndication opportunity",
+      "Manufactured housing communities, Sunbelt states, 200+ pads",
+      "Mid-rise urban apartments, Nashville or Charlotte, transit-oriented",
+      "Military housing near bases, long-term government contracts"
+    ],
+    "office": [
+      "Medical office buildings with hospital affiliation, cap rate 6-8%",
+      "Class A suburban office parks, Atlanta, fully leased with credit tenants",
+      "Single-tenant office buildings, Fortune 500 occupant, NNN lease",
+      "Flex office/warehouse space, e-commerce distribution areas",
+      "Professional office condos for sale, Dallas Galleria area",
+      "Government-leased office buildings, GSA tenant, 10+ year lease",
+      "Life science R&D facilities, Boston or San Diego biotech clusters",
+      "Creative office spaces, tech markets like Austin or Denver",
+      "Call center buildings, telecom companies, long-term leases",
+      "Data center properties or land zoned for data center development"
+    ],
+    "industrial": [
+      "Last-mile distribution centers, e-commerce hubs, 50K-150K SF",
+      "Bulk warehouse facilities, I-35 corridor Texas, cross-dock capability",
+      "Cold storage warehouses, food distribution, refrigerated facilities",
+      "Manufacturing plants for sale or lease, automotive supply chain",
+      "Flex industrial parks, multi-tenant, near major airports",
+      "Amazon or FedEx leased logistics centers, 15+ year term",
+      "Outdoor storage yards, construction equipment or RV storage",
+      "Industrial land zoned for warehouse development, shovel-ready",
+      "Port-adjacent industrial properties, import/export facilities",
+      "Heavy industrial sites with rail access, manufacturing zones"
+    ],
+    "retail_centers": [
+      "Grocery-anchored shopping centers, Kroger or Publix, 7-8% cap",
+      "Power centers with big-box tenants, Home Depot or Target anchor",
+      "Strip centers 20K-50K SF, high-traffic suburban locations",
+      "Outlet malls or factory outlet centers, tourist destinations",
+      "Lifestyle centers mixed-use, upscale retail and dining",
+      "Regional malls Class B, value-add repositioning opportunity",
+      "Neighborhood shopping centers, strong demographics, under $15M",
+      "Retail pad sites for ground lease development, major intersections",
+      "Entertainment retail complexes, movie theaters or bowling alleys",
+      "Big-box dark stores for conversion to industrial or medical"
+    ],
+    "hospitality": [
+      "Select-service hotels, Hilton Garden Inn or Courtyard, stabilized",
+      "Extended-stay hotels near corporate campuses or medical centers",
+      "Resort properties beachfront or ski destinations, flag or independent",
+      "Full-service conference hotels, suburban markets, 200+ rooms",
+      "Boutique hotels in urban core, unique assets under $20M",
+      "Motel conversion opportunities to workforce housing or storage",
+      "Hotel development sites entitled for 150+ room flag franchise",
+      "Casino hotels or gaming properties, regional markets",
+      "RV parks or campgrounds, tourist destinations, 100+ sites",
+      "Bed and breakfast inns, historic properties, turnkey operations"
+    ],
+    "specialty": [
+      "Self-storage facilities, climate-controlled, under $10M",
+      "Car wash properties, express tunnel systems, corporate operators",
+      "Gas stations with convenience stores, branded franchises",
+      "Veterinary hospitals or animal care facilities, corporate tenants",
+      "Daycare centers purpose-built, licensed for 100+ children",
+      "Fitness centers or gyms, LA Fitness or 24 Hour Fitness leased",
+      "Movie theaters for repurposing, dark assets under $5M",
+      "Religious properties churches for conversion or redevelopment",
+      "Parking garages or surface lots, urban core high-traffic",
+      "Telecom tower sites or ground leases, wireless carriers"
+    ],
+    "development": [
+      "Entitled residential land, single-family or multifamily zoning approved",
+      "Mixed-use development sites, downtown TOD transit-oriented",
+      "Ground-up industrial development land, near interstate highways",
+      "Retail pad sites for build-to-suit, major intersections high traffic",
+      "Infill lots for medical office buildings, hospital proximity",
+      "Hotel development sites, branded franchise feasibility studies complete",
+      "Student housing development near universities, entitled 500+ beds",
+      "Senior living development sites, continuum of care campus",
+      "Opportunity zone projects, qualified census tracts, tax benefits",
+      "Brownfield redevelopment sites with environmental clearance"
+    ],
+    "value_add": [
+      "Distressed assets REO or foreclosure, below replacement cost",
+      "Class C apartments for renovation and repositioning, 1960s-1970s",
+      "Vacant office buildings for conversion to residential or medical",
+      "Underperforming retail centers, new anchor tenant opportunities",
+      "Lease-up deals 50-70% occupied, stabilization upside",
+      "Deferred maintenance properties, forced sellers motivated pricing",
+      "Mom-and-pop operated hotels, flag conversion opportunity",
+      "Below-market rents, mark-to-market upside 20%+ increase",
+      "Poorly managed assets, operational inefficiencies to fix",
+      "Short-term leases expiring, re-leasing spreads available"
+    ],
+    "core_plus": [
+      "Institutional-quality assets 90%+ occupied, stabilized NOI",
+      "Credit tenants investment-grade, long-term leases 10+ years",
+      "New construction stabilized, less than 5 years old",
+      "Trophy assets Class A, premier locations major metros",
+      "Portfolio acquisitions 5+ properties, 1031 exchange suitable",
+      "Sale-leaseback opportunities, corporate real estate monetization",
+      "Ground leases income-producing, long duration 50+ years",
+      "REIT spin-offs or portfolio sales, institutional sellers",
+      "Net lease portfolios diversified tenants and geographies",
+      "Bond-able assets suitable for CMBS securitization financing"
+    ],
+    "market_specific": [
+      "Dallas-Fort Worth industrial properties near DFW Airport logistics hub",
+      "Austin multifamily in Domain or downtown high-growth submarkets",
+      "Phoenix West Valley industrial along I-10 e-commerce corridor",
+      "Nashville retail or mixed-use in high-growth suburbs like Franklin",
+      "Miami multifamily Brickell or Coral Gables urban core",
+      "Denver Tech Center office or flex space near RTD light rail",
+      "Raleigh-Durham life science or medical office Research Triangle Park",
+      "Las Vegas Strip-adjacent hospitality or entertainment properties",
+      "Seattle multifamily Capitol Hill or Ballard transit-oriented",
+      "Charlotte South End mixed-use along light rail corridor"
+    ],
+    "alternative": [
+      "Life science lab space near major research universities",
+      "Medical office buildings on hospital campuses, physician-owned",
+      "Skilled nursing facilities or SNF, Medicare/Medicaid reimbursement",
+      "Dialysis centers freestanding, DaVita or Fresenius tenants",
+      "Behavioral health facilities, mental health or addiction treatment",
+      "Dental office buildings multi-tenant, DSO corporate groups",
+      "Cold storage industrial, food processing and distribution",
+      "Indoor recreation facilities, trampoline parks or sports complexes",
+      "Childcare centers corporate-backed, KinderCare or Bright Horizons",
+      "Cannabis cultivation or dispensary properties, legal states"
+    ]
+  },
+  "meta": {
+    "total_prompts": 120,
+    "last_updated": "2025-09-30",
+    "use_case": "Real estate private equity analyst search queries"
+  }
+}

@@ -44,6 +44,22 @@ type Source = { id: number; title: string; url: string; snippet: string };
         </div>
       </div>
 
+      <!-- Agent Navigation Steps (ChatGPT-style) -->
+      <div class="agent-navigation" *ngIf="!answerComplete()">
+        <div class="nav-item" *ngFor="let c of cards()">
+          <ng-container *ngIf="c.kind === 'nav'">
+            <div class="nav-step">
+              <span class="nav-icon">🌐</span>
+              <div class="nav-content">
+                <div class="nav-label">{{ c.label }}</div>
+                <div class="nav-url">{{ c.url }}</div>
+              </div>
+              <span class="nav-spinner">⏳</span>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
       <!-- Streaming Answer with Citations -->
       <div class="answer-section" *ngIf="answer()">
         <div class="answer-text" [innerHTML]="answer()"></div>
@@ -171,6 +187,50 @@ type Source = { id: number; title: string; url: string; snippet: string };
       padding: 8px 0;
     }
     .thinking-icon { font-size: 16px; }
+
+    /* Agent Navigation Steps (ChatGPT-style) */
+    .agent-navigation { 
+      margin: 16px 0; 
+      background: #0a0d12; 
+      border: 1px solid #1d2735; 
+      border-radius: 8px; 
+      padding: 16px;
+    }
+    .nav-item { margin-bottom: 12px; }
+    .nav-item:last-child { margin-bottom: 0; }
+    .nav-step { 
+      display: flex; 
+      align-items: flex-start; 
+      gap: 12px; 
+      padding: 12px;
+      background: #0f131a;
+      border-radius: 8px;
+      border: 1px solid #252f3f;
+    }
+    .nav-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+    .nav-content { flex: 1; min-width: 0; }
+    .nav-label { 
+      color: #c9d7ff; 
+      font-weight: 500; 
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .nav-url { 
+      color: #5b7a9f; 
+      font-size: 13px; 
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .nav-spinner {
+      font-size: 16px;
+      animation: spin 2s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
 
     .answer-section { 
       background: #0f131a; 

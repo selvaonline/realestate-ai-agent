@@ -12,4 +12,9 @@ export type AgentEvent =
   | { kind: "source_found"; runId: string; source: { id: number; title: string; url: string; snippet: string }; t: number }
   | { kind: "answer_chunk"; runId: string; text: string; t: number }           // Streaming answer
   | { kind: "answer_complete"; runId: string; t: number }
+  | { kind: "tool_start"; runId: string; tool: string; input: string; t: number }    // Tool execution start
+  | { kind: "tool_end"; runId: string; tool: string; success: boolean; duration: number; t: number }  // Tool execution end
+  | { kind: "browse_start"; runId: string; url: string; t: number }            // Browser opening URL
+  | { kind: "browse_cloudflare"; runId: string; passed: boolean; t: number }   // Cloudflare check result
+  | { kind: "browse_extract"; runId: string; fields: string[]; t: number }     // Extraction progress
   | { kind: "run_finished"; runId: string; ok: boolean; t: number };

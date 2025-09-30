@@ -224,23 +224,32 @@ async function launchContext(mode: "mobile" | "desktop") {
 
 async function gotoWithGrace(page: Page, u: string) {
   console.log("[browse] opening", u);
+  const startTime = Date.now();
+  
   try {
-    await page.goto(u, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto(u, { waitUntil: "domcontentloaded", timeout: 45000 });
+    console.log(`[browse] page loaded in ${Date.now() - startTime}ms`);
   } catch (e: any) {
-    console.warn("[browse] goto warn:", e?.message);
-    try { await page.goto(u, { waitUntil: "load", timeout: 60000 }); } catch {}
-  }
-  try { await page.waitForLoadState("networkidle", { timeout: 5000 }); } catch {}
-  // Human-like behavior: wait, then scroll
-  try { await page.waitForTimeout(1500); } catch {}
-  try {
-    for (let i = 0; i < 3; i++) {
-      await page.mouse.wheel(0, 800);
-      await page.waitForTimeout(500);
+    console.warn("[browse] goto timeout/error:", e?.message);
+    // Try simpler wait strategy
+    try { 
+      await page.goto(u, { waitUntil: "commit", timeout: 30000 }); 
+      console.log(`[browse] page committed in ${Date.now() - startTime}ms`);
+    } catch (e2) {
+      console.error("[browse] complete failure to load:", e2);
+      throw new Error(`Failed to load page: ${u}`);
     }
-  } catch {}
-  // Additional wait for dynamic content
+  }
+  
+  // Wait for network to settle (but don't fail if it doesn't)
+  try { await page.waitForLoadState("networkidle", { timeout: 3000 }); } catch {}
+  
+  // Minimal human-like behavior (faster for cloud)
   try { await page.waitForTimeout(1000); } catch {}
+  try {
+    await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(300);
+  } catch {}
 }
 
 function toNum(v: any) {

@@ -122,6 +122,12 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   console.log("[agent] Search strategy 1:", detailQuery);
   const detail = (JSON.parse(String(await webSearch.invoke(detailQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
   console.log(`[agent] Strategy 1 returned ${detail.length} results`);
+  
+  // DEBUG: Log all URLs returned
+  detail.forEach((r, i) => {
+    console.log(`[agent] Search result ${i+1}: ${r.url} | isDetail: ${r.url ? isDetailUrl(r.url) : false}`);
+  });
+  
   // Prioritize Crexi URLs first, then others
   const crexiCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
   const otherCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));

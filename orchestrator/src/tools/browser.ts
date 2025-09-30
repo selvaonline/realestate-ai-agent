@@ -241,6 +241,22 @@ async function gotoWithGrace(page: Page, u: string) {
     }
   }
   
+  // Check for Cloudflare challenge
+  const pageContent = await page.content();
+  if (pageContent.includes('cloudflare') || pageContent.includes('Verify you are human')) {
+    console.log("[browse] Cloudflare challenge detected, waiting 10 seconds...");
+    await page.waitForTimeout(10000); // Wait for Cloudflare check to complete
+    
+    // Check if we passed the challenge
+    const finalContent = await page.content();
+    if (finalContent.includes('Verify you are human')) {
+      console.error("[browse] Cloudflare challenge failed - still showing CAPTCHA");
+      // Don't throw - let extraction fail gracefully
+    } else {
+      console.log("[browse] Cloudflare challenge passed!");
+    }
+  }
+  
   // Wait for network to settle (but don't fail if it doesn't)
   try { await page.waitForLoadState("networkidle", { timeout: 3000 }); } catch {}
   

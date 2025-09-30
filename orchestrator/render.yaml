@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: realestate-ai-agent
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm ci && npx playwright install --with-deps chromium webkit && npm run build -- --configuration production
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.19.5
+      - key: BROWSER_HEADED
+        value: false
+      - key: BROWSER_DEVTOOLS
+        value: false
+      - key: BROWSER_ENGINE
+        value: chromium

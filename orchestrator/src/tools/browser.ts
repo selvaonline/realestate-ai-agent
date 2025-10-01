@@ -73,11 +73,11 @@ export const browseAndExtract = new DynamicTool({
     console.log("[browse_and_extract] 📍 Target URL:", url);
 
     // 1) Try mobile Safari (WebKit) first — friendlier on some CRE sites
-    console.log("[browse_and_extract] 📱 Trying mobile WebKit first (timeout: 60s)...");
+    console.log("[browse_and_extract] 📱 Trying mobile WebKit first (timeout: 30s)...");
     const wk = await withTimeout(
       runOnce("mobile", url, selectors),
-      60000,
-      "Mobile WebKit extraction timeout after 60s"
+      30000,
+      "Mobile WebKit extraction timeout after 30s"
     ).catch((e) => {
       console.log("[browse_and_extract] ⚠️ Mobile WebKit failed:", e.message);
       return null;
@@ -89,11 +89,11 @@ export const browseAndExtract = new DynamicTool({
     }
 
     // 2) Fallback to desktop Chromium
-    console.log("[browse_and_extract] 🖥️ Falling back to desktop Chromium (timeout: 60s)...");
+    console.log("[browse_and_extract] 🖥️ Falling back to desktop Chromium (timeout: 30s)...");
     const ch = await withTimeout(
       runOnce("desktop", url, selectors),
-      60000,
-      "Desktop Chromium extraction timeout after 60s"
+      30000,
+      "Desktop Chromium extraction timeout after 30s"
     ).catch((e) => {
       console.log("[browse_and_extract] ⚠️ Desktop Chromium failed:", e.message);
       return null;

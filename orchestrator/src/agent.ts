@@ -4,11 +4,11 @@ import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
 import type { Deal } from "./lib/types.js";
 
-// ---- Shared URL patterns (strict) ----
+// ---- Shared URL patterns (relaxed for better recall) ----
 const CREXI_DETAIL_RX =
-  /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i;
+  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/[^/?#]+/i;
 const CREXI_NON_DETAIL_DISALLOWED =
-  /\/(?:properties|for-sale|for-lease|tenants|categories|search|results)(?:[/?#]|$)/i;
+  /\/(?:for-sale|for-lease|tenants|categories|search|results)(?:[/?#]|$)/i;
 const isDetailUrl = (u: string) => {
   if (/crexi\.com/i.test(u)) return CREXI_DETAIL_RX.test(u) && !CREXI_NON_DETAIL_DISALLOWED.test(u);
   return /loopnet\.com\/Listing\//i.test(u)

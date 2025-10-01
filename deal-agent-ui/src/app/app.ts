@@ -757,9 +757,9 @@ export class SafeHtmlPipe implements PipeTransform {
     }
     .status { display:flex; align-items:center; gap:8px; }
     .chip { background:#eef2ff; color:#4338ca; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
-    .chip.purple { background:#4a2c75; }
-    .chip.blue { background:#0e3e9b; }
-    .chip.green { background:#0e6b36; }
+    .chip.purple { background:#8b5cf6; color:#ffffff; }
+    .chip.blue { background:#3b82f6; color:#ffffff; }
+    .chip.green { background:#10b981; color:#ffffff; }
     .frame { background:#0b0f14; border:1px solid #1d2735; border-radius:8px; overflow:hidden; }
     .frame img { width:100%; display:block; }
     .caption { font-size:12px; color:#9fb0c0; margin-top:6px; }
@@ -1330,6 +1330,8 @@ export class App implements AfterViewChecked {
     this.shareStatus.set('');
     this.progressProperties.set([]);
     this.browserPreview.set(null);
+    // Reset chart initialization for new search
+    this.portfolioChartsInitialized = false;
     this.busy.set(true);
     try {
       const runId = await this.svc.startRun(query);
@@ -1366,6 +1368,10 @@ export class App implements AfterViewChecked {
     const scoreCanvas = document.getElementById('score-distribution-chart') as HTMLCanvasElement;
     const geoCanvas = document.getElementById('geo-distribution-chart') as HTMLCanvasElement;
     
+    console.log('Chart initialization attempt:');
+    console.log('- Score canvas found:', !!scoreCanvas);
+    console.log('- Geo canvas found:', !!geoCanvas);
+    
     if (!scoreCanvas || !geoCanvas) {
       console.log('Portfolio chart canvases not found yet');
       return;
@@ -1373,18 +1379,23 @@ export class App implements AfterViewChecked {
     
     // Check if portfolio data is available
     const portfolioData = (window as any).portfolioData;
+    console.log('- Portfolio data available:', !!portfolioData);
+    console.log('- Portfolio data:', portfolioData);
+    
     if (!portfolioData) {
       console.log('Portfolio data not available yet');
       return;
     }
     
-    console.log('Initializing portfolio charts with data:', portfolioData);
+    console.log('✅ Initializing portfolio charts with data:', portfolioData);
     this.portfolioChartsInitialized = true;
 
     // Score Distribution Doughnut Chart
     const scoreCtx = scoreCanvas.getContext('2d');
     if (scoreCtx) {
-      new Chart(scoreCtx, {
+      try {
+        console.log('Creating score distribution chart...');
+        const scoreChart = new Chart(scoreCtx, {
         type: 'doughnut',
         data: {
           labels: ['Premium (≥80)', 'Investment Grade (70-79)', 'Below Threshold (<70)'],
@@ -1415,16 +1426,22 @@ export class App implements AfterViewChecked {
           }
         }
       });
+      console.log('Score distribution chart created successfully');
+      } catch (error) {
+        console.error('Error creating score distribution chart:', error);
+      }
     }
 
     // Geographic Distribution Pie Chart
     const geoCtx = geoCanvas.getContext('2d');
     if (geoCtx) {
+      try {
+        console.log('Creating geographic distribution chart...');
       const geoLabels = Object.keys(portfolioData.geoDistribution);
       const geoData = Object.values(portfolioData.geoDistribution);
       const geoColors = ['#5fc88f', '#6b9aeb', '#8b7ceb', '#eb8b5f', '#ebcf5f', '#8b9db5'];
 
-      new Chart(geoCtx, {
+      const geoChart = new Chart(geoCtx, {
         type: 'pie',
         data: {
           labels: geoLabels,
@@ -1451,6 +1468,10 @@ export class App implements AfterViewChecked {
           }
         }
       });
+      console.log('Geographic distribution chart created successfully');
+      } catch (error) {
+        console.error('Error creating geographic distribution chart:', error);
+      }
     }
   }
 
@@ -1533,7 +1554,7 @@ export class App implements AfterViewChecked {
         break;
       case 'answer_complete':
         this.answerComplete.set(true);
-        push({ kind:'answer', label: this.answer(), t:ev.t });
+        push({ kind:'answer', label: '✅ Analysis complete', t:ev.t });
         break;
       case 'status':   push({ kind:'status', label: ev['label'], note: ev['note'], t:ev.t }); break;
       case 'wait':     push({ kind:'wait', label: ev['label'], t:ev.t }); break;

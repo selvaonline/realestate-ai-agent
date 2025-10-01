@@ -52,16 +52,18 @@ export const webSearch = new DynamicTool({
 
     const preferCrexi = (typeof args === "object" && (args as any)?.preferCrexi !== undefined) ? !!(args as any).preferCrexi : true;
     const maxResults  = (typeof args === "object" && (args as any)?.maxResults !== undefined) ? Number((args as any).maxResults) : 10;
-    const timeoutMs   = (typeof args === "object" && (args as any)?.timeoutMs !== undefined) ? Number((args as any).timeoutMs) : 10_000;
     const region      = (typeof args === "object" && (args as any)?.region) || "us";
     const lang        = (typeof args === "object" && (args as any)?.lang) || "en";
 
     const userQuery = typeof args === "string" ? (args as string) : (args as any).query;
 
-    // Use query as-is; agent already adds site:crexi.com
+    // Use query as-is; agent already adds site:crexi.com and we post-filter
     const q = userQuery;
 
-      const r = await fetch("https://google.serper.dev/search", {
+    const controller = new AbortController();
+    const to = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
         method: "POST",
         headers: {
           "X-API-KEY": key,

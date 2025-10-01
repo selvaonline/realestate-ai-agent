@@ -313,8 +313,12 @@ async function launchContext(mode: "mobile" | "desktop") {
   const brightDataHost = process.env.BRIGHTDATA_HOST || "brd.superproxy.io:22225";
   const useBrightData = !!(brightDataUser && brightDataPass);
   
+  console.log(`[browser] 🚀 Launching ${useWebkit ? 'WebKit' : 'Chromium'} (${mode} mode)`);
   if (useBrightData) {
-    console.log("[browser] Using Bright Data residential proxy");
+    console.log(`[browser] 🌐 Using Bright Data proxy: ${brightDataHost}`);
+    console.log(`[browser] 👤 Username: ${brightDataUser?.substring(0, 10)}...`);
+  } else {
+    console.log(`[browser] ⚠️  NO PROXY - Direct connection`);
   }
 
   if (useWebkit) {
@@ -397,13 +401,15 @@ async function gotoWithGrace(page: Page, u: string) {
   const startTime = Date.now();
   
   try {
-    console.time("[browse] goto-commit");
+    console.log("[browse] ⏳ Attempting goto with 'commit' strategy (15s timeout)...");
     await page.goto(u, { waitUntil: "commit", timeout: 15000 });
-    console.timeEnd("[browse] goto-commit");
+    console.log(`[browse] ✅ Commit successful in ${Date.now() - startTime}ms`);
     await page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => {});
   } catch (e: any) {
-    console.warn(`[browse] ⚠️ goto-commit failed:`, e?.message);
+    console.warn(`[browse] ⚠️ goto-commit failed after ${Date.now() - startTime}ms:`, e?.message);
+    console.log("[browse] 🔄 Retrying with 'domcontentloaded' strategy (12s timeout)...");
     await page.goto(u, { waitUntil: "domcontentloaded", timeout: 12000 });
+    console.log(`[browse] ✅ DOM loaded in ${Date.now() - startTime}ms`);
   }
   
   // Check for Cloudflare challenge
@@ -414,8 +420,9 @@ async function gotoWithGrace(page: Page, u: string) {
   ]).then(Boolean);
   
   if (hasCloudflare) {
-    console.log("[browse] 🛡️ Cloudflare-like interstitial detected; waiting 8s");
+    console.log("[browse] 🛡️ Cloudflare challenge detected! Waiting 8s for auto-solve...");
     await page.waitForTimeout(8000);
+    console.log("[browse] ✅ Cloudflare wait complete");
   } else {
     console.log("[browse] ✅ No Cloudflare challenge detected");
   }

@@ -119,22 +119,30 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 1: Focused search - Crexi with detail bias (post-filter strictly)
   const detailQuery = `${q} site:crexi.com commercial property`;
   
-  console.log("[agent] Search strategy 1:", detailQuery);
+  console.log("[agent] 🔍 Search strategy 1:", detailQuery);
   const detail = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
     query: detailQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
   })))) as Array<{ title: string; url: string; snippet: string }>) || [];
-  console.log(`[agent] Strategy 1 returned ${detail.length} results`);
+  console.log(`[agent] ✅ Strategy 1 returned ${detail.length} raw results`);
   
-  // DEBUG: Log all URLs returned
+  // Log all URLs and their detail status
   detail.forEach((r, i) => {
-    console.log(`[agent] Search result ${i+1}: ${r.url} | isDetail: ${r.url ? isDetailUrl(r.url) : false}`);
+    const isDetail = r.url ? isDetailUrl(r.url) : false;
+    console.log(`[agent]   ${i+1}. ${isDetail ? '✓' : '✗'} ${r.url}`);
+    if (!isDetail && r.url) {
+      console.log(`[agent]      ↳ Rejected: ${r.url.includes('/tenants/') ? 'tenant page' : r.url.includes('/categories/') ? 'category page' : r.url.includes('/search') ? 'search page' : 'pattern mismatch'}`);
+    }
   });
   
   // Prioritize Crexi URLs first, then others
   const crexiCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
   const otherCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
   let candidates = [...crexiCandidates, ...otherCandidates];
-  console.log(`[agent] Strategy 1 detail URLs: ${candidates.length} (${crexiCandidates.length} Crexi, ${otherCandidates.length} other)`);
+  console.log(`[agent] 📊 Strategy 1 filtered to ${candidates.length} detail URLs (${crexiCandidates.length} Crexi, ${otherCandidates.length} other)`);
+  if (candidates.length > 0) {
+    console.log(`[agent] 🎯 Top candidates:`);
+    candidates.slice(0, 3).forEach((c, i) => console.log(`[agent]   ${i+1}. ${c.url}`));
+  }
   
   // Emit sources found
   for (const candidate of candidates.slice(0, 5)) {
@@ -148,7 +156,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   if (candidates.length < 3) {
     emit(ctx, "thinking", { text: "Expanding search criteria..." });
     const broaderQuery = `${q} site:crexi.com`;
-    console.log("[agent] Search strategy 2:", broaderQuery);
+    console.log("[agent] 🔍 Search strategy 2 (broader):", broaderQuery);
     const broader = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: broaderQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
@@ -176,7 +184,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Trying broader search..." });
     const generalQuery = `${q} commercial real estate crexi.com`;
-    console.log("[agent] Search strategy 3:", generalQuery);
+    console.log("[agent] 🔍 Search strategy 3 (broadest):", generalQuery);
     const general = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: generalQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
@@ -228,7 +236,8 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   
   for (const url of urls) {
     tried.push(url);
-    console.log(`[agent] Attempting to extract from: ${url}`);
+    console.log(`\n[agent] 🌐 === EXTRACTION ATTEMPT ${tried.length}/${urls.length} ===`);
+    console.log(`[agent] 📍 Target: ${url}`);
     emit(ctx, "nav", { url, label: "Opening page..." });
     
     const stopTicker = (() => {
@@ -246,15 +255,22 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       const meaningful =
         !!ext?.title || !!ext?.address || ext?.askingPrice != null || ext?.noi != null || ext?.capRate != null;
 
-      console.log(`[agent] Extraction result - blocked: ${blocked}, meaningful: ${meaningful}, title: ${ext?.title}`);
+      console.log(`[agent] 📊 Extraction result:`);
+      console.log(`[agent]   Blocked: ${blocked}`);
+      console.log(`[agent]   Meaningful: ${meaningful}`);
+      console.log(`[agent]   Title: ${ext?.title || 'null'}`);
+      console.log(`[agent]   Address: ${ext?.address || 'null'}`);
+      console.log(`[agent]   Price: ${ext?.askingPrice || 'null'}`);
+      console.log(`[agent]   NOI: ${ext?.noi || 'null'}`);
+      console.log(`[agent]   Cap Rate: ${ext?.capRate || 'null'}`);
 
       if (blocked || !meaningful) {
-        console.log(`[agent] Skipping ${url} - blocked or no data`);
+        console.log(`[agent] ❌ Skipping - ${blocked ? 'BLOCKED' : 'NO DATA'}`);
         stopTicker();
         continue;
       }
 
-      console.log(`[agent] Successfully extracted from: ${url}`);
+      console.log(`[agent] ✅ SUCCESS! Extracted meaningful data`);
       extractionSucceeded = true;
       stopTicker();
       emit(ctx, "shot", { label: "Detail page", b64: ext.screenshotBase64 || null });

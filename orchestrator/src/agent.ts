@@ -296,6 +296,17 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       if (blocked || !meaningful) {
         console.log(`[agent] ❌ Skipping - ${blocked ? 'BLOCKED' : 'NO DATA'}`);
         stopTicker();
+        
+        // Emit screenshot even when blocked so UI can show what happened
+        if (blocked && ext.screenshotBase64) {
+          console.log(`[agent] Emitting blocked page screenshot (${ext.screenshotBase64.length} bytes)`);
+          emit(ctx, "shot", { label: "Blocked page", b64: ext.screenshotBase64 });
+          emit(ctx, "browser_preview", {
+            url: ext.finalUrl || url,
+            screenshot: ext.screenshotBase64,
+            label: "Blocked page view"
+          });
+        }
         continue;
       }
 

@@ -2,13 +2,29 @@
 import { DynamicTool } from "@langchain/core/tools";
 import { chromium, webkit, BrowserContext, Page } from "playwright";
 
-console.log("[browser] build tag: crexi-fix-v1", new Date().toISOString());
+console.log("[browser] build tag: crexi-fix-v2-stealth", new Date().toISOString());
 
-// ---- CREXI URL patterns (strict: only actual property detail pages) ----
-const CREXI_DETAIL_RX =
-  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/\d+\/[^/?#]+/i;
+// ------------------- runtime config & helpers -------------------
+const CAPTURE_ON_BLOCK = String(process.env.CAPTURE_ON_BLOCK || "true").toLowerCase() === "true";
+const BRIGHTDATA_STICKY_SESSION = String(process.env.BRIGHTDATA_SESSION || "").trim(); // optional "-session-xxx"
+const DEBUG_SLOWMO = Number(process.env.BROWSER_SLOWMO || "0"); // ms slowMo for debugging (headed dev)
+
+const CREXI_DETAIL_RX = /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i;
+const CREXI_LIST_RX = /https?:\/\/(?:www\.)?crexi\.com\/properties\//i;
 const CREXI_NON_DETAIL_DISALLOWED =
   /\/(?:for-sale|for-lease|tenants|categories|search|results|brokerage|brokerages)\/|\/(TX|CA|FL|NY|IL|GA|NC|VA|WA|AZ|MA|TN|CO|MD|OR|MI|MO|WI|MN|AL|LA|KY|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|WV|ID|HI|NH|ME|RI|MT|DE|SD|ND|AK|VT|WY)\//i;
+
+// small helper for unique console timers
+function timerLabel(prefix = "[phase]") {
+  return `${prefix}-${Date.now() % 100000}`;
+}
+
+async function withTimeoutBound<T>(p: Promise<T>, ms: number, label?: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`${label || 'operation'} timeout after ${ms}ms`)), ms))
+  ]);
+}
 
 function isCrexiDetailUrl(u: string) {
   try {
@@ -219,8 +235,16 @@ async function runOnce(
     console.log(`[runOnce] Blocked check: ${blocked}, Title: ${title}`);
 
     if (blocked) {
-      console.log("[runOnce] ❌ Page is blocked, returning early");
-      const shot = await safeScreenshot(page);
+      console.log("[runOnce] ❌ Page is blocked/empty - capturing screenshot (if enabled) and returning");
+      let shot = null;
+      if (CAPTURE_ON_BLOCK) {
+        try {
+          shot = await withTimeoutBound(safeScreenshot(page, { fullPage: false }), 5000, "safeScreenshotOnBlock").catch(() => null);
+          console.log("[runOnce] 📸 Block screenshot size:", shot ? `${Math.round(shot.length/1024)}KB` : "none");
+        } catch (e) {
+          console.log("[runOnce] ⚠️ screenshot on block failed:", (e as Error).message?.slice?.(0,200) || e);
+        }
+      }
       return {
         title: title || "Access Denied",
         address: null,
@@ -356,68 +380,82 @@ async function launchContext(mode: "mobile" | "desktop") {
   const useWebkit   = engine ? engine === "webkit"   : mode === "mobile";
   const useChromium = engine ? engine === "chromium" : mode === "desktop";
 
-  // Bright Data proxy configuration
+  // Bright Data proxy configuration with sticky session support
   const brightDataUser = process.env.BRIGHTDATA_USERNAME;
   const brightDataPass = process.env.BRIGHTDATA_PASSWORD;
-  const brightDataHost = process.env.BRIGHTDATA_HOST || "brd.superproxy.io:22225";
+  const brightDataHost = process.env.BRIGHTDATA_HOST || "brd.superproxy.io:33335";
   const useBrightData = !!(brightDataUser && brightDataPass);
+  
+  const proxyConfig = useBrightData ? {
+    server: `http://${brightDataHost}`,
+    username: brightDataUser + (BRIGHTDATA_STICKY_SESSION ? `-session-${BRIGHTDATA_STICKY_SESSION}` : ""),
+    password: brightDataPass!,
+  } : undefined;
   
   console.log(`[browser] 🚀 Launching ${useWebkit ? 'WebKit' : 'Chromium'} (${mode} mode)`);
   if (useBrightData) {
     console.log(`[browser] 🌐 Using Bright Data proxy: ${brightDataHost}`);
-    console.log(`[browser] 👤 Username: ${brightDataUser?.substring(0, 10)}...`);
+    console.log(`[browser] 👤 Username: ${brightDataUser?.substring(0, 10)}${BRIGHTDATA_STICKY_SESSION ? ` (session: ${BRIGHTDATA_STICKY_SESSION})` : ''}...`);
   } else {
     console.log(`[browser] ⚠️  NO PROXY - Direct connection`);
   }
 
+  // --- WebKit (mobile) ---
   if (useWebkit) {
-    const proxy = useBrightData ? { server: `http://${brightDataHost}`, username: brightDataUser!, password: brightDataPass! } : undefined;
-    const browser = await webkit.launch({ headless: !headed, proxy });
-    const contextOptions: any = {
-      viewport: mode === "mobile" ? { width: 390, height: 844 } : { width: 1366, height: 900 },
+    const browser = await webkit.launch({ headless: !headed, proxy: proxyConfig, slowMo: DEBUG_SLOWMO || undefined });
+    const ctxOpts: any = {
+      viewport: mode === "mobile" ? { width: 390 + Math.floor(Math.random()*2), height: 844 } : { width: 1366, height: 900 },
       userAgent: mode === "mobile"
         ? "Mozilla/5.0 (iPhone; CPU iPhone OS 16_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
         : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
       extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
       ignoreHTTPSErrors: true,
     };
-    const ctx = await browser.newContext(contextOptions);
+    const ctx = await browser.newContext(ctxOpts);
+    // block heavy assets (fonts/media) to speed up
+    await ctx.route("**/*", (route) => {
+      const url = route.request().url();
+      if (/\.(woff2?|ttf|otf|mp4|webm|ogg)$/.test(url) || route.request().resourceType() === "media") return route.abort();
+      return route.continue();
+    });
     const page = await ctx.newPage();
     page.setDefaultTimeout(4000);
     page.setDefaultNavigationTimeout(20000);
     return { ctx, page, close: () => browser.close() };
   }
 
+  // --- Chromium (desktop) ---
   if (useChromium) {
-    const proxy = useBrightData ? { server: `http://${brightDataHost}`, username: brightDataUser!, password: brightDataPass! } : undefined;
     const browser = await chromium.launch({
       headless: !headed,
       devtools,
-      proxy,
+      slowMo: DEBUG_SLOWMO || undefined,
       args: [
         "--disable-blink-features=AutomationControlled",
         "--disable-features=IsolateOrigins,site-per-process",
         "--disable-site-isolation-trials",
-        headed ? "--start-maximized" : ""
+        "--no-first-run",
+        "--no-default-browser-check",
+        headed ? "--start-maximized" : "--disable-gpu",
       ].filter(Boolean),
+      proxy: proxyConfig,
     });
-    
+
     const contextOptions: any = {
-      viewport: headed ? null : { width: 1920, height: 1080 },
+      viewport: headed ? null : { width: 1920 + Math.floor(Math.random()*20), height: 1080 },
       ignoreHTTPSErrors: true,
       userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-      extraHTTPHeaders: { 
+      extraHTTPHeaders: {
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"macOS"',
       },
     };
-    
+
     const ctx = await browser.newContext(contextOptions);
-    
+
+    // more convincing navigator + feature spoofing
     await ctx.addInitScript(() => {
+      // navigator spoofing (do not remove)
       Object.defineProperty(navigator, "webdriver", { get: () => false });
       // @ts-ignore
       window.chrome = { runtime: {} };
@@ -430,9 +468,18 @@ async function launchContext(mode: "mobile" | "desktop") {
       // @ts-ignore
       delete navigator.__proto__.webdriver;
     });
+
+    // block heavy assets
+    await ctx.route("**/*", (route) => {
+      const url = route.request().url();
+      if (/\.(woff2?|ttf|otf|mp4|webm|ogg)$/.test(url) || route.request().resourceType() === "media") return route.abort();
+      return route.continue();
+    });
+
     const page = await ctx.newPage();
     page.setDefaultTimeout(4000);
     page.setDefaultNavigationTimeout(20000);
+
     return { ctx, page, close: () => browser.close() };
   }
 
@@ -446,57 +493,64 @@ async function launchContext(mode: "mobile" | "desktop") {
 }
 
 async function gotoWithGrace(page: Page, u: string) {
-  console.log("[browse] 🌐 Opening URL:", u);
-  const startTime = Date.now();
-  
+  const start = Date.now();
+  const label = timerLabel("[browse] goto");
+  console.log(`${label} 🌐 Opening URL: ${u}`);
+
+  // 1) try commit-first (fast), then fallback to domcontentloaded
   try {
-    console.log("[browse] ⏳ Attempting goto with 'commit' strategy (15s timeout)...");
+    console.time(label);
     await page.goto(u, { waitUntil: "commit", timeout: 15000 });
-    console.log(`[browse] ✅ Commit successful in ${Date.now() - startTime}ms`);
-    await page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => {});
-  } catch (e: any) {
-    console.warn(`[browse] ⚠️ goto-commit failed after ${Date.now() - startTime}ms:`, e?.message);
-    console.log("[browse] 🔄 Retrying with 'domcontentloaded' strategy (12s timeout)...");
-    await page.goto(u, { waitUntil: "domcontentloaded", timeout: 12000 });
-    console.log(`[browse] ✅ DOM loaded in ${Date.now() - startTime}ms`);
+    // give a short DOM settle
+    await page.waitForLoadState("domcontentloaded", { timeout: 4000 }).catch(() => {});
+    console.timeEnd(label);
+    console.log(`${label} ✅ Commit successful in ${Date.now() - start}ms`);
+  } catch (err1) {
+    console.warn(`${label} ⚠️ commit goto failed: ${String(err1).slice(0,100)}`);
+    try {
+      const fallbackLabel = timerLabel("[browse] goto-fallback");
+      console.time(fallbackLabel);
+      await page.goto(u, { waitUntil: "domcontentloaded", timeout: 12000 });
+      console.timeEnd(fallbackLabel);
+      console.log(`${fallbackLabel} ✅ DOMContentLoaded fallback success in ${Date.now() - start}ms`);
+    } catch (err2) {
+      console.error(`${label} ❌ Both goto strategies failed: ${String(err2).slice(0,200)}`);
+      throw new Error(`Failed to load page: ${u}`);
+    }
   }
-  
-  // Check for Cloudflare challenge
-  console.log("[browse] 🔍 Checking for Cloudflare challenge...");
-  const hasCloudflare = await Promise.race([
-    page.locator("text=/Verify you are human/i").first().isVisible({ timeout: 300 }).catch(() => false),
-    page.locator("form#challenge-form, #cf-please-wait").first().isVisible({ timeout: 300 }).catch(() => false),
+
+  // 2) cheap Cloudflare/challenge probe using small selector checks
+  const challengeDetected = await Promise.race([
+    page.locator("text=/Verify you are human/i").first().isVisible({ timeout: 350 }).catch(() => false),
+    page.locator("form#challenge-form, #cf-please-wait, #challenge-form").first().isVisible({ timeout: 350 }).catch(() => false),
   ]).then(Boolean);
-  
-  if (hasCloudflare) {
-    console.log("[browse] 🛡️ Cloudflare challenge detected! Waiting 8s for auto-solve...");
-    await page.waitForTimeout(8000);
-    console.log("[browse] ✅ Cloudflare wait complete");
+
+  if (challengeDetected) {
+    console.warn("[browse] 🛡️ Challenge interstitial detected - sleeping 8s to allow auto-resolve");
+    await page.waitForTimeout(8000); // allow BrightData or human-solve (if enabled)
   } else {
-    console.log("[browse] ✅ No Cloudflare challenge detected");
+    console.log("[browse] ✅ No CF challenge detected");
   }
-  
-  // Wait for network to settle (but don't fail if it doesn't)
-  console.log("[browse] ⏳ Waiting for network idle...");
-  try { 
-    await page.waitForLoadState("networkidle", { timeout: 3000 }); 
+
+  // 3) short network idle attempt (bounded)
+  try {
+    await page.waitForLoadState("networkidle", { timeout: 3000 });
     console.log("[browse] ✅ Network idle");
   } catch {
-    console.log("[browse] ⚠️ Network not idle after 3s (continuing anyway)");
+    console.log("[browse] ⚠️ networkidle not reached after 3s (continuing)");
   }
-  
-  // Minimal human-like behavior
-  console.log("[browse] 🖱️ Simulating human behavior...");
-  try { 
-    await page.waitForTimeout(1000);
-    await page.mouse.wheel(0, 500);
-    await page.waitForTimeout(300);
-    console.log("[browse] ✅ Human simulation complete");
+
+  // 4) Minimal human-like simulation
+  try {
+    await page.waitForTimeout(600);
+    // small random scroll to trigger lazy-load for cards
+    await page.mouse.wheel(0, 300 + Math.floor(Math.random()*200));
+    await page.waitForTimeout(250);
   } catch (e) {
-    console.log("[browse] ⚠️ Human simulation failed (non-critical)");
+    console.log("[browse] ⚠️ Human simulation minor error", (e as any)?.message?.slice?.(0,100) || e);
   }
-  
-  console.log(`[browse] 🎉 Total time: ${Date.now() - startTime}ms`);
+
+  console.log(`[browse] 🎉 Total goto time ${Date.now() - start}ms`);
 }
 
 function toNum(v: any) {
@@ -579,11 +633,19 @@ async function extractOnce(page: Page, sels: Record<string, string>) {
   return { title, address, askingPrice, noi, capRate };
 }
 
-async function safeScreenshot(page: Page): Promise<string | null> {
+async function safeScreenshot(page: Page, opts: { fullPage?: boolean } = { fullPage: false }): Promise<string | null> {
   try {
-    const shot = await page.screenshot({ fullPage: true });
-    return shot.toString("base64");
-  } catch {
-    return null;
+    // small bounded wrapper - 3s
+    const buf = await withTimeoutBound(page.screenshot({ fullPage: !!opts.fullPage }), 3000, "screenshot");
+    return Buffer.from(buf).toString("base64");
+  } catch (e) {
+    console.log("[screenshot] ❌ screenshot failed:", (e as Error).message?.slice?.(0,100) || e);
+    try {
+      // last resort: capture small viewport
+      const buf2 = await withTimeoutBound(page.screenshot({ fullPage: false, timeout: 2000 }), 2500, "screenshot2");
+      return Buffer.from(buf2).toString("base64");
+    } catch {
+      return null;
+    }
   }
 }

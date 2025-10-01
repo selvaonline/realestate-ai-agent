@@ -117,7 +117,8 @@ export async function runAgent(goal: string, ctx?: Ctx) {
 
   // ── Search: detail-first → broader → general ───────────────────────────────────
   // Strategy 1: Focused search - Crexi with detail bias (post-filter strictly)
-  const detailQuery = `${q} site:crexi.com commercial property`;
+  const detailBias = 'site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/';
+  const detailQuery = `${q} ${detailBias}`;
   
   console.log("[agent] 🔍 Search strategy 1:", detailQuery);
   const detail = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
@@ -155,7 +156,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 2: Broader Crexi search
   if (candidates.length < 3) {
     emit(ctx, "thinking", { text: "Expanding search criteria..." });
-    const broaderQuery = `${q} site:crexi.com`;
+    const broaderQuery = `${q} ${detailBias}`;
     console.log("[agent] 🔍 Search strategy 2 (broader):", broaderQuery);
     const broader = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: broaderQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
@@ -183,7 +184,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 3: General search - cast wider net but filter out LoopNet
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Trying broader search..." });
-    const generalQuery = `${q} commercial real estate crexi.com`;
+    const generalQuery = `${q} ${detailBias}`;
     console.log("[agent] 🔍 Search strategy 3 (broadest):", generalQuery);
     const general = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: generalQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
@@ -224,6 +225,27 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     });
 
   console.log(`[agent] Total candidates after all searches: ${candidates.length}`);
+  
+  // Fix 1: Relax to list pages when 0 detail URLs (let Playwright auto-drill)
+  if (candidates.length === 0) {
+    emit(ctx, "thinking", { text: "No detail pages found; trying a CREXI results page to auto-drill…" });
+    const relaxedQuery = `${q} site:crexi.com inurl:/properties/ -inurl:/tenants/ -inurl:/categories/`;
+    console.log("[agent] 🔎 Last-resort query:", relaxedQuery);
+
+    const relaxed = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
+      query: relaxedQuery, preferCrexi: true, maxResults: 5, timeoutMs: 9000
+    })))) as Array<{ title: string; url: string; snippet: string }>) || [];
+
+    const listPages = relaxed.filter(r => /crexi\.com\/properties\//i.test(r.url));
+    if (listPages.length > 0) {
+      // Push exactly ONE list page; runOnce() will bounded-drill to detail
+      candidates.push(listPages[0]);
+      console.log("[agent] ✅ Using CREXI list page for auto-drill:", listPages[0].url);
+      emit(ctx, "source_found", { source: { id: 999, ...listPages[0] } });
+    } else {
+      console.log("[agent] ❌ No CREXI list page found either (relaxed search)");
+    }
+  }
 
   // ── Try first few detail URLs ────────────────────────────────────────────────
   if (candidates.length > 0) {

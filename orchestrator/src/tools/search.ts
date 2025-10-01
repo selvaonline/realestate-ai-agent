@@ -90,6 +90,8 @@ export const webSearch = new DynamicTool({
       }
 
       const j: any = await r.json();
+      
+      console.log("[search] serper organic count:", (j.organic||[]).length);
 
       // Normalize → rank → dedupe → cap (let agent filter by detail URL)
       let rows: SearchRow[] = (j.organic ?? []).map((v: any) => ({

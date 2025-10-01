@@ -58,9 +58,16 @@ export const webSearch = new DynamicTool({
 
     const userQuery = typeof args === "string" ? (args as string) : (args as any).query;
 
-    // Use query as-is; agent already adds site:crexi.com
-    const q = userQuery;
+    // Bias the query to surface *detail* pages on CREXI, but don't hard lock it.
+    // We’ll still filter post-search using isDetailUrl().
+    const crexiBias =
+      ' (site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/)';
+    const q = preferCrexi ? `${userQuery}${crexiBias}`  : userQuery;
 
+    const controller = new AbortController();
+    const to = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
       const r = await fetch("https://google.serper.dev/search", {
         method: "POST",
         headers: {

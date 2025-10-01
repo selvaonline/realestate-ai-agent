@@ -4,11 +4,11 @@ import { chromium, webkit, BrowserContext, Page } from "playwright";
 
 console.log("[browser] build tag: crexi-fix-v1", new Date().toISOString());
 
-// ---- CREXI URL patterns (relaxed for better recall) ----
+// ---- CREXI URL patterns (strict: only actual property detail pages) ----
 const CREXI_DETAIL_RX =
   /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/[^/?#]+/i;
 const CREXI_NON_DETAIL_DISALLOWED =
-  /\/(?:for-sale|for-lease|tenants|categories|search|results)(?:[/?#]|$)/i;
+  /\/(?:for-sale|for-lease|tenants|categories|search|results|brokerage|brokerages)(?:[/?#]|$)/i;
 
 function isCrexiDetailUrl(u: string) {
   try {

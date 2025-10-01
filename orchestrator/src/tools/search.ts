@@ -43,6 +43,7 @@ export const webSearch = new DynamicTool({
     "Search the web for property listings/news; returns top results with title,url,snippet. Accepts string or JSON {query, preferCrexi, maxResults}.",
   func: async (input: string) => {
     const key = process.env.SERPER_API_KEY;
+    console.log("[search] SERPER_API_KEY loaded:", key ? `${key.substring(0, 10)}... (length: ${key.length})` : "MISSING");
     if (!key) throw new Error("SERPER_API_KEY missing");
 
     // Backward-compatible args

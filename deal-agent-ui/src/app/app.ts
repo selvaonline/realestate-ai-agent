@@ -15,6 +15,21 @@ type Card = {
 
 type Source = { id: number; title: string; url: string; snippet: string };
 
+type PropertyProgress = {
+  url: string;
+  title?: string;
+  address?: string;
+  screenshot?: string;
+  extracted?: {
+    price?: number | null;
+    noi?: number | null;
+    capRate?: number | null;
+    dscr?: number | null;
+  };
+  step: 'loading' | 'screenshot' | 'extracted' | 'complete';
+  count: number;
+};
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -44,8 +59,61 @@ type Source = { id: number; title: string; url: string; snippet: string };
         </div>
       </div>
 
+      <!-- Live Browser Preview -->
+      <div class="browser-preview-section" *ngIf="browserPreview() && !answerComplete()">
+        <div class="preview-header">
+          <span class="preview-icon">🌐</span>
+          <span class="preview-label">{{ browserPreview()!.label }}</span>
+        </div>
+        <div class="preview-url">{{ browserPreview()!.url }}</div>
+        <div class="preview-image">
+          <img [src]="'data:image/png;base64,' + browserPreview()!.screenshot" alt="Live browser view" />
+        </div>
+      </div>
+
+      <!-- Progressive Property Display -->
+      <div class="properties-progress" *ngIf="progressProperties().length && !answerComplete()">
+        <div class="property-card" *ngFor="let prop of progressProperties()">
+          <div class="property-header">
+            <span class="property-badge">Property {{ prop.count }}</span>
+            <span class="property-status" [ngClass]="prop.step">
+              {{ prop.step === 'loading' ? '⏳ Loading...' : 
+                 prop.step === 'screenshot' ? '📸 Captured' : 
+                 prop.step === 'extracted' ? '📊 Analyzing...' : 
+                 '✓ Complete' }}
+            </span>
+          </div>
+          
+          <div class="property-title" *ngIf="prop.title">{{ prop.title }}</div>
+          <div class="property-address" *ngIf="prop.address">{{ prop.address }}</div>
+          
+          <div class="property-screenshot" *ngIf="prop.screenshot">
+            <img [src]="'data:image/png;base64,' + prop.screenshot" alt="Property screenshot" />
+          </div>
+          
+          <div class="property-data" *ngIf="prop.extracted">
+            <div class="data-row" *ngIf="prop.extracted.price">
+              <span class="data-label">Price:</span>
+              <span class="data-value">{{ prop.extracted.price | currency:'USD':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="data-row" *ngIf="prop.extracted.noi">
+              <span class="data-label">NOI:</span>
+              <span class="data-value">{{ prop.extracted.noi | currency:'USD':'symbol':'1.0-0' }}</span>
+            </div>
+            <div class="data-row" *ngIf="prop.extracted.capRate">
+              <span class="data-label">Cap Rate:</span>
+              <span class="data-value">{{ prop.extracted.capRate * 100 | number:'1.2-2' }}%</span>
+            </div>
+            <div class="data-row" *ngIf="prop.extracted.dscr">
+              <span class="data-label">DSCR:</span>
+              <span class="data-value">{{ prop.extracted.dscr | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Agent Navigation Steps (ChatGPT-style) -->
-      <div class="agent-navigation" *ngIf="!answerComplete()">
+      <div class="agent-navigation" *ngIf="!answerComplete() && !progressProperties().length">
         <div class="nav-item" *ngFor="let c of cards(); let i = index">
           <ng-container *ngIf="c.kind === 'nav' && c.url">
             <div class="nav-step">
@@ -259,6 +327,136 @@ type Source = { id: number; title: string; url: string; snippet: string };
       100% { transform: rotate(360deg); }
     }
 
+    /* Progressive Properties */
+    .properties-progress {
+      margin: 24px 0;
+      display: grid;
+      gap: 16px;
+    }
+    .property-card {
+      background: #0a0d12;
+      border: 1px solid #1d2735;
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.3s ease;
+    }
+    .property-card:hover {
+      border-color: #2f5cff;
+    }
+    .property-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .property-badge {
+      background: #2f5cff;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .property-status {
+      font-size: 13px;
+      color: #9fb0c0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .property-status.complete {
+      color: #4ade80;
+    }
+    .property-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e9eef5;
+      margin-bottom: 4px;
+    }
+    .property-address {
+      font-size: 14px;
+      color: #9fb0c0;
+      margin-bottom: 12px;
+    }
+    .property-screenshot {
+      margin: 12px 0;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #1d2735;
+    }
+    .property-screenshot img {
+      width: 100%;
+      display: block;
+      max-height: 400px;
+      object-fit: cover;
+    }
+    .property-data {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #0f131a;
+      border-radius: 6px;
+    }
+    .data-label {
+      font-size: 13px;
+      color: #9fb0c0;
+    }
+    .data-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e9eef5;
+    }
+
+    /* Live Browser Preview */
+    .browser-preview-section {
+      margin: 20px 0;
+      background: #0a0d12;
+      border: 2px solid #2f5cff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 0 20px rgba(47, 92, 255, 0.3);
+    }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .preview-icon {
+      font-size: 20px;
+    }
+    .preview-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #c9d7ff;
+    }
+    .preview-url {
+      font-size: 13px;
+      color: #5b7a9f;
+      margin-bottom: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .preview-image {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #1d2735;
+      background: #000;
+    }
+    .preview-image img {
+      width: 100%;
+      display: block;
+      max-height: 600px;
+      object-fit: contain;
+    }
+
     .answer-section { 
       background: #0f131a; 
       border: 1px solid #1d2735; 
@@ -441,6 +639,8 @@ export class App {
   answerComplete = signal(false);
   shareStatus = signal<string>('');
   typingPlaceholder = signal<string>('Ask a question...');
+  progressProperties = signal<PropertyProgress[]>([]);
+  browserPreview = signal<{url: string; screenshot: string; label: string} | null>(null);
   private typingInterval: any = null;
   private isTypingActive = true;
   private currentExampleIndex = 0;
@@ -610,6 +810,8 @@ export class App {
     this.answer.set('');
     this.answerComplete.set(false);
     this.shareStatus.set('');
+    this.progressProperties.set([]);
+    this.browserPreview.set(null);
     this.busy.set(true);
     try {
       const runId = await this.svc.startRun(query);
@@ -642,6 +844,44 @@ export class App {
       case 'source_found':
         this.sources.update(arr => [...arr, ev['source']]);
         push({ kind:'source', source: ev['source'], t:ev.t });
+        break;
+      case 'browser_preview':
+        // Update live browser preview
+        console.log('[UI] Browser preview received:', {
+          url: ev['url'],
+          hasScreenshot: !!ev['screenshot'],
+          screenshotLength: ev['screenshot']?.length
+        });
+        this.browserPreview.set({
+          url: ev['url'],
+          screenshot: ev['screenshot'],
+          label: ev['label'] || 'Live browser view'
+        });
+        break;
+      case 'property_progress':
+        // Update or add progressive property
+        const prop = ev['property'];
+        const step = ev['step'];
+        const count = ev['count'];
+        
+        console.log('[UI] Property progress:', {
+          step,
+          count,
+          hasScreenshot: !!prop.screenshot,
+          screenshotLength: prop.screenshot?.length,
+          hasTitle: !!prop.title
+        });
+        
+        this.progressProperties.update(arr => {
+          const existing = arr.find(p => p.url === prop.url);
+          if (existing) {
+            // Update existing property
+            return arr.map(p => p.url === prop.url ? { ...p, ...prop, step, count } : p);
+          } else {
+            // Add new property
+            return [...arr, { ...prop, step, count }];
+          }
+        });
         break;
       case 'deal_found':
         // ✅ Progressive streaming: add deal immediately as it arrives

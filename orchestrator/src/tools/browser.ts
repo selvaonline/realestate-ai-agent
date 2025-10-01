@@ -259,9 +259,10 @@ async function runOnce(
       hasCapRate: extracted.capRate !== null
     });
     
-    // Skip screenshot for now to improve speed
-    console.log("[extract] ⏭️ Skipping screenshot capture");
-    let shot = null;
+    // Capture screenshot for progressive display
+    console.log("[extract] 📸 Capturing screenshot...");
+    let shot = await safeScreenshot(page);
+    console.log(`[extract] Screenshot result: ${shot ? `${shot.length} chars` : 'NULL'}`);
 
     // Second-chance auto-drill: if all nulls and not drilled yet, try one more time
     const allNull =

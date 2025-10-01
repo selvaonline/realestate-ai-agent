@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { environment } from '../environments/environment';
 
 export type AgentEvent =
-  | { kind: 'run_started'|'run_finished'|'status'|'wait'|'nav'|'action'|'shot'|'extracted'|'fallback'|'heartbeat'|'thinking'|'source_found'|'answer_chunk'|'answer_complete'|'deal_found';
+  | { kind: 'run_started'|'run_finished'|'status'|'wait'|'nav'|'action'|'shot'|'extracted'|'fallback'|'heartbeat'|'thinking'|'source_found'|'answer_chunk'|'answer_complete'|'deal_found'|'property_progress'|'browser_preview';
       runId: string; t: number; [k: string]: any };
 
 @Injectable({ providedIn: 'root' })

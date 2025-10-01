@@ -17,4 +17,7 @@ export type AgentEvent =
   | { kind: "browse_start"; runId: string; url: string; t: number }            // Browser opening URL
   | { kind: "browse_cloudflare"; runId: string; passed: boolean; t: number }   // Cloudflare check result
   | { kind: "browse_extract"; runId: string; fields: string[]; t: number }     // Extraction progress
+  | { kind: "property_progress"; runId: string; property: { url: string; title?: string; address?: string; screenshot?: string; extracted?: Record<string, any> }; step: "loading" | "screenshot" | "extracted" | "complete"; count: number; t: number }  // Progressive property display
+  | { kind: "deal_found"; runId: string; deal: any; count: number; t: number }  // Deal found event
+  | { kind: "browser_preview"; runId: string; url: string; screenshot: string; label: string; t: number }  // Live browser preview
   | { kind: "run_finished"; runId: string; ok: boolean; t: number };

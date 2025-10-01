@@ -262,6 +262,13 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     console.log(`[agent] 📍 Target: ${url}`);
     emit(ctx, "nav", { url, label: "Opening page..." });
     
+    // Emit initial property loading state
+    emit(ctx, "property_progress", {
+      property: { url },
+      step: "loading",
+      count: tried.length
+    });
+    
     const stopTicker = (() => {
       const start = Date.now();
       const labels = ["Loading page...","Negotiating security...","Settling SPA...","Extracting property data..."];
@@ -295,9 +302,52 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       console.log(`[agent] ✅ SUCCESS! Extracted meaningful data`);
       extractionSucceeded = true;
       stopTicker();
+      
+      // Emit live browser preview with screenshot
+      console.log(`[agent] Screenshot captured: ${ext.screenshotBase64 ? `${ext.screenshotBase64.length} bytes` : 'NULL'}`);
+      if (ext.screenshotBase64) {
+        console.log(`[agent] Emitting browser_preview event`);
+        emit(ctx, "browser_preview", {
+          url: ext.finalUrl || url,
+          screenshot: ext.screenshotBase64,
+          label: "Live browser view"
+        });
+      } else {
+        console.log(`[agent] ⚠️ No screenshot to emit`);
+      }
+      
+      // Emit screenshot for timeline
       emit(ctx, "shot", { label: "Detail page", b64: ext.screenshotBase64 || null });
+      emit(ctx, "property_progress", {
+        property: { 
+          url: ext.finalUrl || url,
+          title: ext.title,
+          address: ext.address,
+          screenshot: ext.screenshotBase64 
+        },
+        step: "screenshot",
+        count: tried.length
+      });
+      
+      // Then emit extracted data
       emit(ctx, "extracted", {
         summary: { title: ext.title, address: ext.address, price: ext.askingPrice, noi: ext.noi, cap: ext.capRate ?? uw.capRate },
+      });
+      emit(ctx, "property_progress", {
+        property: { 
+          url: ext.finalUrl || url,
+          title: ext.title,
+          address: ext.address,
+          screenshot: ext.screenshotBase64,
+          extracted: { 
+            price: ext.askingPrice, 
+            noi: ext.noi, 
+            capRate: ext.capRate ?? uw.capRate,
+            dscr: uw.dscr 
+          }
+        },
+        step: "extracted",
+        count: tried.length
       });
 
       // Stream answer with citations
@@ -337,6 +387,24 @@ export async function runAgent(goal: string, ctx?: Ctx) {
         raw: { plan, tried, autoDrilled: ext.autoDrilled ?? false },
       };
       deals.push(deal);
+      
+      // Emit complete property progress
+      emit(ctx, "property_progress", {
+        property: { 
+          url: ext.finalUrl || url,
+          title: ext.title,
+          address: ext.address,
+          screenshot: ext.screenshotBase64,
+          extracted: { 
+            price: ext.askingPrice, 
+            noi: ext.noi, 
+            capRate: ext.capRate ?? uw.capRate,
+            dscr: uw.dscr 
+          }
+        },
+        step: "complete",
+        count: tried.length
+      });
       
       // ✅ Progressive streaming: emit deal immediately
       emit(ctx, "deal_found", { deal, count: deals.length });

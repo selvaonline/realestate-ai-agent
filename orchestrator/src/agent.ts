@@ -17,9 +17,9 @@ const isDetailUrl = (u: string) => {
       || /realtor\.com\/(commercial|realestateandhomes-detail)\//i.test(u);
 };
 
-/** ✅ Fallback URLs - CREXI detail pages (for demo when search fails) */
+/** ✅ Fallback URLs - disabled for now (extraction too slow) */
 const DEMO_FALLBACK_URLS: string[] = [
-  "https://www.crexi.com/properties/2164390/texas-7-eleven-dallas",
+  // Extraction is too slow/unreliable, disabled for now
 ];
 
 // simple ctx for SSE

@@ -150,15 +150,21 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     sources.push(source);
     emit(ctx, "source_found", { source });
     
-    // Emit scored lead to answer with analyst rationale
+    // Emit scored lead to answer with analyst rationale + chart data
     const scoreColor = s.peScore >= 80 ? '#5fc88f' : s.peScore >= 70 ? '#6b9aeb' : '#8b9db5';
     const analystNote = (s as any).analystNote || '';
+    const factors = s.peFactors || {};
+    
     emit(ctx, "answer_chunk", { 
-      text: `<div style='margin:16px 0; padding:14px; background:#0b0f14; border-left:4px solid ${scoreColor}; border-radius:6px;'>
+      text: `<div class="deal-card" data-score="${s.peScore}" data-factors='${JSON.stringify(factors)}' style='margin:16px 0; padding:14px; background:#0b0f14; border-left:4px solid ${scoreColor}; border-radius:6px;'>
         <strong style='color:#c9d7ff; font-size:15px;'>[${sourceId}] ${s.title}</strong><br>
         <div style='margin:8px 0;'>
           <span style='color:${scoreColor}; font-size:20px; font-weight:700;'>${s.peScore}/100</span>
           ${s.peLabel ? `<span style='color:#8b9db5; margin-left:10px; font-size:14px;'>${s.peLabel}</span>` : ''}
+          <button class="show-breakdown" data-card-id="${sourceId}" style='margin-left:10px; padding:4px 8px; background:#1a1f2e; border:1px solid #2a3548; color:#6b9aeb; border-radius:4px; cursor:pointer; font-size:12px;'>📊 Show Breakdown</button>
+        </div>
+        <div id="chart-container-${sourceId}" style='display:none; margin:12px 0; padding:12px; background:#0a0d12; border-radius:4px;'>
+          <canvas id="factor-chart-${sourceId}" width="400" height="200"></canvas>
         </div>
         ${analystNote ? `<div style='color:#7c8fa6; font-size:13px; line-height:1.6; margin:8px 0; padding:8px; background:#0a0d12; border-radius:4px;'><strong>Analysis:</strong> ${analystNote}</div>` : ''}
         <a href='${s.url}' target='_blank' style='color:#6b9aeb; font-size:12px; text-decoration:none; word-break:break-all;'>${s.url}</a>
@@ -311,13 +317,41 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       geoDistribution[state] = (geoDistribution[state] || 0) + 1;
     });
     
-    // Emit analytics with proper HTML formatting
-    emit(ctx, "answer_chunk", { text: `<br><br><h2>📊 Portfolio Analytics</h2><br>` });
+    // Score distribution buckets
+    const belowThreshold = scores.filter(s => s < 70).length;
+    const scoreDistribution = {
+      premium: premiumCount,
+      investmentGrade: investmentGradeCount - premiumCount,
+      belowThreshold
+    };
+    
+    // Emit analytics with proper HTML formatting + chart data
+    emit(ctx, "answer_chunk", { text: `<br><br><h2>📊 Portfolio Analytics</h2>` });
+    emit(ctx, "answer_chunk", { 
+      text: `<div id="portfolio-charts" style="margin:20px 0;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+          <div style="background:#0b0f14; padding:16px; border-radius:8px;">
+            <h3 style="color:#c9d7ff; font-size:14px; margin:0 0 12px 0;">Score Distribution</h3>
+            <canvas id="score-distribution-chart" width="300" height="200"></canvas>
+          </div>
+          <div style="background:#0b0f14; padding:16px; border-radius:8px;">
+            <h3 style="color:#c9d7ff; font-size:14px; margin:0 0 12px 0;">Geographic Distribution</h3>
+            <canvas id="geo-distribution-chart" width="300" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+      <script>
+        window.portfolioData = ${JSON.stringify({ scoreDistribution, geoDistribution, avgScore, minScore, maxScore, premiumCount, investmentGradeCount, sources: sources.length, avgCapRate, capRates })};
+      </script>
+      <br>` 
+    });
+    
     emit(ctx, "answer_chunk", { text: `<strong>Total Opportunities Identified</strong>: ${sources.length}<br>` });
     emit(ctx, "answer_chunk", { text: `<strong>Average Deal Quality Score</strong>: ${avgScore}/100<br>` });
     emit(ctx, "answer_chunk", { text: `<strong>Score Range</strong>: ${minScore} - ${maxScore}<br>` });
     emit(ctx, "answer_chunk", { text: `<strong>Premium Opportunities</strong> (≥80): ${premiumCount} (${Math.round(premiumCount/sources.length*100)}%)<br>` });
-    emit(ctx, "answer_chunk", { text: `<strong>Investment Grade</strong> (≥70): ${investmentGradeCount} (${Math.round(investmentGradeCount/sources.length*100)}%)<br><br>` });
+    emit(ctx, "answer_chunk", { text: `<strong>Investment Grade</strong> (70-79): ${investmentGradeCount - premiumCount} (${Math.round((investmentGradeCount - premiumCount)/sources.length*100)}%)<br>` });
+    emit(ctx, "answer_chunk", { text: `<strong>Below Threshold</strong> (<70): ${belowThreshold} (${Math.round(belowThreshold/sources.length*100)}%)<br><br>` });
     
     if (avgCapRate) {
       emit(ctx, "answer_chunk", { text: `<strong>Average Cap Rate</strong>: ${(avgCapRate * 100).toFixed(2)}%<br>` });

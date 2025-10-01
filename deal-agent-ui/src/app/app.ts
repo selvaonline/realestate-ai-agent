@@ -1,6 +1,10 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgentService, AgentEvent } from './agent.service';
+import { Chart, registerables } from 'chart.js';
+
+// Register Chart.js components
+Chart.register(...registerables);
 
 type Card = {
   kind: 'status'|'wait'|'nav'|'action'|'fallback'|'shot'|'extracted'|'started'|'finished'|'thinking'|'source'|'answer';
@@ -697,7 +701,7 @@ type PropertyProgress = {
     img { border-radius:8px; margin-top:8px; }
   `]
 })
-export class App {
+export class App implements AfterViewChecked {
   q = signal('');
   busy = signal(false);
   cards = signal<Card[]>([]);
@@ -901,6 +905,223 @@ export class App {
       this.busy.set(false);
       alert('Run failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
     }
+  }
+
+  ngAfterViewChecked() {
+    // Initialize chart buttons after DOM updates
+    this.initializeChartButtons();
+    this.initializePortfolioCharts();
+  }
+
+  private chartInstances = new Map<string, Chart>();
+  private portfolioChartsInitialized = false;
+
+  private initializePortfolioCharts() {
+    // Check if portfolio data is available and charts haven't been initialized yet
+    const portfolioData = (window as any).portfolioData;
+    if (!portfolioData || this.portfolioChartsInitialized) return;
+
+    const scoreCanvas = document.getElementById('score-distribution-chart') as HTMLCanvasElement;
+    const geoCanvas = document.getElementById('geo-distribution-chart') as HTMLCanvasElement;
+
+    if (!scoreCanvas || !geoCanvas) return;
+
+    this.portfolioChartsInitialized = true;
+
+    // Score Distribution Doughnut Chart
+    const scoreCtx = scoreCanvas.getContext('2d');
+    if (scoreCtx) {
+      new Chart(scoreCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Premium (≥80)', 'Investment Grade (70-79)', 'Below Threshold (<70)'],
+          datasets: [{
+            data: [
+              portfolioData.scoreDistribution.premium,
+              portfolioData.scoreDistribution.investmentGrade,
+              portfolioData.scoreDistribution.belowThreshold
+            ],
+            backgroundColor: ['#5fc88f', '#6b9aeb', '#8b9db5'],
+            borderColor: ['#5fc88f', '#6b9aeb', '#8b9db5'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                color: '#c9d7ff',
+                font: { size: 11 },
+                padding: 10
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Geographic Distribution Pie Chart
+    const geoCtx = geoCanvas.getContext('2d');
+    if (geoCtx) {
+      const geoLabels = Object.keys(portfolioData.geoDistribution);
+      const geoData = Object.values(portfolioData.geoDistribution);
+      const geoColors = ['#5fc88f', '#6b9aeb', '#8b7ceb', '#eb8b5f', '#ebcf5f', '#8b9db5'];
+
+      new Chart(geoCtx, {
+        type: 'pie',
+        data: {
+          labels: geoLabels,
+          datasets: [{
+            data: geoData as number[],
+            backgroundColor: geoColors.slice(0, geoLabels.length),
+            borderColor: geoColors.slice(0, geoLabels.length),
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                color: '#c9d7ff',
+                font: { size: 11 },
+                padding: 10
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  private initializeChartButtons() {
+    const buttons = document.querySelectorAll('.show-breakdown');
+    buttons.forEach((btn) => {
+      if (!(btn as any)._chartInitialized) {
+        (btn as any)._chartInitialized = true;
+        btn.addEventListener('click', (e) => {
+          const cardId = (e.target as HTMLElement).getAttribute('data-card-id');
+          if (cardId) {
+            this.toggleFactorChart(cardId);
+          }
+        });
+      }
+    });
+  }
+
+  private toggleFactorChart(cardId: string) {
+    const container = document.getElementById(`chart-container-${cardId}`);
+    const canvas = document.getElementById(`factor-chart-${cardId}`) as HTMLCanvasElement;
+    const dealCard = document.querySelector(`.deal-card[data-score]`) as HTMLElement;
+    
+    if (!container || !canvas) return;
+
+    // Toggle visibility
+    if (container.style.display === 'none') {
+      container.style.display = 'block';
+      
+      // Create chart if it doesn't exist
+      if (!this.chartInstances.has(cardId)) {
+        const factorsData = dealCard?.getAttribute('data-factors');
+        if (factorsData) {
+          const factors = JSON.parse(factorsData);
+          this.createFactorChart(cardId, canvas, factors);
+        }
+      }
+    } else {
+      container.style.display = 'none';
+    }
+  }
+
+  private createFactorChart(cardId: string, canvas: HTMLCanvasElement, factors: any) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Tenant & Lease', 'Yield Spread', 'Market Quality', 'Asset Fit', 'Deal Economics', 'Execution Risk'],
+        datasets: [{
+          label: 'Factor Scores',
+          data: [
+            factors.tenantLease || 0,
+            factors.yieldSpread || 0,
+            factors.marketQuality || 0,
+            factors.assetFit || 0,
+            factors.dealEconomics || 0,
+            factors.executionRisk || 0
+          ],
+          backgroundColor: [
+            '#5fc88f',
+            '#6b9aeb',
+            '#8b7ceb',
+            '#eb8b5f',
+            '#ebcf5f',
+            '#8b9db5'
+          ],
+          borderColor: [
+            '#5fc88f',
+            '#6b9aeb',
+            '#8b7ceb',
+            '#eb8b5f',
+            '#ebcf5f',
+            '#8b9db5'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: 'PE Score Factor Breakdown',
+            color: '#c9d7ff',
+            font: {
+              size: 14,
+              weight: 'bold'
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 35,
+            ticks: {
+              color: '#8b9db5'
+            },
+            grid: {
+              color: '#1a1f2e'
+            }
+          },
+          y: {
+            ticks: {
+              color: '#c9d7ff',
+              font: {
+                size: 11
+              }
+            },
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+
+    this.chartInstances.set(cardId, chart);
   }
 
   onEvent(ev: AgentEvent) {

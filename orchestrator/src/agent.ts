@@ -107,12 +107,14 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   }
 
   // ── Perplexity-style flow: Thinking → Searching → Sources → Answer ──────────
-  emit(ctx, "thinking", { text: "Understanding your query..." });
+  emit(ctx, "thinking", { text: "🔍 Understanding your query..." });
+  emit(ctx, "thinking", { text: "📊 Loading DealSense PE scoring model..." });
+  emit(ctx, "thinking", { text: "📈 Fetching real-time market data (Treasury rates, labor statistics)..." });
   
   // Simple plan - no LLM needed, we know what to search
   const plan = `Searching Crexi.com for: ${q}`;
 
-  emit(ctx, "thinking", { text: "Searching Crexi commercial real estate listings..." });
+  emit(ctx, "thinking", { text: "🏢 Searching commercial real estate listings..." });
   
   const deals: Deal[] = [];
   const sources: Array<{ id: number; title: string; url: string; snippet: string; score?: number; riskScore?: number }> = [];
@@ -358,7 +360,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       return { plan, deals, toolResult: null };
     }
     
-    emit(ctx, "thinking", { text: "Generating portfolio analytics and market insights..." });
+    emit(ctx, "thinking", { text: "📊 Generating portfolio analytics and market insights..." });
     
     // Calculate portfolio analytics
     const scores = sources.map((s: any) => scored.find((sc: any) => sc.url === s.url)?.peScore || 0).filter(Boolean);
@@ -428,7 +430,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       emit(ctx, "answer_chunk", { text: `&nbsp;&nbsp;• <strong>${state}</strong>: ${count} ${count === 1 ? 'property' : 'properties'} (${Math.round(count/sources.length*100)}%)<br>` });
     });
     
-    emit(ctx, "answer_chunk", { text: `<br><em>Analysis based on proprietary PE scoring model. For detailed property information, click source links below.</em>` });
+    emit(ctx, "answer_chunk", { text: `<br><em style="color: #6b7280; font-size: 13px;">Analysis based on proprietary PE scoring model. For detailed property information, click source links below.</em>` });
     
     console.log(`[agent] ✅ Analytics generated. Final sources: ${sources.length}`);
     emit(ctx, "answer_complete", {});
@@ -437,7 +439,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   
   // ── Try first few detail URLs ────────────────────────────────────────────────
   if (candidates.length > 0) {
-    emit(ctx, "thinking", { text: "Analyzing property listings..." });
+    emit(ctx, "thinking", { text: "🔎 Analyzing property listings..." });
   }
   
   const urls = candidates.map((c) => c.url).slice(0, 8);

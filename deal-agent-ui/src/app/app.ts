@@ -65,8 +65,7 @@ export class SafeHtmlPipe implements PipeTransform {
         <div class="thinking-item" *ngFor="let c of cards()">
           <ng-container *ngIf="c.kind === 'thinking'">
             <div class="thinking-text">
-              <span class="thinking-icon">🔍</span>
-              {{ c.label }}
+              <div class="thinking-content">{{ c.label }}</div>
             </div>
           </ng-container>
         </div>
@@ -306,17 +305,33 @@ export class SafeHtmlPipe implements PipeTransform {
     /* Perplexity-style sections */
     .perplexity-section { margin-top: 24px; }
     
-    .thinking-steps { margin-bottom: 16px; }
-    .thinking-item { margin-bottom: 8px; }
+    .thinking-steps { 
+      margin-bottom: 20px;
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(59, 130, 246, 0.05));
+      border-radius: 12px;
+      border: 1px solid rgba(139, 92, 246, 0.1);
+    }
+    .thinking-item { 
+      margin-bottom: 10px;
+      animation: fadeIn 0.3s ease-in;
+    }
     .thinking-text { 
       display: flex; 
       align-items: center; 
       gap: 8px; 
-      color: #9fb0c0; 
-      font-size: 14px;
-      padding: 8px 0;
     }
-    .thinking-icon { font-size: 16px; }
+    .thinking-content {
+      color: #c4b5fd;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 6px 0;
+      letter-spacing: 0.3px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     /* Agent Navigation Steps (ChatGPT-style) */
     .agent-navigation { 
@@ -887,7 +902,96 @@ export class SafeHtmlPipe implements PipeTransform {
     }
     
     /* Responsive adjustments */
+    /* Mobile Responsive Styles */
     @media (max-width: 768px) {
+      /* Container adjustments */
+      :host { 
+        padding: 12px;
+      }
+      
+      /* Search bar mobile */
+      form {
+        flex-direction: column;
+        gap: 12px;
+      }
+      input {
+        width: 100%;
+        font-size: 16px; /* Prevents zoom on iOS */
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        font-size: 16px;
+      }
+      
+      /* Title mobile */
+      h1 {
+        font-size: 24px;
+        text-align: center;
+      }
+      
+      /* Thinking steps mobile */
+      .thinking-steps {
+        padding: 8px;
+        margin-bottom: 12px;
+      }
+      .thinking-content {
+        font-size: 13px;
+      }
+      
+      /* Answer section mobile */
+      .answer-section {
+        padding: 12px;
+        border-radius: 12px;
+      }
+      .answer-text {
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      
+      /* Deal cards mobile - complete redesign */
+      .answer-text .deal-card {
+        padding: 12px !important;
+      }
+      .answer-text .deal-card > div {
+        flex-direction: column !important;
+        gap: 12px !important;
+      }
+      .answer-text .deal-card button {
+        width: 100% !important;
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+      }
+      
+      /* Sources section mobile */
+      .sources-section {
+        padding: 12px;
+        margin-top: 16px;
+      }
+      .source-item {
+        padding: 10px;
+      }
+      .source-title {
+        font-size: 14px;
+      }
+      .source-url a {
+        font-size: 12px;
+      }
+      .source-snippet {
+        font-size: 13px;
+        padding: 8px;
+      }
+      
+      /* Portfolio Analytics mobile */
+      .answer-text h2 {
+        font-size: 20px !important;
+      }
+      .answer-text canvas {
+        max-width: 100% !important;
+        height: auto !important;
+      }
+      
+      /* Grid layouts */
       .deals-grid {
         grid-template-columns: 1fr;
       }
@@ -895,6 +999,54 @@ export class SafeHtmlPipe implements PipeTransform {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+      }
+      
+      /* Property preview */
+      .browser-preview-section {
+        padding: 8px;
+      }
+      .preview-header {
+        font-size: 12px;
+      }
+      
+      /* Navigation steps */
+      .agent-navigation {
+        padding: 12px;
+        font-size: 13px;
+      }
+      
+      /* Share button */
+      .share-section {
+        padding: 12px;
+      }
+      .share-btn {
+        width: 100%;
+        padding: 12px;
+      }
+    }
+    
+    /* Smaller mobile devices */
+    @media (max-width: 480px) {
+      :host {
+        padding: 8px;
+      }
+      
+      h1 {
+        font-size: 20px;
+      }
+      
+      .thinking-steps {
+        padding: 6px;
+      }
+      
+      /* Even more compact deal cards */
+      .answer-text .deal-card {
+        padding: 10px !important;
+      }
+      
+      /* Hide less important elements on very small screens */
+      .typing-dots {
+        display: none;
       }
     }
 

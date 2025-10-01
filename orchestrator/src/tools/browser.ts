@@ -2,6 +2,16 @@
 import { DynamicTool } from "@langchain/core/tools";
 import { chromium, webkit, BrowserContext, Page } from "playwright";
 
+// Timeout wrapper for extraction
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMsg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(errorMsg)), timeoutMs)
+    )
+  ]);
+}
+
 export const browseAndExtract = new DynamicTool({
   name: "browse_and_extract",
   description:
@@ -12,8 +22,12 @@ export const browseAndExtract = new DynamicTool({
     console.log("[browse_and_extract] 📍 Target URL:", url);
 
     // 1) Try mobile Safari (WebKit) first — friendlier on some CRE sites
-    console.log("[browse_and_extract] 📱 Trying mobile WebKit first...");
-    const wk = await runOnce("mobile", url, selectors).catch((e) => {
+    console.log("[browse_and_extract] 📱 Trying mobile WebKit first (timeout: 90s)...");
+    const wk = await withTimeout(
+      runOnce("mobile", url, selectors),
+      90000,
+      "Mobile WebKit extraction timeout after 90s"
+    ).catch((e) => {
       console.log("[browse_and_extract] ⚠️ Mobile WebKit failed:", e.message);
       return null;
     });
@@ -24,8 +38,12 @@ export const browseAndExtract = new DynamicTool({
     }
 
     // 2) Fallback to desktop Chromium
-    console.log("[browse_and_extract] 🖥️ Falling back to desktop Chromium...");
-    const ch = await runOnce("desktop", url, selectors).catch((e) => {
+    console.log("[browse_and_extract] 🖥️ Falling back to desktop Chromium (timeout: 90s)...");
+    const ch = await withTimeout(
+      runOnce("desktop", url, selectors),
+      90000,
+      "Desktop Chromium extraction timeout after 90s"
+    ).catch((e) => {
       console.log("[browse_and_extract] ⚠️ Desktop Chromium failed:", e.message);
       return null;
     });

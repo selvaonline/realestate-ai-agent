@@ -208,8 +208,14 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   for (const url of urls) {
     tried.push(url);
     console.log(`[agent] Attempting to extract from: ${url}`);
-    emit(ctx, "nav", { url, label: "Navigating" });
+    emit(ctx, "nav", { url, label: "Opening page..." });
+    
     try {
+      // Emit progress updates
+      setTimeout(() => emit(ctx, "status", { label: `Loading ${url.split('/').pop()}...` }), 2000);
+      setTimeout(() => emit(ctx, "status", { label: "Checking security..." }), 5000);
+      setTimeout(() => emit(ctx, "status", { label: "Extracting property data..." }), 50000);
+      
       const { ext, uw } = await tryExtractOnce(url);
       const blocked = ext?.blocked || /access denied/i.test(ext?.title || "");
       const meaningful =

@@ -46,15 +46,23 @@ type Source = { id: number; title: string; url: string; snippet: string };
 
       <!-- Agent Navigation Steps (ChatGPT-style) -->
       <div class="agent-navigation" *ngIf="!answerComplete()">
-        <div class="nav-item" *ngFor="let c of cards()">
-          <ng-container *ngIf="c.kind === 'nav'">
+        <div class="nav-item" *ngFor="let c of cards(); let i = index">
+          <ng-container *ngIf="c.kind === 'nav' && c.url">
             <div class="nav-step">
               <span class="nav-icon">🌐</span>
               <div class="nav-content">
                 <div class="nav-label">{{ c.label }}</div>
                 <div class="nav-url">{{ c.url }}</div>
+                <!-- Show screenshot if available -->
+                <div class="nav-preview" *ngIf="getScreenshotForUrl(c.url!)">
+                  <img [src]="'data:image/png;base64,' + getScreenshotForUrl(c.url!)" 
+                       alt="Website preview" 
+                       class="nav-screenshot" />
+                  <div class="preview-label">Live preview</div>
+                </div>
               </div>
-              <span class="nav-spinner">⏳</span>
+              <span class="nav-spinner" *ngIf="!getScreenshotForUrl(c.url!)">⏳</span>
+              <span class="nav-check" *ngIf="getScreenshotForUrl(c.url!)">✓</span>
             </div>
           </ng-container>
         </div>
@@ -222,9 +230,36 @@ type Source = { id: number; title: string; url: string; snippet: string };
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .nav-preview {
+      margin-top: 12px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #252f3f;
+      background: #000;
+    }
+    .nav-screenshot {
+      width: 100%;
+      height: auto;
+      max-height: 300px;
+      object-fit: cover;
+      display: block;
+    }
+    .preview-label {
+      padding: 8px 12px;
+      background: #0a0d12;
+      color: #7b8a9e;
+      font-size: 12px;
+      text-align: center;
+      border-top: 1px solid #252f3f;
+    }
     .nav-spinner {
       font-size: 16px;
       animation: spin 2s linear infinite;
+      flex-shrink: 0;
+    }
+    .nav-check {
+      font-size: 18px;
+      color: #4ade80;
       flex-shrink: 0;
     }
     @keyframes spin {
@@ -565,6 +600,20 @@ export class App {
       this.shareStatus.set('✗ Share failed');
       setTimeout(() => this.shareStatus.set(''), 2000);
     }
+  }
+
+  getScreenshotForUrl(url: string): string | null {
+    // Find the most recent screenshot for this URL
+    const shotCard = this.cards()
+      .filter(c => c.kind === 'shot')
+      .reverse()
+      .find(c => {
+        // Match if this screenshot came after the nav event for this URL
+        const navIndex = this.cards().findIndex(n => n.kind === 'nav' && n['url'] === url);
+        const shotIndex = this.cards().indexOf(c);
+        return shotIndex > navIndex && shotIndex - navIndex < 10; // Within 10 events
+      });
+    return shotCard ? (shotCard['b64'] || null) : null;
   }
 
   async run() {

@@ -116,9 +116,8 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   let sourceId = 0;
 
   // ── Search: detail-first → broader → general ───────────────────────────────────
-  // Strategy 1: Focused search - Crexi with detail bias (post-filter strictly)
-  const detailBias = 'site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/';
-  const detailQuery = `${q} ${detailBias}`;
+  // Strategy 1: Focused search - use simple site: filter, post-filter for detail pages
+  const detailQuery = `${q} site:crexi.com`;
   
   console.log("[agent] 🔍 Search strategy 1:", detailQuery);
   const detail = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
@@ -156,7 +155,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 2: Broader Crexi search
   if (candidates.length < 3) {
     emit(ctx, "thinking", { text: "Expanding search criteria..." });
-    const broaderQuery = `${q} ${detailBias}`;
+    const broaderQuery = `${q} commercial property site:crexi.com`;
     console.log("[agent] 🔍 Search strategy 2 (broader):", broaderQuery);
     const broader = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: broaderQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
@@ -184,7 +183,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 3: General search - cast wider net but filter out LoopNet
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Trying broader search..." });
-    const generalQuery = `${q} ${detailBias}`;
+    const generalQuery = `${q} commercial real estate crexi`;
     console.log("[agent] 🔍 Search strategy 3 (broadest):", generalQuery);
     const general = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: generalQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000

@@ -1,5 +1,38 @@
 import { DynamicTool } from "@langchain/core/tools";
 
+/** ---- URL filters shared with the agent ---- */
+const CREXI_DETAIL_RX =
+  /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^\/?#]+\/[a-z0-9]+/i;
+const CREXI_NON_DETAIL_DISALLOWED =
+  /\/(?:properties|for-sale|for-lease|tenants|categories|search|results)(?:[\/?#]|$)/i;
+
+function isCrexiDetailUrl(u: string) {
+  try {
+    const s = String(u);
+    if (!/crexi\.com/i.test(s)) return false;
+    return CREXI_DETAIL_RX.test(s) && !CREXI_NON_DETAIL_DISALLOWED.test(s);
+  } catch { return false; }
+}
+function isDetailUrl(u: string) {
+  return isCrexiDetailUrl(u)
+    || /loopnet\.com\/Listing\//i.test(u)
+    || /propertyshark\.com\/.*\/Property\//i.test(u)
+    || /realnex\.com\/listing\//i.test(u)
+    || /realtor\.com\/(commercial|realestateandhomes-detail)\//i.test(u);
+}
+
+type SearchRow = { title: string; url: string; snippet: string };
+type ToolInput =
+  | string
+  | {
+      query: string;
+      preferCrexi?: boolean;   // default true
+      maxResults?: number;     // default 10
+      timeoutMs?: number;      // default 10000
+      region?: string;         // e.g., "us"
+      lang?: string;           // e.g., "en"
+    };
+
 /**
  * Serper.dev web search
  * Requires: SERPER_API_KEY
@@ -7,37 +40,90 @@ import { DynamicTool } from "@langchain/core/tools";
 export const webSearch = new DynamicTool({
   name: "web_search",
   description:
-    "Search the web for property listings/news; returns top results with title,url,snippet.",
-  func: async (query: string) => {
+    "Search the web for property listings/news; returns top results with title,url,snippet. Accepts string or JSON {query, preferCrexi, maxResults}.",
+  func: async (input: string) => {
     const key = process.env.SERPER_API_KEY;
     if (!key) throw new Error("SERPER_API_KEY missing");
 
-    // Bias queries toward actual detail pages when the prompt looks like a listing search
-    const q = query;
+    // Backward-compatible args
+    let args: ToolInput;
+    try { args = JSON.parse(input); } catch { args = input; }
 
-    const r = await fetch("https://google.serper.dev/search", {
-      method: "POST",
-      headers: {
-        "X-API-KEY": key,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ q }),
-    });
+    const preferCrexi = (typeof args === "object" && (args as any)?.preferCrexi !== undefined) ? !!(args as any).preferCrexi : true;
+    const maxResults  = (typeof args === "object" && (args as any)?.maxResults !== undefined) ? Number((args as any).maxResults) : 10;
+    const timeoutMs   = (typeof args === "object" && (args as any)?.timeoutMs !== undefined) ? Number((args as any).timeoutMs) : 10_000;
+    const region      = (typeof args === "object" && (args as any)?.region) || "us";
+    const lang        = (typeof args === "object" && (args as any)?.lang) || "en";
 
-    if (!r.ok) {
-      const txt = await r.text().catch(() => "");
-      throw new Error(`serper error ${r.status}: ${txt}`);
+    const userQuery = typeof args === "string" ? (args as string) : (args as any).query;
+
+    // Bias the query to surface *detail* pages on CREXI, but don't hard lock it.
+    // We’ll still filter post-search using isDetailUrl().
+    const crexiBias =
+      ' (site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/)';
+    const q = preferCrexi ? `${userQuery}${crexiBias}`  : userQuery;
+
+    const controller = new AbortController();
+    const to = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const r = await fetch("https://google.serper.dev/search", {
+        method: "POST",
+        headers: {
+          "X-API-KEY": key,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          q,
+          gl: region,       // country bias
+          hl: lang,         // language
+          num: Math.min(20, Math.max(10, (maxResults || 10) * 2)), // overfetch a bit; we’ll filter
+          autocorrect: true,
+          page: 1,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!r.ok) {
+        const txt = await r.text().catch(() => "");
+        throw new Error(`serper ${r.status} ${r.statusText}: ${txt}` );
+      }
+
+      const j: any = await r.json();
+
+      // Normalize → filter → rank → dedupe → cap
+      const rows: SearchRow[] = (j.organic ?? []).map((v: any) => ({
+        title: v?.title ?? "",
+        url: v?.link ?? "",
+        snippet: v?.snippet ?? "",
+      })).filter((x: SearchRow) => x.url);
+
+      // Keep only detail-like URLs
+      let filtered = rows.filter(r => isDetailUrl(r.url));
+
+      // Rank CREXI first
+      filtered.sort((a, b) => {
+        const ac = /crexi\.com/i.test(a.url) ? 0 : 1;
+        const bc = /crexi\.com/i.test(b.url) ? 0 : 1;
+        return ac - bc;
+      });
+
+      // Dedupe by URL
+      const seen = new Set<string>();
+      filtered = filtered.filter(r => {
+        if (seen.has(r.url)) return false;
+        seen.add(r.url);
+        return true;
+      });
+
+      return JSON.stringify(filtered.slice(0, maxResults));
+    } catch (e: any) {
+      if (e?.name === "AbortError") {
+        throw new Error(`web_search timeout after ${timeoutMs}ms` );
+      }
+      throw e;
+    } finally {
+      clearTimeout(to);
     }
-
-    // Cast JSON payload (unknown under strict TS)
-    const j: any = await r.json();
-
-    const rows = (j.organic ?? []).map((v: any) => ({
-      title: v.title,
-      url: v.link,
-      snippet: v.snippet,
-    }));
-
-    return JSON.stringify(rows);
   },
 });

@@ -53,16 +53,8 @@ type Source = { id: number; title: string; url: string; snippet: string };
               <div class="nav-content">
                 <div class="nav-label">{{ c.label }}</div>
                 <div class="nav-url">{{ c.url }}</div>
-                <!-- Show screenshot if available -->
-                <div class="nav-preview" *ngIf="getScreenshotForUrl(c.url!)">
-                  <img [src]="'data:image/png;base64,' + getScreenshotForUrl(c.url!)" 
-                       alt="Website preview" 
-                       class="nav-screenshot" />
-                  <div class="preview-label">Live preview</div>
-                </div>
               </div>
-              <span class="nav-spinner" *ngIf="!getScreenshotForUrl(c.url!)">⏳</span>
-              <span class="nav-check" *ngIf="getScreenshotForUrl(c.url!)">✓</span>
+              <span class="nav-spinner">⏳</span>
             </div>
           </ng-container>
         </div>
@@ -600,20 +592,6 @@ export class App {
       this.shareStatus.set('✗ Share failed');
       setTimeout(() => this.shareStatus.set(''), 2000);
     }
-  }
-
-  getScreenshotForUrl(url: string): string | null {
-    // Find the most recent screenshot for this URL
-    const shotCard = this.cards()
-      .filter(c => c.kind === 'shot')
-      .reverse()
-      .find(c => {
-        // Match if this screenshot came after the nav event for this URL
-        const navIndex = this.cards().findIndex(n => n.kind === 'nav' && n['url'] === url);
-        const shotIndex = this.cards().indexOf(c);
-        return shotIndex > navIndex && shotIndex - navIndex < 10; // Within 10 events
-      });
-    return shotCard ? (shotCard['b64'] || null) : null;
   }
 
   async run() {

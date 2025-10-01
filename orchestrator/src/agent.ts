@@ -1,42 +1,36 @@
 // src/agent.ts
-import { ChatOpenAI } from "@langchain/openai";
 import { webSearch } from "./tools/search.js";
 import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
 import type { Deal } from "./lib/types.js";
 
-/** ✅ Fallback URLs - Crexi only (reliable, not blocked) */
+/** ✅ Fallback URLs - CREXI detail pages only (avoid tenants/categories) */
 const DEMO_FALLBACK_URLS = [
-  // Crexi - works reliably, not blocked
+  // Example of a verified detail page (keep small, can be empty in prod)
   "https://www.crexi.com/properties/2164390/texas-7-eleven",
-  "https://www.crexi.com/properties/tenants/CVS_Pharmacy",
-  "https://www.crexi.com/properties/tenants/7-Eleven",
-  "https://www.crexi.com/properties/tenants/Walgreens",
-  
-  // If all real URLs fail, we'll create mock data as last resort
 ];
 
-/** Detail-page patterns - Crexi prioritized (not blocked) */
-const DETAIL_PATTERNS = [
-  // Crexi - works best, prioritize these
-  /crexi\.com\/property\//i,
-  /crexi\.com\/properties\//i,
-  /crexi\.com\/sale\/properties\/[^/?#]+\/[^/?#]+/i,
-  /crexi\.com\/lease\/properties\/[^/?#]+\/[^/?#]+/i,
-  // Other platforms (may have bot detection)
-  /realtor\.com\/realestateandhomes-detail\//i,
-  /realtor\.com\/commercial\//i,
+/** Detail-page patterns - CREXI true-detail only (avoid categories/tenants) */
+const CREXI_DETAIL_PATTERNS = [
+  /https?:\/\/(?:www\.)?crexi\.com\/properties\/[0-9]+\/[A-Za-z0-9\-]+/i,
+  /https?:\/\/(?:www\.)?crexi\.com\/property\/[0-9]+\/[A-Za-z0-9\-]+/i,
+  /https?:\/\/(?:www\.)?crexi\.com\/(?:sale|lease)\/properties\/[^\/?#]+\/[^\/?#]+/i,
+];
+const NON_DETAIL_CREXI = /https?:\/\/(?:www\.)?crexi\.com\/(?:properties\/[A-Z]{2}(?:\/|$)|properties\/[A-Za-z]+(?:\/|$)|properties\?|tenants|categories|search|results)(?:[\/?#]|$)/i;
+const OTHER_DETAIL_PATTERNS = [
+  /loopnet\.com\/Listing\//i,
   /propertyshark\.com\/.*\/Property\//i,
   /realnex\.com\/listing\//i,
-  // LoopNet - keep pattern but deprioritized (often blocked)
-  /loopnet\.com\/Listing\//i,
+  /realtor\.com\/(commercial|realestateandhomes-detail)\//i,
 ];
-const isDetailUrl = (u: string) => DETAIL_PATTERNS.some((rx) => rx.test(u));
+const isDetailUrl = (u: string) => {
+  if (/crexi\.com/i.test(u)) {
+    return CREXI_DETAIL_PATTERNS.some((rx) => rx.test(u)) && !NON_DETAIL_CREXI.test(u);
+  }
+  return OTHER_DETAIL_PATTERNS.some((rx) => rx.test(u));
+};
 
-const llm = new ChatOpenAI({
-  model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-  temperature: 0,
-});
+
 
 // simple ctx for SSE
 type Ctx = { runId?: string; pub?: (kind: string, payload?: Record<string, any>) => void };
@@ -44,12 +38,54 @@ const nop = () => {};
 const emit = (ctx?: Ctx, kind?: string, payload?: Record<string, any>) =>
   (ctx?.pub || nop)(kind!, payload || {});
 
+// Local timeout wrapper for tool calls
+async function withTimeoutLocal<T>(p: Promise<T>, ms: number, tag: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`${tag} timeout after ${ms}ms`)), ms)),
+  ]) as Promise<T>;
+}
+
+// Cancellable status ticker for per-URL progress
+function startProgressTicker(ctx: Ctx | undefined, url: string) {
+  const start = Date.now();
+  const labels = [
+    "Loading page...",
+    "Negotiating security...",
+    "Settling SPA...",
+    "Extracting property data...",
+  ];
+  let i = 0;
+  const id = setInterval(() => {
+    const label = labels[i % labels.length];
+    emit(ctx, "status", { label: `${label} (${((Date.now() - start) / 1000).toFixed(0)}s)` });
+    i++;
+  }, 2500);
+  return () => clearInterval(id);
+}
+
 async function tryExtractOnce(url: string) {
-  const extJson = await browseAndExtract.invoke(JSON.stringify({ url }));
-  const ext = JSON.parse(String(extJson));
-  const uwJson = await quickUnderwrite.invoke(
-    JSON.stringify({ noi: ext.noi, price: ext.askingPrice })
+  console.time(`[agent] browse+extract ${url}`);
+  const extJson = await withTimeoutLocal(
+    browseAndExtract.invoke(JSON.stringify({ url })),
+    130_000,
+    "browseAndExtract"
   );
+  console.timeEnd(`[agent] browse+extract ${url}`);
+
+  const ext = JSON.parse(String(extJson));
+
+  console.time(`[agent] underwrite ${url}`);
+  const uwJson = await withTimeoutLocal(
+    quickUnderwrite.invoke(JSON.stringify({ noi: ext.noi, price: ext.askingPrice })),
+    5_000,
+    "quickUnderwrite"
+  ).catch((e) => {
+    console.warn("[agent] quickUnderwrite failed:", e?.message);
+    return JSON.stringify({ capRate: ext.capRate ?? null, dscr: null, loanAmt: null, debtSvc: null });
+  });
+  console.timeEnd(`[agent] underwrite ${url}`);
+
   const uw = JSON.parse(String(uwJson));
   return { ext, uw };
 }
@@ -194,6 +230,21 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     }
   }
   
+  // Dedupe and rank (CREXI first)
+  const seen = new Set<string>();
+  candidates = candidates
+    .filter(c => {
+      if (!c?.url) return false;
+      if (seen.has(c.url)) return false;
+      seen.add(c.url);
+      return true;
+    })
+    .sort((a, b) => {
+      const ac = /crexi\.com/i.test(a.url) ? 0 : 1;
+      const bc = /crexi\.com/i.test(b.url) ? 0 : 1;
+      return ac - bc;
+    });
+
   console.log(`[agent] Total candidates after all searches: ${candidates.length}`);
 
   // ── Try first few detail URLs ────────────────────────────────────────────────
@@ -209,14 +260,10 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     tried.push(url);
     console.log(`[agent] Attempting to extract from: ${url}`);
     emit(ctx, "nav", { url, label: "Opening page..." });
-    
+    const PER_URL_CAP_MS = 140_000;
+    const stopTicker = startProgressTicker(ctx, url);
     try {
-      // Emit progress updates
-      setTimeout(() => emit(ctx, "status", { label: `Loading ${url.split('/').pop()}...` }), 2000);
-      setTimeout(() => emit(ctx, "status", { label: "Checking security..." }), 5000);
-      setTimeout(() => emit(ctx, "status", { label: "Extracting property data..." }), 50000);
-      
-      const { ext, uw } = await tryExtractOnce(url);
+      const { ext, uw } = await withTimeoutLocal(tryExtractOnce(url), PER_URL_CAP_MS, "perUrlAttempt");
       const blocked = ext?.blocked || /access denied/i.test(ext?.title || "");
       const meaningful =
         !!ext?.title || !!ext?.address || ext?.askingPrice != null || ext?.noi != null || ext?.capRate != null;
@@ -225,12 +272,13 @@ export async function runAgent(goal: string, ctx?: Ctx) {
 
       if (blocked || !meaningful) {
         console.log(`[agent] Skipping ${url} - blocked or no data`);
+        stopTicker();
         continue;
       }
 
       console.log(`[agent] Successfully extracted from: ${url}`);
       extractionSucceeded = true;
-      
+      stopTicker();
       emit(ctx, "shot", { label: "Detail page", b64: ext.screenshotBase64 || null });
       emit(ctx, "extracted", {
         summary: { title: ext.title, address: ext.address, price: ext.askingPrice, noi: ext.noi, cap: ext.capRate ?? uw.capRate },
@@ -275,12 +323,14 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       break; // stop after first success
     } catch (e) {
       console.error("[agent] extract failed:", url, e);
+    } finally {
+      try { stopTicker(); } catch {}
     }
   }
   
   console.log(`[agent] Extraction attempts complete. Success: ${extractionSucceeded}, Deals: ${deals.length}`);
 
-  // ── Demo fallback (always triggers if no deals found) ──────────────────────────
+  // ── Demo fallback (detail pages only; no mock data) ───────────────────────────
   if (deals.length === 0 && DEMO_FALLBACK_URLS.length > 0) {
     console.log(`[agent] No deals found, trying ${DEMO_FALLBACK_URLS.length} fallback URLs`);
     emit(ctx, "thinking", { text: "Using demonstration listing..." });
@@ -337,28 +387,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       }
     }
     
-    // If all fallback URLs failed, create a mock deal
-    if (deals.length === 0) {
-      console.log(`[agent] All fallback URLs failed, creating mock demonstration deal`);
-      emit(ctx, "answer_chunk", { text: `Here's a demonstration example (mock data): ` });
-      emit(ctx, "answer_chunk", { text: `**Sample Commercial Property** located at 123 Main St, Dallas, TX 75201. ` });
-      emit(ctx, "answer_chunk", { text: `The asking price is $5,000,000. ` });
-      emit(ctx, "answer_chunk", { text: `The cap rate is 6.50%. ` });
-      
-      deals.push({
-        title: "Sample Commercial Property (Mock Data)",
-        url: "https://www.crexi.com",
-        source: "www.crexi.com",
-        address: "123 Main St, Dallas, TX 75201",
-        askingPrice: 5000000,
-        noi: 325000,
-        capRate: 0.065,
-        screenshotBase64: null,
-        underwrite: { capRate: 0.065, dscr: 1.25, loanAmt: 3750000, debtSvc: 225000 },
-        raw: { plan, fallback: true, mock: true, autoDrilled: false },
-      });
-      console.log(`[agent] Mock deal created as last resort`);
-    }
+    // If all fallback URLs failed, do not create mock data
   } else if (deals.length === 0) {
     console.log(`[agent] No deals found and no fallback URLs configured`);
     emit(ctx, "answer_chunk", { text: "I couldn't find any matching commercial real estate listings. " });

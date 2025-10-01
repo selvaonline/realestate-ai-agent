@@ -6,9 +6,9 @@ console.log("[browser] build tag: crexi-fix-v1", new Date().toISOString());
 
 // ---- CREXI URL patterns (strict: only actual property detail pages) ----
 const CREXI_DETAIL_RX =
-  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/[^/?#]+/i;
+  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/\d+\/[^/?#]+/i;
 const CREXI_NON_DETAIL_DISALLOWED =
-  /\/(?:for-sale|for-lease|tenants|categories|search|results|brokerage|brokerages)(?:[/?#]|$)/i;
+  /\/(?:for-sale|for-lease|tenants|categories|search|results|brokerage|brokerages)\/|\/(TX|CA|FL|NY|IL|GA|NC|VA|WA|AZ|MA|TN|CO|MD|OR|MI|MO|WI|MN|AL|LA|KY|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|WV|ID|HI|NH|ME|RI|MT|DE|SD|ND|AK|VT|WY)\//i;
 
 function isCrexiDetailUrl(u: string) {
   try {

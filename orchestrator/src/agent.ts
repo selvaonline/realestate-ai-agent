@@ -6,9 +6,9 @@ import type { Deal } from "./lib/types.js";
 
 // ---- Shared URL patterns (strict: only actual property detail pages) ----
 const CREXI_DETAIL_RX =
-  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/[^/?#]+/i;
+  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/\d+\/[^/?#]+/i;
 const CREXI_NON_DETAIL_DISALLOWED =
-  /\/(?:for-sale|for-lease|tenants|categories|search|results|brokerage|brokerages)(?:[/?#]|$)/i;
+  /\/(?:for-sale|for-lease|tenants|categories|search|results|brokerage|brokerages)\/|\/(TX|CA|FL|NY|IL|GA|NC|VA|WA|AZ|MA|TN|CO|MD|OR|MI|MO|WI|MN|AL|LA|KY|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|WV|ID|HI|NH|ME|RI|MT|DE|SD|ND|AK|VT|WY)\//i;
 const isDetailUrl = (u: string) => {
   if (/crexi\.com/i.test(u)) return CREXI_DETAIL_RX.test(u) && !CREXI_NON_DETAIL_DISALLOWED.test(u);
   return /loopnet\.com\/Listing\//i.test(u)

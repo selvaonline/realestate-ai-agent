@@ -13,6 +13,7 @@ RUN npx playwright install --with-deps chromium webkit
 # Copy source and build
 COPY tsconfig.json ./
 COPY src ./src
+COPY config ./config
 ENV NODE_ENV=production
 RUN npx tsc
 

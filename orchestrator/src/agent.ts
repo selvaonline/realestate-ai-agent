@@ -323,7 +323,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
         emit(ctx, "answer_chunk", { text: `DSCR is ${uw.dscr.toFixed(2)}. ` });
       }
 
-      deals.push({
+      const deal: Deal = {
         title: ext.title,
         url: ext.finalUrl || url,
         source: new URL(ext.finalUrl || url).hostname,
@@ -334,8 +334,14 @@ export async function runAgent(goal: string, ctx?: Ctx) {
         screenshotBase64: ext.screenshotBase64,
         underwrite: uw,
         raw: { plan, tried, autoDrilled: ext.autoDrilled ?? false },
-      });
-      break; // stop after first success
+      };
+      deals.push(deal);
+      
+      // ✅ Progressive streaming: emit deal immediately
+      emit(ctx, "deal_found", { deal, count: deals.length });
+      console.log(`[agent] 📤 Emitted deal ${deals.length}: ${deal.title}`);
+      
+      // Continue to next candidate (progressive loading)
     } catch (e) {
       console.error("[agent] extract failed:", url, e);
       stopTicker();

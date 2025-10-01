@@ -643,6 +643,11 @@ export class App {
         this.sources.update(arr => [...arr, ev['source']]);
         push({ kind:'source', source: ev['source'], t:ev.t });
         break;
+      case 'deal_found':
+        // ✅ Progressive streaming: add deal immediately as it arrives
+        this.deals.update(arr => [...arr, ev['deal']]);
+        push({ kind:'thinking', label: `✓ Found property ${ev['count']}: ${ev['deal'].title}`, t:ev.t });
+        break;
       case 'answer_chunk':
         this.answer.update(curr => curr + ev['text']);
         break;

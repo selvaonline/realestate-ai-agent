@@ -225,24 +225,25 @@ export async function runAgent(goal: string, ctx?: Ctx) {
 
   console.log(`[agent] Total candidates after all searches: ${candidates.length}`);
   
-  // Fix 1: Relax to list pages when 0 detail URLs (let Playwright auto-drill)
+  // Fix 1: Relax to list/brokerage pages when 0 detail URLs (let Playwright auto-drill)
   if (candidates.length === 0) {
-    emit(ctx, "thinking", { text: "No detail pages found; trying a CREXI results page to auto-drill…" });
-    const relaxedQuery = `${q} site:crexi.com inurl:/properties/ -inurl:/tenants/ -inurl:/categories/`;
-    console.log("[agent] 🔎 Last-resort query:", relaxedQuery);
+    emit(ctx, "thinking", { text: "No detail pages found; using list page to auto-drill…" });
+    const relaxedQuery = `${q} site:crexi.com`;
+    console.log("[agent] 🔎 Last-resort query (accepting list/brokerage pages for drilling):", relaxedQuery);
 
     const relaxed = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
-      query: relaxedQuery, preferCrexi: true, maxResults: 5, timeoutMs: 9000
+      query: relaxedQuery, preferCrexi: true, maxResults: 10, timeoutMs: 9000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
 
-    const listPages = relaxed.filter(r => /crexi\.com\/properties\//i.test(r.url));
+    // Accept ANY crexi.com page - brokerage pages have property links we can drill into
+    const listPages = relaxed.filter(r => /crexi\.com/i.test(r.url) && !/\/(tenants|categories)\//.test(r.url));
     if (listPages.length > 0) {
-      // Push exactly ONE list page; runOnce() will bounded-drill to detail
-      candidates.push(listPages[0]);
-      console.log("[agent] ✅ Using CREXI list page for auto-drill:", listPages[0].url);
-      emit(ctx, "source_found", { source: { id: 999, ...listPages[0] } });
+      // Push up to 3 list pages; runOnce() will bounded-drill to detail from each
+      candidates.push(...listPages.slice(0, 3));
+      console.log(`[agent] ✅ Using ${candidates.length} CREXI pages for auto-drill:`, candidates.map(c => c.url));
+      candidates.forEach((c, i) => emit(ctx, "source_found", { source: { id: 990 + i, ...c } }));
     } else {
-      console.log("[agent] ❌ No CREXI list page found either (relaxed search)");
+      console.log("[agent] ❌ No CREXI pages found (relaxed search)");
     }
   }
 

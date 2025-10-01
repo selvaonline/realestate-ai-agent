@@ -3,6 +3,8 @@ import { webSearch } from "./tools/search.js";
 import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
 import { peScorePro } from "./tools/peScorePro.js"; // DealSense PE: Professional scorer
+import { riskBlender } from "./tools/riskBlender.js";
+import { fred10Y, blsMetroUnemp, inferMetroSeriesIdFromText } from "./infra/market.js";
 import type { Deal } from "./lib/types.js";
 
 // ---- Shared URL patterns (strict: only actual property detail pages) ----
@@ -113,7 +115,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   emit(ctx, "thinking", { text: "Searching Crexi commercial real estate listings..." });
   
   const deals: Deal[] = [];
-  const sources: Array<{ id: number; title: string; url: string; snippet: string }> = [];
+  const sources: Array<{ id: number; title: string; url: string; snippet: string; score?: number; riskScore?: number }> = [];
   let sourceId = 0;
 
   // ── Search: detail-first → broader → general ───────────────────────────────────
@@ -142,34 +144,86 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     console.log(`[agent]   ${i+1}. [${s.peScore}] ${s.peLabel} - ${s.title?.slice(0, 60)}`);
   });
   
+  // 🌐 FETCH MARKET DATA for Risk Intelligence
+  emit(ctx, "thinking", { text: "Gathering real-time market data (Treasury rates, labor statistics)..." });
+  
+  const fredKey = process.env.FRED_API_KEY;
+  const blsKey = process.env.BLS_API_KEY;
+  
+  // Infer metro from query or top result
+  let metroSeries = inferMetroSeriesIdFromText(q);
+  if (!metroSeries && scored[0]) {
+    const probe = `${scored[0].title} ${scored[0].snippet}`;
+    metroSeries = inferMetroSeriesIdFromText(probe);
+  }
+  
+  // Fetch macro data (cached 12-24h)
+  const tenY = await fred10Y(fredKey); // 10Y Treasury
+  const bls = metroSeries ? await blsMetroUnemp(metroSeries, blsKey) : { latestRate: null, yoyDelta: null, period: null, seriesId: null };
+  
+  console.log(`[agent] 📈 Market Data: 10Y=${tenY.value ? (tenY.value*100).toFixed(2)+'%' : 'N/A'}, Metro=${metroSeries || 'N/A'}, U/E=${bls.latestRate ? bls.latestRate.toFixed(1)+'%' : 'N/A'}`);
+  
+  // Compute Risk Score for this market context
+  const riskBase = JSON.parse(String(await riskBlender.invoke(JSON.stringify({
+    query: q,
+    data: { 
+      treasury10yBps: tenY.value != null ? Math.round(tenY.value * 10000) : null, 
+      bls 
+    }
+  }))));
+  
+  console.log(`[agent] ⚠️ Risk Score: ${riskBase.riskScore}/100 - ${riskBase.riskNote}`);
+  
+  // Count the top results we're about to show
+  const topResults = scored.slice(0, 5);
+  
   // Emit top scored sources immediately (value even without browsing!)
-  emit(ctx, "answer_chunk", { text: "<br><h2>🎯 Top Investment Opportunities</h2><p style='color:#8b9db5; margin:8px 0;'>Ranked by DealSense PE Scoring Model</p>" });
-  for (const s of scored.slice(0, 5)) {
-    sourceId++;
-    const source = { id: sourceId, title: s.title, url: s.url, snippet: s.snippet };
-    sources.push(source);
-    emit(ctx, "source_found", { source });
-    
-    // Emit scored lead to answer with analyst rationale + chart data
-    const scoreColor = s.peScore >= 80 ? '#5fc88f' : s.peScore >= 70 ? '#6b9aeb' : '#8b9db5';
-    const analystNote = (s as any).analystNote || '';
-    const factors = s.peFactors || {};
-    
+  emit(ctx, "answer_chunk", { text: `<div style='margin:24px 0;'>
+    <h2 style='color:#1a2332; font-size:22px; font-weight:700; margin:0 0 8px 0;'>🏢 Investment Opportunities</h2>
+    <p style='color:#5b7a9f; font-size:14px; margin:0 0 16px 0;'>${topResults.length} properties found • Ranked by DealSense PE Model <span id="pe-model-info-icon" style="cursor: pointer; font-size: 16px; color: #3b82f6; text-decoration: underline;" title="Click to learn how the DealSense PE Model works">ℹ️</span></p>
+  </div>` });
+  
+  // Show market context banner
+  if (riskBase.riskNote) {
     emit(ctx, "answer_chunk", { 
-      text: `<div class="deal-card" data-score="${s.peScore}" data-factors='${JSON.stringify(factors)}' style='margin:16px 0; padding:14px; background:#0b0f14; border-left:4px solid ${scoreColor}; border-radius:6px;'>
-        <strong style='color:#c9d7ff; font-size:15px;'>[${sourceId}] ${s.title}</strong><br>
-        <div style='margin:8px 0;'>
-          <span style='color:${scoreColor}; font-size:20px; font-weight:700;'>${s.peScore}/100</span>
-          ${s.peLabel ? `<span style='color:#8b9db5; margin-left:10px; font-size:14px;'>${s.peLabel}</span>` : ''}
-          <button class="show-breakdown" data-card-id="${sourceId}" style='margin-left:10px; padding:4px 8px; background:#1a1f2e; border:1px solid #2a3548; color:#6b9aeb; border-radius:4px; cursor:pointer; font-size:12px;'>📊 Show Breakdown</button>
-        </div>
-        <div id="chart-container-${sourceId}" style='display:none; margin:12px 0; padding:12px; background:#0a0d12; border-radius:4px;'>
-          <canvas id="factor-chart-${sourceId}" width="400" height="200"></canvas>
-        </div>
-        ${analystNote ? `<div style='color:#7c8fa6; font-size:13px; line-height:1.6; margin:8px 0; padding:8px; background:#0a0d12; border-radius:4px;'><strong>Analysis:</strong> ${analystNote}</div>` : ''}
-        <a href='${s.url}' target='_blank' style='color:#6b9aeb; font-size:12px; text-decoration:none; word-break:break-all;'>${s.url}</a>
+      text: `<div style='background:#fff3e0; padding:14px 18px; border-radius:10px; margin:0 0 20px 0; border-left:4px solid ${riskBase.riskScore >= 60 ? '#ff9800' : riskBase.riskScore >= 40 ? '#ffc107' : '#4caf50'};'>
+        <strong style='color:#1a2332; font-size:14px;'>📊 Market Risk: ${riskBase.riskScore}/100</strong>
+        <span style='color:#5b7a9f; font-size:13px; margin-left:8px;'>${riskBase.riskNote}</span>
       </div>` 
     });
+  }
+  
+  if (topResults.length) {
+    emit(ctx, "answer_chunk", { text: `<div class="deal-card-list" style='background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; overflow:hidden; margin-top:12px;'>` });
+  }
+
+  topResults.forEach((s, index) => {
+    sourceId++;
+    const source = { id: sourceId, title: s.title, url: s.url, snippet: s.snippet, score: s.peScore, riskScore: riskBase.riskScore };
+    sources.push(source);
+    emit(ctx, "source_found", { source });
+
+    // Emit scored lead to answer with analyst rationale + chart data
+    const scoreTier = s.peScore >= 80 ? 'Premium' : s.peScore >= 70 ? 'Investment Grade' : 'Watchlist';
+    const scoreColor = s.peScore >= 80 ? '#2f8f5b' : s.peScore >= 70 ? '#f28b30' : '#8758ce';
+    const scoreBg = s.peScore >= 80 ? '#e5f5ec' : s.peScore >= 70 ? '#fff1e3' : '#f1e8ff';
+    const analystNote = (s as any).analystNote || '';
+    const factors = s.peFactors || {};
+    const snippet = (s.snippet || '').replace(/\s+/g, ' ').trim();
+    const riskColor = riskBase.riskScore >= 60 ? '#d9534f' : riskBase.riskScore >= 40 ? '#f0ad4e' : '#3c9a5f';
+    const riskBg = riskBase.riskScore >= 60 ? '#fdecea' : riskBase.riskScore >= 40 ? '#fff4e5' : '#e8f7f0';
+    const riskLabel = riskBase.riskScore >= 60 ? 'Elevated Risk' : riskBase.riskScore >= 40 ? 'Moderate Risk' : 'Favorable Risk';
+    const isLast = index === topResults.length - 1;
+    const dividerStyle = isLast ? '' : 'border-bottom: 1px solid #e2e8f0;';
+
+    emit(ctx, "answer_chunk", { text: `<div class="deal-card" data-score="${s.peScore}" data-factors='${JSON.stringify(factors)}' data-card-id="${sourceId}" style="padding: 22px 26px; ${dividerStyle}"><div style="display:flex; align-items:flex-start; gap:24px;"><div style="flex:0 0 auto;"><div style="width:56px; height:56px; border-radius:14px; background:${scoreBg}; display:flex; align-items:center; justify-content:center; font-weight:700; color:${scoreColor}; font-size:18px;">${sourceId}</div></div><div style="flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; align-items:center; gap:16px;"><div style="min-width:0;"><div style="color:#1a2332; font-size:18px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.title || 'Investment Opportunity'}</div><div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${scoreBg}; color:${scoreColor}; border-radius:999px; font-size:12px; font-weight:600;">PE ${s.peScore}/100 · ${scoreTier}</span><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${riskBg}; color:${riskColor}; border-radius:999px; font-size:12px; font-weight:600;">Risk ${riskBase.riskScore}/100 · ${riskLabel}</span>${s.peLabel ? `<span style="color:#64748b; font-size:12px;">${s.peLabel}</span>` : ''}</div></div><div style="flex:0 0 auto; text-align:right;"><button type="button" onclick="event.stopPropagation(); window.open('${s.url}', '_blank');" style="padding:10px 20px; background:#111928; color:#ffffff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s;">View Listing</button><div style="margin-top:6px;"><button type="button" class="show-breakdown" style="padding:6px 12px; background:#f8fafc; border:1px solid #d0d5dd; color:#475569; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;">📊 Deal Factors</button></div></div></div>${snippet ? `<div style="margin-top:14px; color:#64748b; font-size:13px; line-height:1.6;">${snippet}</div>` : ''}${analystNote ? `<div style="margin-top:12px; color:#475569; font-size:13px; line-height:1.6; background:#f8fafc; padding:12px 14px; border-radius:10px;">${analystNote}</div>` : ''}</div></div><div id="chart-container-${sourceId}" style="display:none; margin:18px 0 0 0; padding:18px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;"><canvas id="factor-chart-${sourceId}" width="400" height="200"></canvas></div></div>` });
+    if (!isLast) {
+      emit(ctx, "answer_chunk", { text: `<div style="border-top:1px solid #e2e8f0;"></div>` });
+    }
+  });
+
+  if (topResults.length) {
+    emit(ctx, "answer_chunk", { text: `</div>` });
   }
   
   // Log all URLs and their detail status
@@ -291,8 +345,19 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // ✨ SKIP EXTRACTION MODE - Focus on PE scoring & analytics instead of browsing
   const SKIP_EXTRACTION = String(process.env.SKIP_EXTRACTION || "true").toLowerCase() === "true";
   
-  if (SKIP_EXTRACTION && sources.length > 0) {
-    console.log(`[agent] ⚡ SKIP_EXTRACTION=true - generating analytics from ${sources.length} scored sources`);
+  console.log(`[agent] 🔧 SKIP_EXTRACTION=${SKIP_EXTRACTION}, sources.length=${sources.length}, candidates.length=${candidates.length}`);
+  
+  if (SKIP_EXTRACTION) {
+    console.log(`[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from ${sources.length} scored sources`);
+    
+    // If no sources found, just complete
+    if (sources.length === 0) {
+      console.log(`[agent] ⚠️ No scored sources available for analytics`);
+      emit(ctx, "answer_chunk", { text: "<br><p style='color:#eb8b5f;'>No property listings found matching your criteria. Try broadening your search terms or different location.</p>" });
+      emit(ctx, "answer_complete", {});
+      return { plan, deals, toolResult: null };
+    }
+    
     emit(ctx, "thinking", { text: "Generating portfolio analytics and market insights..." });
     
     // Calculate portfolio analytics
@@ -363,7 +428,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       emit(ctx, "answer_chunk", { text: `&nbsp;&nbsp;• <strong>${state}</strong>: ${count} ${count === 1 ? 'property' : 'properties'} (${Math.round(count/sources.length*100)}%)<br>` });
     });
     
-    emit(ctx, "answer_chunk", { text: `<br><em>Analysis based on proprietary PE scoring model. For detailed property information, click source links above.</em>` });
+    emit(ctx, "answer_chunk", { text: `<br><em>Analysis based on proprietary PE scoring model. For detailed property information, click source links below.</em>` });
     
     console.log(`[agent] ✅ Analytics generated. Final sources: ${sources.length}`);
     emit(ctx, "answer_complete", {});

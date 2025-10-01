@@ -1,8 +1,9 @@
-import { Component, signal, AfterViewChecked } from '@angular/core';
+import { Component, AfterViewChecked, signal, ElementRef, ChangeDetectorRef, NgZone, Pipe, PipeTransform } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { AgentService, AgentEvent } from './agent.service';
 import { Chart, registerables } from 'chart.js';
-
+import { ChangeDetectionStrategy } from '@angular/core';
 // Register Chart.js components
 Chart.register(...registerables);
 
@@ -34,10 +35,18 @@ type PropertyProgress = {
   count: number;
 };
 
+@Pipe({ name: 'safeHtml', standalone: true })
+export class SafeHtmlPipe implements PipeTransform {
+  constructor(private sanitizer: DomSanitizer) {}
+  transform(value: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(value);
+  }
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SafeHtmlPipe],
   template: `
   <div class="shell">
     <div class="header">RealEstate Deal Agent</div>
@@ -134,7 +143,7 @@ type PropertyProgress = {
 
       <!-- Streaming Answer with Citations -->
       <div class="answer-section" *ngIf="answer()">
-        <div class="answer-text" [innerHTML]="answer()"></div>
+        <div class="answer-text" [innerHTML]="answer() | safeHtml"></div>
         <div class="typing-indicator" *ngIf="!answerComplete()">
           <span></span><span></span><span></span>
         </div>
@@ -155,6 +164,25 @@ type PropertyProgress = {
             </div>
             <div class="source-snippet">{{ src.snippet }}</div>
           </div>
+        </div>
+      </div>
+
+      <!-- PE Model Info Popup with inline styles -->
+      <div *ngIf="showPeModelInfo()" 
+           style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 999999;">
+        <div style="background: #ffffff; padding: 30px; border-radius: 16px; max-width: 600px; width: 90%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 80vh; overflow-y: auto;">
+          <button (click)="showPeModelInfo.set(false)" 
+                  style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 30px; height: 30px;">×</button>
+          <h3 style="margin-top: 0; font-size: 22px; color: #111827;">How the DealSense PE Model Works</h3>
+          <p style="color: #1f2937; line-height: 1.6;">The DealSense Proprietary Equity (PE) Model is a sophisticated algorithm designed to evaluate commercial real estate investment opportunities by analyzing a wide range of factors. It provides a comprehensive score from 1 to 100, where a higher score indicates a more favorable investment.</p>
+          <h4 style="font-size: 16px; color: #111827; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Key Factors Analyzed:</h4>
+          <ul style="padding-left: 20px; margin: 0;">
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Financial Metrics:</strong> Cap Rate, NOI, Asking Price, and potential for value-add opportunities.</li>
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Location Analysis:</strong> Demographics, market trends, and proximity to key infrastructure.</li>
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Asset Quality:</strong> Property type, age, condition, and tenant quality.</li>
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Risk Assessment:</strong> Lease terms, market volatility, and economic indicators.</li>
+          </ul>
+          <p style="color: #1f2937; line-height: 1.6; margin-top: 15px;">This model helps investors quickly identify and rank deals that align with their strategic goals, saving time and providing a data-driven foundation for due diligence.</p>
         </div>
       </div>
 
@@ -222,31 +250,55 @@ type PropertyProgress = {
     </details>
 
     <div class="deals" *ngIf="deals().length">
-      <h3>Deals</h3>
-      <div class="grid">
-        <div class="deal" *ngFor="let d of deals()">
-          <h4>{{ d.title || 'Listing' }}</h4>
-          <a [href]="d.url" target="_blank">{{ d.source }}</a>
-          <p class="addr">{{ d.address }}</p>
-          <div class="kv">
-            <div><strong>Asking:</strong> {{ d.askingPrice | currency:'USD' }}</div>
-            <div><strong>NOI:</strong> {{ d.noi | currency:'USD' }}</div>
-            <div><strong>Cap:</strong> {{ (d.capRate || d.underwrite?.capRate) | percent:'1.2-2' }}</div>
-            <div><strong>DSCR:</strong> {{ d.underwrite?.dscr | number:'1.2-2' }}</div>
+      <div class="deals-grid">
+        <div class="deal-card" *ngFor="let d of deals(); let i = index">
+          <div class="deal-image" *ngIf="d.screenshotBase64">
+            <img [src]="'data:image/png;base64,'+d.screenshotBase64" alt="Property image" />
+            <div class="deal-badge">{{ i + 1 }}</div>
           </div>
-          <img *ngIf="d.screenshotBase64" [src]="'data:image/png;base64,'+d.screenshotBase64" />
+          <div class="deal-content">
+            <h4 class="deal-title">{{ d.title || 'Investment Property' }}</h4>
+            <p class="deal-address">📍 {{ d.address || 'Address not available' }}</p>
+            
+            <div class="deal-metrics">
+              <div class="metric-item">
+                <span class="metric-label">Asking Price</span>
+                <span class="metric-value">{{ d.askingPrice | currency:'USD':'symbol':'1.0-0' }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="metric-label">NOI</span>
+                <span class="metric-value">{{ d.noi | currency:'USD':'symbol':'1.0-0' }}</span>
+              </div>
+              <div class="metric-item">
+                <span class="metric-label">Cap Rate</span>
+                <span class="metric-value">{{ (d.capRate || d.underwrite?.capRate) * 100 | number:'1.2-2' }}%</span>
+              </div>
+              <div class="metric-item">
+                <span class="metric-label">DSCR</span>
+                <span class="metric-value">{{ d.underwrite?.dscr | number:'1.2-2' }}</span>
+              </div>
+            </div>
+            
+            <div class="deal-footer">
+              <a [href]="d.url" target="_blank" class="deal-link">
+                <span class="link-icon">🔗</span>
+                <span>View Listing on {{ d.source }}</span>
+                <span class="link-arrow">→</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    :host { color:#e9eef5; background:#0b0f14; min-height:100vh; display:block; }
+    :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }
     .shell { max-width: 920px; margin: 0 auto; padding: 20px; }
-    .header { font-weight:700; font-size:20px; color:#c9d7ff; margin-bottom: 12px; }
+    .header { font-weight:700; font-size:20px; color:#1a2332; margin-bottom: 12px; }
     .ask { display:flex; gap:12px; margin:20px 0; }
-    input { flex:1; padding:12px 16px; background:#0f131a; border:1px solid #1d2735; border-radius:8px; color:#e9eef5; font-size:15px; }
-    input::placeholder { color: #9fb0c0; opacity: 1; }
-    input:focus { outline:none; border-color:#2f5cff; }
+    input { flex:1; padding:12px 16px; background:#ffffff; border:1px solid #d0d8e4; border-radius:8px; color:#1a2332; font-size:15px; }
+    input::placeholder { color: #8b9db5; opacity: 1; }
+    input:focus { outline:none; border-color:#2f5cff; box-shadow:0 0 0 3px rgba(47,92,255,0.1); }
     button { padding:12px 24px; background:#2f5cff; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:15px; }
     button:hover:not(:disabled) { background:#4169ff; }
     button:disabled { opacity:0.6; cursor:not-allowed; }
@@ -468,14 +520,18 @@ type PropertyProgress = {
     }
 
     .answer-section { 
-      background: #0f131a; 
-      border: 1px solid #1d2735; 
-      border-radius: 12px; 
-      padding: 20px; 
-      margin-bottom: 20px;
-      line-height: 1.7;
+      background: #ffffff; 
+      border: 1px solid #e2e8f0; 
+      border-radius: 16px; 
+      padding: 24px; 
+      margin-top: 24px; 
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
     }
-    .answer-text { color: #e9eef5; font-size: 15px; }
+    .answer-text { color: #374151; font-size: 15px; line-height:1.6; }
+    /* ensure card separators and clickable info icon */
+    .answer-text .deal-card { border-bottom: 1px solid #e2e8f0; }
+    .answer-text .deal-card:last-child { border-bottom: 0; }
+    .answer-text #pe-model-info-icon { cursor: pointer; }
     
     .typing-indicator { 
       display: flex; 
@@ -497,29 +553,29 @@ type PropertyProgress = {
     }
 
     .sources-section { 
-      background: #0f131a; 
-      border: 1px solid #1d2735; 
-      border-radius: 12px; 
-      padding: 20px; 
-      margin-bottom: 20px;
+      background: #f8fafc; 
+      border: 1px solid #e2e8f0; 
+      border-radius: 16px; 
+      padding: 24px; 
+      margin-bottom: 24px;
     }
     .sources-section h3 { 
-      color: #c9d7ff; 
-      font-size: 16px; 
+      color: #1f2937; 
+      font-size: 18px; 
       margin: 0 0 16px 0; 
-      font-weight: 600;
+      font-weight: 700;
     }
     .source-item { 
-      background: #0b0f14;
-      border: 1px solid #1d2735;
-      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
       padding: 16px;
       margin-bottom: 12px;
-      transition: border-color 0.2s, background 0.2s;
+      transition: all 0.2s;
     }
     .source-item:hover {
-      border-color: #2a3f5f;
-      background: #0e1319;
+      border-color: #cbd5e1;
+      background: #f1f5f9;
     }
     .source-item:last-child { 
       margin-bottom: 0;
@@ -531,67 +587,42 @@ type PropertyProgress = {
       margin-bottom: 12px;
     }
     .source-num { 
-      color: #5b7a9f; 
+      color: #475569; 
       font-size: 13px; 
       font-weight: 700;
-      background: #1a2332;
+      background: #eef2ff;
       padding: 4px 10px;
       border-radius: 6px;
       min-width: 35px;
       text-align: center;
     }
-    .source-title { 
-      color: #a8c5f0; 
+    .source-url a { 
+      color: #64748b; 
       text-decoration: none; 
-      font-size: 15px; 
-      font-weight: 600;
-      transition: color 0.2s;
-      flex: 1;
-    }
-    .source-title:hover { 
-      color: #c9d7ff; 
-      text-decoration: underline; 
-    }
-    .source-details {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .source-url {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: #0a0d12;
-      border-radius: 6px;
-      border: 1px solid #1a2332;
-    }
-    .url-icon {
-      font-size: 14px;
-      opacity: 0.6;
-    }
-    .url-link {
-      color: #7c8fa6;
-      font-size: 12px;
-      text-decoration: none;
-      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
       word-break: break-all;
       transition: color 0.2s;
+    }  flex: 1;
+    }
+    .source-title:hover { 
+      color: #1e40af; 
+      text-decoration: underline; 
+    }
+{{ ... }}
     }
     .url-link:hover {
       color: #a8c5f0;
     }
     .source-snippet { 
-      color: #8b9db5; 
+      color: #475569; 
       font-size: 14px; 
       line-height: 1.6;
       padding: 12px;
-      background: #0a0d12;
+      background: #ffffff;
       border-radius: 6px;
-      border-left: 3px solid #2a3f5f;
+      border-left: 3px solid #e2e8f0;
       white-space: pre-wrap;
-      word-wrap: break-word;
-      max-height: 200px;
+      max-height: 120px;
       overflow-y: auto;
     }
     .source-snippet::-webkit-scrollbar {
@@ -644,11 +675,11 @@ type PropertyProgress = {
 
     /* Timeline details (collapsible) */
     .timeline-details { 
-      margin-top: 20px; 
-      background: #0f131a; 
-      border: 1px solid #1d2735; 
-      border-radius: 12px; 
-      padding: 16px;
+      margin-top: 24px; 
+      background: #ffffff; 
+      border: 1px solid #e2e8f0; 
+      border-radius: 16px; 
+      padding: 20px;
     }
     .timeline-details summary { 
       cursor: pointer; 
@@ -664,7 +695,7 @@ type PropertyProgress = {
     }
     
     .timeline { display:flex; flex-direction:column; gap:12px; margin-top:12px; }
-    .card { background:#0b0f14; border:1px solid #1d2735; border-radius:8px; padding:10px; }
+    .card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; }
     .card a { 
       color: #a8c5f0; 
       text-decoration: none; 
@@ -675,7 +706,7 @@ type PropertyProgress = {
       text-decoration: underline; 
     }
     .status { display:flex; align-items:center; gap:8px; }
-    .chip { background:#1d2735; color:#c9d7ff; padding:4px 8px; border-radius:999px; font-size:12px; }
+    .chip { background:#eef2ff; color:#4338ca; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
     .chip.purple { background:#4a2c75; }
     .chip.blue { background:#0e3e9b; }
     .chip.green { background:#0e6b36; }
@@ -683,22 +714,246 @@ type PropertyProgress = {
     .frame img { width:100%; display:block; }
     .caption { font-size:12px; color:#9fb0c0; margin-top:6px; }
     
-    .deals { margin-top: 24px; }
-    .deals h3 { color: #c9d7ff; font-size: 18px; margin-bottom: 16px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
-    .deal { background:#0f131a; border:1px solid #1d2735; border-radius:12px; padding:12px; }
-    .deal a {
-      color: #a8c5f0;
+    /* Deals Section */
+    .deals { 
+      margin-top: 32px; 
+      padding-top: 24px;
+      border-top: 1px solid #1d2735;
+    }
+    .deals-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .deals-header h3 { 
+      color: #c9d7ff; 
+      font-size: 22px; 
+      margin: 0;
+      font-weight: 700;
+    }
+    .deal-count {
+      background: #1d2735;
+      color: #9fb0c0;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    
+    .deals-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); 
+      gap: 24px;
+    }
+    
+    .deal-card { 
+      background: #0f131a; 
+      border: 1px solid #1d2735; 
+      border-radius: 16px; 
+      overflow: hidden;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .deal-card:hover { 
+      border-color: #2f5cff;
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(47, 92, 255, 0.2);
+    }
+    
+    .deal-image {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      overflow: hidden;
+      background: #0b0f14;
+    }
+    .deal-image img { 
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    .deal-card:hover .deal-image img {
+      transform: scale(1.05);
+    }
+    .deal-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: #2f5cff;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .deal-content {
+      padding: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .deal-title { 
+      color: #e9eef5; 
+      font-size: 18px; 
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      line-height: 1.3;
+    }
+    
+    .deal-address { 
+      color: #9fb0c0; 
+      font-size: 14px; 
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .deal-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #0a0d12;
+      border-radius: 10px;
+      border: 1px solid #1a2332;
+    }
+    
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .metric-label {
+      font-size: 12px;
+      color: #7b8a9e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    
+    .metric-value {
+      font-size: 16px;
+      color: #e9eef5;
+      font-weight: 700;
+    }
+    
+    .deal-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid #1d2735;
+    }
+    
+    .deal-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #4a9eff;
       text-decoration: none;
-      transition: color 0.2s;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      padding: 10px 12px;
+      background: rgba(47, 92, 255, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(47, 92, 255, 0.2);
     }
-    .deal a:hover {
-      color: #c9d7ff;
-      text-decoration: underline;
+    .deal-link:hover {
+      color: #6eb3ff;
+      background: rgba(47, 92, 255, 0.2);
+      border-color: rgba(47, 92, 255, 0.4);
+      transform: translateX(2px);
     }
-    .kv { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin:8px 0; }
-    .addr { color:#99a9bd; font-size:13px; }
-    img { border-radius:8px; margin-top:8px; }
+    .link-icon {
+      font-size: 16px;
+    }
+    .link-arrow {
+      margin-left: auto;
+      font-size: 18px;
+      transition: transform 0.2s ease;
+    }
+    .deal-link:hover .link-arrow {
+      transform: translateX(4px);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .deals-grid {
+        grid-template-columns: 1fr;
+      }
+      .deals-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+    }
+
+    /* PE Model Info Popup - Using ::ng-deep to bypass view encapsulation */
+    :host ::ng-deep .pe-model-info-popup {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: rgba(0, 0, 0, 0.6) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 9999 !important;
+    }
+    :host ::ng-deep .popup-content {
+      background: #ffffff !important;
+      padding: 30px !important;
+      border-radius: 16px !important;
+      max-width: 600px !important;
+      width: 90% !important;
+      position: relative !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+      color: #1f2937 !important;
+    }
+    :host ::ng-deep .close-btn {
+      position: absolute !important;
+      top: 15px !important;
+      right: 15px !important;
+      background: none !important;
+      border: none !important;
+      font-size: 24px !important;
+      cursor: pointer !important;
+      color: #6b7280 !important;
+    }
+    :host ::ng-deep .popup-content h3 {
+      margin-top: 0 !important;
+      font-size: 22px !important;
+      color: #111827 !important;
+    }
+    :host ::ng-deep .popup-content h4 {
+      font-size: 16px !important;
+      color: #111827 !important;
+      margin-top: 20px !important;
+      margin-bottom: 10px !important;
+      border-bottom: 1px solid #e5e7eb !important;
+      padding-bottom: 5px !important;
+    }
+    :host ::ng-deep .popup-content ul {
+      padding-left: 20px !important;
+      margin: 0 !important;
+    }
+    :host ::ng-deep .popup-content ul li {
+      margin-bottom: 10px !important;
+      line-height: 1.6 !important;
+    }
   `]
 })
 export class App implements AfterViewChecked {
@@ -713,15 +968,47 @@ export class App implements AfterViewChecked {
   typingPlaceholder = signal<string>('Ask a question...');
   progressProperties = signal<PropertyProgress[]>([]);
   browserPreview = signal<{url: string; screenshot: string; label: string} | null>(null);
+  showPeModelInfo = signal(false);
   private typingInterval: any = null;
   private isTypingActive = true;
   private currentExampleIndex = 0;
+  private peModelInfoListenerAttached = false;
+  private charts = new Map<string, Chart>();
 
   private exampleQueries: string[] = [];
   private allPrompts: string[] = [];
 
-  constructor(private svc: AgentService) {
+  constructor(private svc: AgentService, private el: ElementRef, private cdr: ChangeDetectorRef, private zone: NgZone) {
     this.loadPrompts();
+    
+    // Global click listener for info icon - run inside Angular's zone
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target && target.id === 'pe-model-info-icon') {
+        console.log('Info icon clicked!');
+        
+        // Run inside Angular's zone to ensure change detection
+        this.zone.run(() => {
+          this.showPeModelInfo.set(true);
+          console.log('showPeModelInfo set to:', this.showPeModelInfo());
+          
+          // Force immediate change detection
+          this.cdr.detectChanges();
+          
+          // Verify popup visibility
+          setTimeout(() => {
+            const popup = document.querySelector('.pe-model-info-popup');
+            if (popup) {
+              console.log('Popup found in DOM');
+              const computed = window.getComputedStyle(popup as HTMLElement);
+              console.log('Display:', computed.display, 'Z-index:', computed.zIndex);
+            } else {
+              console.log('Popup NOT in DOM');
+            }
+          }, 0);
+        });
+      }
+    });
   }
 
   private async loadPrompts() {
@@ -754,6 +1041,91 @@ export class App implements AfterViewChecked {
   private getRandomPrompts(count: number): string[] {
     const shuffled = [...this.allPrompts].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, count);
+  }
+
+  ngAfterViewChecked() {
+    // Debug: Check if icon exists
+    const icon = document.getElementById('pe-model-info-icon');
+    if (icon) {
+      console.log('Info icon found in DOM:', icon);
+      // Ensure it's clickable
+      icon.style.cursor = 'pointer';
+      icon.style.userSelect = 'none';
+    } else {
+      console.log('Info icon NOT found in DOM');
+    }
+
+    // Add listeners for deal factor buttons
+    this.el.nativeElement.querySelectorAll('.show-breakdown').forEach((button: HTMLElement) => {
+      if (!button.dataset['listenerAttached']) {
+        button.addEventListener('click', (event: MouseEvent) => this.toggleFactorChart(event));
+        button.dataset['listenerAttached'] = 'true';
+      }
+    });
+    
+    // Initialize chart buttons after DOM updates
+    this.initializeChartButtons();
+    this.initializePortfolioCharts();
+  }
+
+  toggleFactorChart(event: MouseEvent) {
+    const button = event.target as HTMLElement;
+    const container = button.closest('.deal-card');
+    if (!container) return;
+
+    const cardId = (container as HTMLElement).dataset['cardId']!;
+    const chartContainer = this.el.nativeElement.querySelector(`#chart-container-${cardId}`);
+    
+    if (chartContainer) {
+      const isVisible = chartContainer.style.display !== 'none';
+      chartContainer.style.display = isVisible ? 'none' : 'block';
+      button.textContent = isVisible ? '📊 Deal Factors' : 'Hide Factors';
+
+      if (!isVisible && !this.charts.has(cardId)) {
+        const factors = (container as HTMLElement).dataset['factors'];
+        if (factors) {
+          this.createFactorChart(cardId, JSON.parse(factors));
+        }
+      }
+    }
+  }
+
+  createFactorChart(cardId: string, factors: Record<string, number>) {
+    const chartId = `factor-chart-${cardId}`;
+    const existingChart = this.charts.get(chartId);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+
+    const canvas = this.el.nativeElement.querySelector(`#${chartId}`) as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(factors),
+        datasets: [{
+          label: 'Factor Score',
+          data: Object.values(factors),
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        scales: {
+          x: { beginAtZero: true, max: 100 }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+    this.charts.set(chartId, chart);
   }
 
   ngOnDestroy() {
@@ -907,11 +1279,6 @@ export class App implements AfterViewChecked {
     }
   }
 
-  ngAfterViewChecked() {
-    // Initialize chart buttons after DOM updates
-    this.initializeChartButtons();
-    this.initializePortfolioCharts();
-  }
 
   private chartInstances = new Map<string, Chart>();
   private portfolioChartsInitialized = false;
@@ -1009,120 +1376,16 @@ export class App implements AfterViewChecked {
         btn.addEventListener('click', (e) => {
           const cardId = (e.target as HTMLElement).getAttribute('data-card-id');
           if (cardId) {
-            this.toggleFactorChart(cardId);
+            // Create a fake MouseEvent to pass to toggleFactorChart
+            const fakeEvent = { target: e.target } as MouseEvent;
+            this.toggleFactorChart(fakeEvent);
           }
         });
       }
     });
   }
 
-  private toggleFactorChart(cardId: string) {
-    const container = document.getElementById(`chart-container-${cardId}`);
-    const canvas = document.getElementById(`factor-chart-${cardId}`) as HTMLCanvasElement;
-    const dealCard = document.querySelector(`.deal-card[data-score]`) as HTMLElement;
-    
-    if (!container || !canvas) return;
 
-    // Toggle visibility
-    if (container.style.display === 'none') {
-      container.style.display = 'block';
-      
-      // Create chart if it doesn't exist
-      if (!this.chartInstances.has(cardId)) {
-        const factorsData = dealCard?.getAttribute('data-factors');
-        if (factorsData) {
-          const factors = JSON.parse(factorsData);
-          this.createFactorChart(cardId, canvas, factors);
-        }
-      }
-    } else {
-      container.style.display = 'none';
-    }
-  }
-
-  private createFactorChart(cardId: string, canvas: HTMLCanvasElement, factors: any) {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Tenant & Lease', 'Yield Spread', 'Market Quality', 'Asset Fit', 'Deal Economics', 'Execution Risk'],
-        datasets: [{
-          label: 'Factor Scores',
-          data: [
-            factors.tenantLease || 0,
-            factors.yieldSpread || 0,
-            factors.marketQuality || 0,
-            factors.assetFit || 0,
-            factors.dealEconomics || 0,
-            factors.executionRisk || 0
-          ],
-          backgroundColor: [
-            '#5fc88f',
-            '#6b9aeb',
-            '#8b7ceb',
-            '#eb8b5f',
-            '#ebcf5f',
-            '#8b9db5'
-          ],
-          borderColor: [
-            '#5fc88f',
-            '#6b9aeb',
-            '#8b7ceb',
-            '#eb8b5f',
-            '#ebcf5f',
-            '#8b9db5'
-          ],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: {
-            display: false
-          },
-          title: {
-            display: true,
-            text: 'PE Score Factor Breakdown',
-            color: '#c9d7ff',
-            font: {
-              size: 14,
-              weight: 'bold'
-            }
-          }
-        },
-        scales: {
-          x: {
-            beginAtZero: true,
-            max: 35,
-            ticks: {
-              color: '#8b9db5'
-            },
-            grid: {
-              color: '#1a1f2e'
-            }
-          },
-          y: {
-            ticks: {
-              color: '#c9d7ff',
-              font: {
-                size: 11
-              }
-            },
-            grid: {
-              display: false
-            }
-          }
-        }
-      }
-    });
-
-    this.chartInstances.set(cardId, chart);
-  }
 
   onEvent(ev: AgentEvent) {
     const push = (c: Card) => this.cards.update(arr => [...arr, c]);

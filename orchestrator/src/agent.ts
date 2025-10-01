@@ -397,12 +397,12 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     emit(ctx, "answer_chunk", { 
       text: `<div id="portfolio-charts" style="margin:20px 0;">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-          <div style="background:#0b0f14; padding:16px; border-radius:8px;">
-            <h3 style="color:#c9d7ff; font-size:14px; margin:0 0 12px 0;">Score Distribution</h3>
+          <div style="background:#f8f9fa; padding:16px; border-radius:8px; border:1px solid #e2e8f0;">
+            <h3 style="color:#1a2332; font-size:14px; margin:0 0 12px 0; font-weight:600;">Score Distribution</h3>
             <canvas id="score-distribution-chart" width="300" height="200"></canvas>
           </div>
-          <div style="background:#0b0f14; padding:16px; border-radius:8px;">
-            <h3 style="color:#c9d7ff; font-size:14px; margin:0 0 12px 0;">Geographic Distribution</h3>
+          <div style="background:#f8f9fa; padding:16px; border-radius:8px; border:1px solid #e2e8f0;">
+            <h3 style="color:#1a2332; font-size:14px; margin:0 0 12px 0; font-weight:600;">Geographic Distribution</h3>
             <canvas id="geo-distribution-chart" width="300" height="200"></canvas>
           </div>
         </div>

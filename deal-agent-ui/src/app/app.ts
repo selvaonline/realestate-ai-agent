@@ -194,9 +194,12 @@ export class SafeHtmlPipe implements PipeTransform {
       </div>
     </div>
 
-    <!-- Legacy Timeline (expanded by default) -->
-    <details class="timeline-details" *ngIf="cards().length" open>
-      <summary>View detailed timeline</summary>
+    <!-- Legacy Timeline (collapsed by default) -->
+    <details class="timeline-details" *ngIf="cards().length">
+      <summary class="timeline-summary">
+        <span class="timeline-icon">⚙️</span>
+        View detailed timeline
+      </summary>
       <div class="timeline">
         <div class="card" *ngFor="let c of cards()">
           <ng-container [ngSwitch]="c.kind">
@@ -216,7 +219,7 @@ export class SafeHtmlPipe implements PipeTransform {
             </div>
 
             <div *ngSwitchCase="'started'" class="status">
-              <span class="chip">Setting up my desktop</span>
+              <span class="chip">🚀 Initializing search</span>
             </div>
 
             <div *ngSwitchCase="'status'" class="status">
@@ -331,6 +334,40 @@ export class SafeHtmlPipe implements PipeTransform {
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-5px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Timeline details styling */
+    .timeline-details {
+      margin-top: 24px;
+      background: #f8f9fa;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .timeline-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #5b7a9f;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 12px;
+      background: #ffffff;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .timeline-summary:hover {
+      background: #f1f5f9;
+      color: #2f5cff;
+    }
+    .timeline-icon {
+      font-size: 16px;
+    }
+    .timeline-details[open] .timeline-summary {
+      margin-bottom: 16px;
+      background: #2f5cff;
+      color: white;
     }
 
     /* Agent Navigation Steps (ChatGPT-style) */
@@ -902,96 +939,7 @@ export class SafeHtmlPipe implements PipeTransform {
     }
     
     /* Responsive adjustments */
-    /* Mobile Responsive Styles */
     @media (max-width: 768px) {
-      /* Container adjustments */
-      :host { 
-        padding: 12px;
-      }
-      
-      /* Search bar mobile */
-      form {
-        flex-direction: column;
-        gap: 12px;
-      }
-      input {
-        width: 100%;
-        font-size: 16px; /* Prevents zoom on iOS */
-      }
-      button {
-        width: 100%;
-        padding: 14px;
-        font-size: 16px;
-      }
-      
-      /* Title mobile */
-      h1 {
-        font-size: 24px;
-        text-align: center;
-      }
-      
-      /* Thinking steps mobile */
-      .thinking-steps {
-        padding: 8px;
-        margin-bottom: 12px;
-      }
-      .thinking-content {
-        font-size: 13px;
-      }
-      
-      /* Answer section mobile */
-      .answer-section {
-        padding: 12px;
-        border-radius: 12px;
-      }
-      .answer-text {
-        font-size: 14px;
-        line-height: 1.6;
-      }
-      
-      /* Deal cards mobile - complete redesign */
-      .answer-text .deal-card {
-        padding: 12px !important;
-      }
-      .answer-text .deal-card > div {
-        flex-direction: column !important;
-        gap: 12px !important;
-      }
-      .answer-text .deal-card button {
-        width: 100% !important;
-        padding: 10px 16px !important;
-        font-size: 14px !important;
-      }
-      
-      /* Sources section mobile */
-      .sources-section {
-        padding: 12px;
-        margin-top: 16px;
-      }
-      .source-item {
-        padding: 10px;
-      }
-      .source-title {
-        font-size: 14px;
-      }
-      .source-url a {
-        font-size: 12px;
-      }
-      .source-snippet {
-        font-size: 13px;
-        padding: 8px;
-      }
-      
-      /* Portfolio Analytics mobile */
-      .answer-text h2 {
-        font-size: 20px !important;
-      }
-      .answer-text canvas {
-        max-width: 100% !important;
-        height: auto !important;
-      }
-      
-      /* Grid layouts */
       .deals-grid {
         grid-template-columns: 1fr;
       }
@@ -999,54 +947,6 @@ export class SafeHtmlPipe implements PipeTransform {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
-      }
-      
-      /* Property preview */
-      .browser-preview-section {
-        padding: 8px;
-      }
-      .preview-header {
-        font-size: 12px;
-      }
-      
-      /* Navigation steps */
-      .agent-navigation {
-        padding: 12px;
-        font-size: 13px;
-      }
-      
-      /* Share button */
-      .share-section {
-        padding: 12px;
-      }
-      .share-btn {
-        width: 100%;
-        padding: 12px;
-      }
-    }
-    
-    /* Smaller mobile devices */
-    @media (max-width: 480px) {
-      :host {
-        padding: 8px;
-      }
-      
-      h1 {
-        font-size: 20px;
-      }
-      
-      .thinking-steps {
-        padding: 6px;
-      }
-      
-      /* Even more compact deal cards */
-      .answer-text .deal-card {
-        padding: 10px !important;
-      }
-      
-      /* Hide less important elements on very small screens */
-      .typing-dots {
-        display: none;
       }
     }
 
@@ -1215,7 +1115,25 @@ export class App implements AfterViewChecked {
     
     // Initialize chart buttons after DOM updates
     this.initializeChartButtons();
+    
+    // Try to initialize portfolio charts
     this.initializePortfolioCharts();
+    
+    // Set up observer for dynamically added chart elements
+    if (!this.chartObserver) {
+      this.chartObserver = new MutationObserver(() => {
+        this.initializePortfolioCharts();
+      });
+      
+      // Observe the answer section for changes
+      const answerSection = this.el.nativeElement.querySelector('.answer-text');
+      if (answerSection) {
+        this.chartObserver.observe(answerSection, {
+          childList: true,
+          subtree: true
+        });
+      }
+    }
   }
 
   toggleFactorChart(event: MouseEvent) {
@@ -1280,6 +1198,12 @@ export class App implements AfterViewChecked {
 
   ngOnDestroy() {
     this.stopTyping();
+    if (this.chartObserver) {
+      this.chartObserver.disconnect();
+    }
+    // Clean up charts
+    this.chartInstances.forEach(chart => chart.destroy());
+    this.charts.forEach(chart => chart.destroy());
   }
 
   private startTypingAnimation() {
@@ -1409,7 +1333,7 @@ export class App implements AfterViewChecked {
     this.busy.set(true);
     try {
       const runId = await this.svc.startRun(query);
-      this.cards.update(c => [...c, { kind:'started', label:'Setting up my desktop', t:Date.now() }]);
+      this.cards.update(c => [...c, { kind:'started', label:'🚀 Initializing search', t:Date.now() }]);
       const stop = this.svc.openEvents(runId, (ev: AgentEvent) => this.onEvent(ev));
       const poll = setInterval(async () => {
         const finished = this.cards().some(x => x.kind === 'finished');
@@ -1432,17 +1356,29 @@ export class App implements AfterViewChecked {
 
   private chartInstances = new Map<string, Chart>();
   private portfolioChartsInitialized = false;
+  private chartObserver: MutationObserver | null = null;
 
   private initializePortfolioCharts() {
-    // Check if portfolio data is available and charts haven't been initialized yet
-    const portfolioData = (window as any).portfolioData;
-    if (!portfolioData || this.portfolioChartsInitialized) return;
-
+    // Skip if already initialized
+    if (this.portfolioChartsInitialized) return;
+    
+    // Check if canvases exist
     const scoreCanvas = document.getElementById('score-distribution-chart') as HTMLCanvasElement;
     const geoCanvas = document.getElementById('geo-distribution-chart') as HTMLCanvasElement;
-
-    if (!scoreCanvas || !geoCanvas) return;
-
+    
+    if (!scoreCanvas || !geoCanvas) {
+      console.log('Portfolio chart canvases not found yet');
+      return;
+    }
+    
+    // Check if portfolio data is available
+    const portfolioData = (window as any).portfolioData;
+    if (!portfolioData) {
+      console.log('Portfolio data not available yet');
+      return;
+    }
+    
+    console.log('Initializing portfolio charts with data:', portfolioData);
     this.portfolioChartsInitialized = true;
 
     // Score Distribution Doughnut Chart
@@ -1471,7 +1407,7 @@ export class App implements AfterViewChecked {
               display: true,
               position: 'bottom',
               labels: {
-                color: '#c9d7ff',
+                color: '#1a2332',
                 font: { size: 11 },
                 padding: 10
               }
@@ -1507,7 +1443,7 @@ export class App implements AfterViewChecked {
               display: true,
               position: 'bottom',
               labels: {
-                color: '#c9d7ff',
+                color: '#1a2332',
                 font: { size: 11 },
                 padding: 10
               }
@@ -1592,6 +1528,8 @@ export class App implements AfterViewChecked {
         break;
       case 'answer_chunk':
         this.answer.update(curr => curr + ev['text']);
+        // Try to initialize charts after adding content
+        setTimeout(() => this.initializePortfolioCharts(), 100);
         break;
       case 'answer_complete':
         this.answerComplete.set(true);
@@ -1604,7 +1542,7 @@ export class App implements AfterViewChecked {
       case 'fallback': push({ kind:'fallback', label: ev['label'], t:ev.t }); break;
       case 'shot':     push({ kind:'shot', label: ev['label'], b64: ev['b64'], t:ev.t }); break;
       case 'extracted':push({ kind:'extracted', summary: ev['summary'], t:ev.t }); break;
-      case 'run_started':  push({ kind:'started', label:'Setting up my desktop', t:ev.t }); break;
+      case 'run_started':  push({ kind:'started', label:'🚀 Initializing search', t:ev.t }); break;
       case 'run_finished': push({ kind:'finished', label:'Done', t:ev.t }); break;
     }
   }

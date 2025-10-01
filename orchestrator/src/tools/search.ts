@@ -58,11 +58,8 @@ export const webSearch = new DynamicTool({
 
     const userQuery = typeof args === "string" ? (args as string) : (args as any).query;
 
-    // Bias the query to surface *detail* pages on CREXI, but don't hard lock it.
-    // We’ll still filter post-search using isDetailUrl().
-    const crexiBias =
-      ' (site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/)';
-    const q = preferCrexi ? `${userQuery}${crexiBias}`  : userQuery;
+    // Use query as-is; agent already adds site:crexi.com
+    const q = userQuery;
 
     const controller = new AbortController();
     const to = setTimeout(() => controller.abort(), timeoutMs);
@@ -78,7 +75,7 @@ export const webSearch = new DynamicTool({
           q,
           gl: region,       // country bias
           hl: lang,         // language
-          num: Math.min(20, Math.max(10, (maxResults || 10) * 2)), // overfetch a bit; we’ll filter
+          num: Math.min(20, Math.max(10, (maxResults || 10) * 2)), // overfetch a bit; we'll filter
           autocorrect: true,
           page: 1,
         }),

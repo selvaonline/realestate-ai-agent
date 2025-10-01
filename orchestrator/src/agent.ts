@@ -4,33 +4,26 @@ import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
 import type { Deal } from "./lib/types.js";
 
-/** ✅ Fallback URLs - CREXI detail pages only (avoid tenants/categories) */
-const DEMO_FALLBACK_URLS = [
-  // Example of a verified detail page (keep small, can be empty in prod)
-  "https://www.crexi.com/properties/2164390/texas-7-eleven",
-];
-
-/** Detail-page patterns - CREXI true-detail only (avoid categories/tenants) */
-const CREXI_DETAIL_PATTERNS = [
-  /https?:\/\/(?:www\.)?crexi\.com\/properties\/[0-9]+\/[A-Za-z0-9\-]+/i,
-  /https?:\/\/(?:www\.)?crexi\.com\/property\/[0-9]+\/[A-Za-z0-9\-]+/i,
-  /https?:\/\/(?:www\.)?crexi\.com\/(?:sale|lease)\/properties\/[^\/?#]+\/[^\/?#]+/i,
-];
-const NON_DETAIL_CREXI = /https?:\/\/(?:www\.)?crexi\.com\/(?:properties\/[A-Z]{2}(?:\/|$)|properties\/[A-Za-z]+(?:\/|$)|properties\?|tenants|categories|search|results)(?:[\/?#]|$)/i;
-const OTHER_DETAIL_PATTERNS = [
-  /loopnet\.com\/Listing\//i,
-  /propertyshark\.com\/.*\/Property\//i,
-  /realnex\.com\/listing\//i,
-  /realtor\.com\/(commercial|realestateandhomes-detail)\//i,
-];
+// ---- Shared URL patterns (strict) ----
+const CREXI_DETAIL_RX =
+  /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i;
+const CREXI_NON_DETAIL_DISALLOWED =
+  /\/(?:properties|for-sale|for-lease|tenants|categories|search|results)(?:[/?#]|$)/i;
 const isDetailUrl = (u: string) => {
-  if (/crexi\.com/i.test(u)) {
-    return CREXI_DETAIL_PATTERNS.some((rx) => rx.test(u)) && !NON_DETAIL_CREXI.test(u);
-  }
-  return OTHER_DETAIL_PATTERNS.some((rx) => rx.test(u));
+  if (/crexi\.com/i.test(u)) return CREXI_DETAIL_RX.test(u) && !CREXI_NON_DETAIL_DISALLOWED.test(u);
+  return /loopnet\.com\/Listing\//i.test(u)
+      || /propertyshark\.com\/.*\/Property\//i.test(u)
+      || /realnex\.com\/listing\//i.test(u)
+      || /realtor\.com\/(commercial|realestateandhomes-detail)\//i.test(u);
 };
 
-
+/** ✅ Fallback URLs - CREXI detail pages only (avoid tenants/categories) */
+const DEMO_FALLBACK_URLS: string[] = [
+  // Use only *detail* pages here. (Examples commented out)
+  // "https://www.crexi.com/property/<slug>/<id>",
+  // "https://www.crexi.com/sale/<slug>/<id>",
+  // "https://www.crexi.com/lease/<slug>/<id>",
+];
 
 // simple ctx for SSE
 type Ctx = { runId?: string; pub?: (kind: string, payload?: Record<string, any>) => void };
@@ -38,7 +31,6 @@ const nop = () => {};
 const emit = (ctx?: Ctx, kind?: string, payload?: Record<string, any>) =>
   (ctx?.pub || nop)(kind!, payload || {});
 
-// Local timeout wrapper for tool calls
 async function withTimeoutLocal<T>(p: Promise<T>, ms: number, tag: string): Promise<T> {
   return Promise.race([
     p,
@@ -46,46 +38,21 @@ async function withTimeoutLocal<T>(p: Promise<T>, ms: number, tag: string): Prom
   ]) as Promise<T>;
 }
 
-// Cancellable status ticker for per-URL progress
-function startProgressTicker(ctx: Ctx | undefined, url: string) {
-  const start = Date.now();
-  const labels = [
-    "Loading page...",
-    "Negotiating security...",
-    "Settling SPA...",
-    "Extracting property data...",
-  ];
-  let i = 0;
-  const id = setInterval(() => {
-    const label = labels[i % labels.length];
-    emit(ctx, "status", { label: `${label} (${((Date.now() - start) / 1000).toFixed(0)}s)` });
-    i++;
-  }, 2500);
-  return () => clearInterval(id);
-}
-
 async function tryExtractOnce(url: string) {
-  console.time(`[agent] browse+extract ${url}`);
+  const label = `[agent] browse+extract ${Date.now()%100000}`;
+  console.time(label);
   const extJson = await withTimeoutLocal(
     browseAndExtract.invoke(JSON.stringify({ url })),
     130_000,
     "browseAndExtract"
   );
-  console.timeEnd(`[agent] browse+extract ${url}`);
-
+  console.timeEnd(label);
   const ext = JSON.parse(String(extJson));
-
-  console.time(`[agent] underwrite ${url}`);
   const uwJson = await withTimeoutLocal(
     quickUnderwrite.invoke(JSON.stringify({ noi: ext.noi, price: ext.askingPrice })),
     5_000,
     "quickUnderwrite"
-  ).catch((e) => {
-    console.warn("[agent] quickUnderwrite failed:", e?.message);
-    return JSON.stringify({ capRate: ext.capRate ?? null, dscr: null, loanAmt: null, debtSvc: null });
-  });
-  console.timeEnd(`[agent] underwrite ${url}`);
-
+  ).catch(() => JSON.stringify({ capRate: ext.capRate ?? null, dscr: null, loanAmt: null, debtSvc: null }));
   const uw = JSON.parse(String(uwJson));
   return { ext, uw };
 }
@@ -153,10 +120,12 @@ export async function runAgent(goal: string, ctx?: Ctx) {
 
   // ── Search: detail-first → broader → general ───────────────────────────────────
   // Strategy 1: Focused search - Crexi preferred but not strict site: restriction
-  const detailQuery = `${q} crexi.com commercial real estate for sale`;
+  const detailQuery = `${q} site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/`;
   
   console.log("[agent] Search strategy 1:", detailQuery);
-  const detail = (JSON.parse(String(await webSearch.invoke(detailQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
+  const detail = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
+    query: detailQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
+  })))) as Array<{ title: string; url: string; snippet: string }>) || [];
   console.log(`[agent] Strategy 1 returned ${detail.length} results`);
   
   // DEBUG: Log all URLs returned
@@ -181,9 +150,11 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 2: Broader Crexi search with tenants
   if (candidates.length < 3) {
     emit(ctx, "thinking", { text: "Expanding search criteria..." });
-    const broaderQuery = `${q} crexi properties tenants commercial`;
+    const broaderQuery = `${q} site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/`;
     console.log("[agent] Search strategy 2:", broaderQuery);
-    const broader = (JSON.parse(String(await webSearch.invoke(broaderQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
+    const broader = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
+      query: broaderQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
+    })))) as Array<{ title: string; url: string; snippet: string }>) || [];
     console.log(`[agent] Strategy 2 returned ${broader.length} results`);
     const broaderCrexi = broader.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
     const broaderOther = broader.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
@@ -207,9 +178,11 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 3: General search - cast wider net but filter out LoopNet
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Trying broader search..." });
-    const generalQuery = `${q} commercial real estate for sale`;
+    const generalQuery = `${q} site:crexi.com (inurl:/property/ OR inurl:/sale/ OR inurl:/lease/) -inurl:/properties/ -inurl:/tenants/ -inurl:/categories/ -inurl:/search/`;
     console.log("[agent] Search strategy 3:", generalQuery);
-    const general = (JSON.parse(String(await webSearch.invoke(generalQuery))) as Array<{ title: string; url: string; snippet: string }>) || [];
+    const general = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
+      query: generalQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
+    })))) as Array<{ title: string; url: string; snippet: string }>) || [];
     console.log(`[agent] Strategy 3 returned ${general.length} results`);
     const generalCrexi = general.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
     const generalOther = general.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
@@ -260,10 +233,18 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     tried.push(url);
     console.log(`[agent] Attempting to extract from: ${url}`);
     emit(ctx, "nav", { url, label: "Opening page..." });
-    const PER_URL_CAP_MS = 140_000;
-    const stopTicker = startProgressTicker(ctx, url);
+    
+    const stopTicker = (() => {
+      const start = Date.now();
+      const labels = ["Loading page...","Negotiating security...","Settling SPA...","Extracting property data..."];
+      let i = 0;
+      const id = setInterval(() =>
+        emit(ctx, "status", { label: `${labels[i++ % labels.length]} (${((Date.now()-start)/1000|0)}s)` }), 2500);
+      return () => clearInterval(id);
+    })();
+    
     try {
-      const { ext, uw } = await withTimeoutLocal(tryExtractOnce(url), PER_URL_CAP_MS, "perUrlAttempt");
+      const { ext, uw } = await withTimeoutLocal(tryExtractOnce(url), 140_000, "perUrlAttempt");
       const blocked = ext?.blocked || /access denied/i.test(ext?.title || "");
       const meaningful =
         !!ext?.title || !!ext?.address || ext?.askingPrice != null || ext?.noi != null || ext?.capRate != null;
@@ -323,8 +304,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       break; // stop after first success
     } catch (e) {
       console.error("[agent] extract failed:", url, e);
-    } finally {
-      try { stopTicker(); } catch {}
+      stopTicker();
     }
   }
   

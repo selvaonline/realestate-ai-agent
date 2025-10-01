@@ -2,6 +2,41 @@
 import { DynamicTool } from "@langchain/core/tools";
 import { chromium, webkit, BrowserContext, Page } from "playwright";
 
+// ---- CREXI URL patterns (strict) ----
+const CREXI_DETAIL_RX =
+  /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i;
+const CREXI_NON_DETAIL_DISALLOWED =
+  /\/(?:properties|for-sale|for-lease|tenants|categories|search|results)(?:[/?#]|$)/i;
+
+function isCrexiDetailUrl(u: string) {
+  try {
+    return /crexi\.com/i.test(u) && CREXI_DETAIL_RX.test(u) && !CREXI_NON_DETAIL_DISALLOWED.test(u);
+  } catch { return false; }
+}
+
+async function waitForVisibleAny(page: Page, selectors: string[], timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    for (const sel of selectors) {
+      try {
+        const ok = await page.locator(sel).first().isVisible({ timeout: 150 });
+        if (ok) return sel;
+      } catch {}
+    }
+    if (Date.now() > deadline) break;
+    await page.waitForTimeout(50);
+  }
+  throw new Error(`waitForVisibleAny timeout after ${timeoutMs}ms`);
+}
+
+async function waitForCrexiDetailReady(page: Page, timeoutMs = 6000) {
+  const winner = await Promise.race([
+    (async () => { const end = Date.now() + timeoutMs; while (Date.now() < end) { if (isCrexiDetailUrl(page.url())) return "url-pattern"; await page.waitForTimeout(50);} throw new Error("detail-url timeout"); })(),
+    (async () => { const sel = await waitForVisibleAny(page, ["h1","[itemprop='price']","address,[itemprop='address']","[data-testid*='card']","[class*='card']","a[href*='/property/']"], timeoutMs); return `selector:${sel}`; })(),
+  ]);
+  return winner;
+}
+
 // Timeout wrapper for extraction
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMsg: string): Promise<T> {
   return Promise.race([
@@ -81,8 +116,7 @@ type Extracted = {
 };
 
 function looksDetail(u: string) {
-  return /(loopnet\.com\/Listing\/|crexi\.com\/property\/|crexi\.com\/sale\/properties\/[^/?#]+\/[^/?#]+|crexi\.com\/lease\/properties\/[^/?#]+\/[^/?#]+)/i
-    .test(u);
+  return isCrexiDetailUrl(u) || /(loopnet\.com\/Listing\/)/i.test(u);
 }
 
 async function runOnce(
@@ -92,26 +126,42 @@ async function runOnce(
 ): Promise<Extracted> {
   const { ctx, page, close } = await launchContext(mode);
   try {
-    // Warm-up pass for crexi to reduce SPA bounce / soft redirect
-    if (/crexi\.com/i.test(url)) {
-      await page.goto("https://www.crexi.com", { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
-      await page.waitForTimeout(400).catch(() => {});
-    }
+    // (Optional) very small warm-up; bounded
+    if (/crexi\.com/i.test(url)) { try { await page.goto("https://www.crexi.com", { waitUntil: "commit", timeout: 8000 }); await page.waitForTimeout(200);} catch {} }
 
     console.log("[runOnce] ✅ Page loaded, checking if need to drill...");
     await gotoWithGrace(page, url);
     let finalUrl = page.url();
     let autoDrilled = false;
 
+    // Bounded SPA readiness race before drilling
+    if (/crexi\.com/i.test(finalUrl)) {
+      try {
+        const winner = await waitForCrexiDetailReady(page, 6000);
+        console.log(`[browse] SPA readiness winner: ${winner}`);
+      } catch (e: any) {
+        console.log("[browse] SPA readiness timed out:", e?.message);
+      }
+    }
+
     // If bounced to home/category, SPA-settle + auto-drill to a real detail link
     if (!looksDetail(finalUrl)) {
       console.log("[runOnce] 🔄 Not a detail page, looking for drill link...");
-      try { await page.waitForTimeout(1200); } catch {}
-      const detailHref = await findDetailHref(page);
-      if (detailHref) {
-        autoDrilled = true;
-        await gotoWithGrace(page, detailHref);
-        finalUrl = page.url();
+      try {
+        await Promise.race([
+          (async () => {
+            await page.waitForTimeout(700);
+            const detailHref = await withTimeout(findDetailHref(page), 6000, "findDetailHref timeout 6s").catch(() => null);
+            if (detailHref) {
+              autoDrilled = true;
+              await withTimeout(gotoWithGrace(page, detailHref), 12000, "drill goto timeout 12s");
+              finalUrl = page.url();
+            }
+          })(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("drill phase timeout 8s")), 8000)),
+        ]);
+      } catch (e: any) {
+        console.log("[runOnce] ⚠️ Drill step timed out:", e?.message);
       }
     }
 
@@ -215,12 +265,31 @@ async function runOnce(
 }
 
 async function findDetailHref(page: Page) {
-  return page.evaluate(() => {
-    const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"));
-    const rx = /(loopnet\.com\/Listing\/|crexi\.com\/property\/|crexi\.com\/sale\/properties\/[^/?#]+\/[^/?#]+|crexi\.com\/lease\/properties\/[^/?#]+\/[^/?#]+)/i;
-    const a = anchors.find(x => rx.test(x.href));
-    return a?.href || null;
-  });
+  // Prefer anchors within cards first, then scan all; play nice with tight timeouts
+  try {
+    const href = await page.evaluate(() => {
+      const DETAIL = /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i;
+      const pools = [
+        document.querySelectorAll("[data-testid*='card'] a[href]"),
+        document.querySelectorAll("[class*='card'] a[href]"),
+      ];
+      for (const pool of pools) {
+        for (const a of Array.from(pool) as HTMLAnchorElement[]) {
+          if (DETAIL.test(a.href)) return a.href;
+        }
+      }
+      return null;
+    });
+    if (href) return href;
+  } catch {}
+  try {
+    const href = await page.evaluate(() => {
+      const DETAIL = /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i;
+      for (const a of Array.from(document.querySelectorAll("a[href]")) as HTMLAnchorElement[]) if (DETAIL.test(a.href)) return a.href;
+      return null;
+    });
+    return href;
+  } catch { return null; }
 }
 
 /** Headed-mode toggles via env:
@@ -247,7 +316,8 @@ async function launchContext(mode: "mobile" | "desktop") {
   }
 
   if (useWebkit) {
-    const browser = await webkit.launch({ headless: !headed });
+    const proxy = useBrightData ? { server: `http://${brightDataHost}`, username: brightDataUser!, password: brightDataPass! } : undefined;
+    const browser = await webkit.launch({ headless: !headed, proxy });
     const contextOptions: any = {
       viewport: mode === "mobile" ? { width: 390, height: 844 } : { width: 1366, height: 900 },
       userAgent: mode === "mobile"
@@ -256,30 +326,23 @@ async function launchContext(mode: "mobile" | "desktop") {
       extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
       ignoreHTTPSErrors: true,
     };
-    
-    // Add Bright Data proxy if configured
-    if (useBrightData) {
-      contextOptions.proxy = {
-        server: `http://${brightDataHost}`,
-        username: brightDataUser,
-        password: brightDataPass,
-      };
-    }
-    
     const ctx = await browser.newContext(contextOptions);
     const page = await ctx.newPage();
+    page.setDefaultTimeout(4000);
+    page.setDefaultNavigationTimeout(20000);
     return { ctx, page, close: () => browser.close() };
   }
 
   if (useChromium) {
+    const proxy = useBrightData ? { server: `http://${brightDataHost}`, username: brightDataUser!, password: brightDataPass! } : undefined;
     const browser = await chromium.launch({
       headless: !headed,
       devtools,
+      proxy,
       args: [
         "--disable-blink-features=AutomationControlled",
         "--disable-features=IsolateOrigins,site-per-process",
         "--disable-site-isolation-trials",
-        "--disable-web-security",
         headed ? "--start-maximized" : ""
       ].filter(Boolean),
     });
@@ -297,15 +360,6 @@ async function launchContext(mode: "mobile" | "desktop") {
       },
     };
     
-    // Add Bright Data proxy if configured
-    if (useBrightData) {
-      contextOptions.proxy = {
-        server: `http://${brightDataHost}`,
-        username: brightDataUser,
-        password: brightDataPass,
-      };
-    }
-    
     const ctx = await browser.newContext(contextOptions);
     
     await ctx.addInitScript(() => {
@@ -322,6 +376,8 @@ async function launchContext(mode: "mobile" | "desktop") {
       delete navigator.__proto__.webdriver;
     });
     const page = await ctx.newPage();
+    page.setDefaultTimeout(4000);
+    page.setDefaultNavigationTimeout(20000);
     return { ctx, page, close: () => browser.close() };
   }
 
@@ -329,6 +385,8 @@ async function launchContext(mode: "mobile" | "desktop") {
   const browser = await chromium.launch({ headless: !headed, devtools });
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
+  page.setDefaultTimeout(4000);
+  page.setDefaultNavigationTimeout(20000);
   return { ctx, page, close: () => browser.close() };
 }
 
@@ -337,40 +395,25 @@ async function gotoWithGrace(page: Page, u: string) {
   const startTime = Date.now();
   
   try {
-    console.log("[browse] ⏳ Waiting for page load (timeout: 45s)...");
-    await page.goto(u, { waitUntil: "domcontentloaded", timeout: 45000 });
-    console.log(`[browse] ✅ Page loaded successfully in ${Date.now() - startTime}ms`);
+    console.time("[browse] goto-commit");
+    await page.goto(u, { waitUntil: "commit", timeout: 15000 });
+    console.timeEnd("[browse] goto-commit");
+    await page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => {});
   } catch (e: any) {
-    console.warn(`[browse] ⚠️ Goto timeout/error after ${Date.now() - startTime}ms:`, e?.message);
-    // Try simpler wait strategy
-    try { 
-      console.log("[browse] 🔄 Retrying with simpler strategy...");
-      await page.goto(u, { waitUntil: "commit", timeout: 30000 }); 
-      console.log(`[browse] ✅ Page committed in ${Date.now() - startTime}ms`);
-    } catch (e2) {
-      console.error(`[browse] ❌ Complete failure to load after ${Date.now() - startTime}ms:`, e2);
-      throw new Error(`Failed to load page: ${u}`);
-    }
+    console.warn(`[browse] ⚠️ goto-commit failed:`, e?.message);
+    await page.goto(u, { waitUntil: "domcontentloaded", timeout: 12000 });
   }
   
   // Check for Cloudflare challenge
   console.log("[browse] 🔍 Checking for Cloudflare challenge...");
-  const pageContent = await page.content();
-  const hasCloudflare = pageContent.includes('cloudflare') || pageContent.includes('Verify you are human');
+  const hasCloudflare = await Promise.race([
+    page.locator("text=/Verify you are human/i").first().isVisible({ timeout: 300 }).catch(() => false),
+    page.locator("form#challenge-form, #cf-please-wait").first().isVisible({ timeout: 300 }).catch(() => false),
+  ]).then(Boolean);
   
   if (hasCloudflare) {
-    console.log("[browse] 🛡️ Cloudflare challenge DETECTED - waiting 10 seconds for auto-solve...");
-    await page.waitForTimeout(10000);
-    
-    // Check if we passed the challenge
-    const finalContent = await page.content();
-    if (finalContent.includes('Verify you are human')) {
-      console.error("[browse] ❌ Cloudflare challenge FAILED - still showing CAPTCHA");
-      console.error("[browse] 💡 Tip: Ensure BRIGHTDATA_* env vars are set for proxy bypass");
-      // Don't throw - let extraction fail gracefully
-    } else {
-      console.log("[browse] ✅ Cloudflare challenge PASSED!");
-    }
+    console.log("[browse] 🛡️ Cloudflare-like interstitial detected; waiting 8s");
+    await page.waitForTimeout(8000);
   } else {
     console.log("[browse] ✅ No Cloudflare challenge detected");
   }

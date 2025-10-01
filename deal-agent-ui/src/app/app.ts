@@ -140,9 +140,15 @@ type PropertyProgress = {
       <div class="sources-section" *ngIf="sources().length && answerComplete()">
         <h3>Sources</h3>
         <div class="source-item" *ngFor="let src of sources()">
-          <div class="source-num">[{{ src.id }}]</div>
-          <div class="source-content">
+          <div class="source-header">
+            <span class="source-num">[{{ src.id }}]</span>
             <a [href]="src.url" target="_blank" class="source-title">{{ src.title }}</a>
+          </div>
+          <div class="source-details">
+            <div class="source-url">
+              <span class="url-icon">🔗</span>
+              <a [href]="src.url" target="_blank" class="url-link">{{ src.url }}</a>
+            </div>
             <div class="source-snippet">{{ src.snippet }}</div>
           </div>
         </div>
@@ -500,41 +506,103 @@ type PropertyProgress = {
       font-weight: 600;
     }
     .source-item { 
-      display: flex; 
-      gap: 12px; 
-      margin-bottom: 16px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #1d2735;
+      background: #0b0f14;
+      border: 1px solid #1d2735;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .source-item:hover {
+      border-color: #2a3f5f;
+      background: #0e1319;
     }
     .source-item:last-child { 
-      border-bottom: none; 
       margin-bottom: 0;
-      padding-bottom: 0;
+    }
+    .source-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
     }
     .source-num { 
       color: #5b7a9f; 
       font-size: 13px; 
-      font-weight: 600;
-      min-width: 28px;
+      font-weight: 700;
+      background: #1a2332;
+      padding: 4px 10px;
+      border-radius: 6px;
+      min-width: 35px;
+      text-align: center;
     }
-    .source-content { flex: 1; }
     .source-title { 
       color: #a8c5f0; 
       text-decoration: none; 
-      font-size: 14px; 
-      font-weight: 500;
-      display: block;
-      margin-bottom: 4px;
+      font-size: 15px; 
+      font-weight: 600;
       transition: color 0.2s;
+      flex: 1;
     }
     .source-title:hover { 
       color: #c9d7ff; 
       text-decoration: underline; 
     }
+    .source-details {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .source-url {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #0a0d12;
+      border-radius: 6px;
+      border: 1px solid #1a2332;
+    }
+    .url-icon {
+      font-size: 14px;
+      opacity: 0.6;
+    }
+    .url-link {
+      color: #7c8fa6;
+      font-size: 12px;
+      text-decoration: none;
+      font-family: 'Monaco', 'Menlo', monospace;
+      word-break: break-all;
+      transition: color 0.2s;
+    }
+    .url-link:hover {
+      color: #a8c5f0;
+    }
     .source-snippet { 
-      color: #9fb0c0; 
-      font-size: 13px; 
-      line-height: 1.5;
+      color: #8b9db5; 
+      font-size: 14px; 
+      line-height: 1.6;
+      padding: 12px;
+      background: #0a0d12;
+      border-radius: 6px;
+      border-left: 3px solid #2a3f5f;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .source-snippet::-webkit-scrollbar {
+      width: 6px;
+    }
+    .source-snippet::-webkit-scrollbar-track {
+      background: #0a0d12;
+      border-radius: 3px;
+    }
+    .source-snippet::-webkit-scrollbar-thumb {
+      background: #2a3f5f;
+      border-radius: 3px;
+    }
+    .source-snippet::-webkit-scrollbar-thumb:hover {
+      background: #3a5080;
     }
 
     /* Share section */

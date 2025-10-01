@@ -92,24 +92,23 @@ export const browseAndExtract = new DynamicTool({
     console.log("[browse_and_extract] 📱 Trying mobile WebKit first (timeout: 30s)...");
     const wk = await withTimeout(
       runOnce("mobile", url, selectors),
-      30000,
-      "Mobile WebKit extraction timeout after 30s"
+      25000,
+      "Mobile WebKit extraction timeout after 25s"
     ).catch((e) => {
       console.log("[browse_and_extract] ⚠️ Mobile WebKit failed:", e.message);
       return null;
     });
-    
     if (wk && wk.blocked !== true) {
       console.log("[browse_and_extract] ✅ Mobile WebKit succeeded!");
       return JSON.stringify(wk);
     }
 
-    // 2) Fallback to desktop Chromium
-    console.log("[browse_and_extract] 🖥️ Falling back to desktop Chromium (timeout: 30s)...");
+    // 2) Fall back to desktop Chromium
+    console.log("[browse_and_extract] 🖥️ Falling back to desktop Chromium (timeout: 25s)...");
     const ch = await withTimeout(
       runOnce("desktop", url, selectors),
-      30000,
-      "Desktop Chromium extraction timeout after 30s"
+      25000,
+      "Desktop Chromium extraction timeout after 25s"
     ).catch((e) => {
       console.log("[browse_and_extract] ⚠️ Desktop Chromium failed:", e.message);
       return null;
@@ -161,51 +160,36 @@ async function runOnce(
     // (Optional) very small warm-up; bounded
     if (/crexi\.com/i.test(url)) { try { await page.goto("https://www.crexi.com", { waitUntil: "commit", timeout: 8000 }); await page.waitForTimeout(200);} catch {} }
 
-    console.log("[runOnce] ✅ Page loaded, checking if need to drill...");
+    console.log("[runOnce] ✅ Page loaded, navigating to URL...");
     await gotoWithGrace(page, url);
     let finalUrl = page.url();
     let autoDrilled = false;
-
-    // Bounded SPA readiness race before drilling
-    if (/crexi\.com/i.test(finalUrl)) {
-      try {
-        const winner = await waitForCrexiDetailReady(page, 6000);
-        console.log(`[browse] SPA readiness winner: ${winner}`);
-      } catch (e: any) {
-        console.log("[browse] SPA readiness timed out:", e?.message);
-      }
-    }
+    console.log(`[runOnce] 📍 Final URL after navigation: ${finalUrl}`);
 
     // If bounced to home/category, SPA-settle + auto-drill to real detail links
     if (!looksDetail(finalUrl)) {
-      console.log("[runOnce] 🔄 Not a detail page, looking for drill links...");
+      console.log("[runOnce] 🔄 Not a detail page, attempting drill...");
       try {
-        await Promise.race([
-          (async () => {
-            await page.waitForTimeout(700);
+        await page.waitForTimeout(500);
+        const hrefs = await withTimeout(findDetailHrefs(page, 3), 3000, "findDetailHrefs 3s").catch(() => []);
+        console.log(`[runOnce] 🔗 Found ${hrefs.length} drill candidates`);
 
-            // Collect up to 5 candidate detail URLs
-            const hrefs = await withTimeout(findDetailHrefs(page, 5), 6000, "findDetailHrefs 6s").catch(() => []);
-            console.log("[runOnce] 🔗 Drill candidates:", hrefs.length);
-
-            for (const href of hrefs) {
-              try {
-                await withTimeout(gotoWithGrace(page, href), 12000, "drill goto 12s");
-                finalUrl = page.url();
-                if (looksDetail(finalUrl)) {
-                  autoDrilled = true;
-                  console.log("[runOnce] ✅ Drilled to detail:", finalUrl);
-                  break; // we're on a true detail now
-                }
-              } catch (e: any) {
-                console.log("[runOnce] ⚠️ Drill candidate failed:", href, e?.message);
-              }
-            }
-          })(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error("drill phase timeout 8s")), 8000)),
-        ]);
+        if (hrefs.length > 0) {
+          const firstHref = hrefs[0];
+          console.log("[runOnce] 🔗 Trying first candidate:", firstHref);
+          try {
+            await withTimeout(gotoWithGrace(page, firstHref), 8000, "drill goto 8s");
+            finalUrl = page.url();
+            autoDrilled = true;
+            console.log("[runOnce] ✅ Drilled to:", finalUrl);
+          } catch (e: any) {
+            console.log("[runOnce] ⚠️ Drill failed:", e?.message);
+          }
+        } else {
+          console.log("[runOnce] ⚠️ No drill candidates found, proceeding with current page");
+        }
       } catch (e: any) {
-        console.log("[runOnce] ⚠️ Drill step timed out:", e?.message);
+        console.log("[runOnce] ⚠️ Drill step error:", e?.message);
       }
     }
 
@@ -213,6 +197,7 @@ async function runOnce(
     console.log("[runOnce] 🔍 Checking if blocked...");
     let title: string | null = null;
     try { title = (await page.title()) || null; } catch {}
+    console.log(`[runOnce] 📄 Page title: "${title}"`);
 
     // Home detection by URL/title
     let isHome = false;
@@ -227,12 +212,12 @@ async function runOnce(
       (isHome || homeTitle) &&
       !(await page.locator("h1,[itemprop='price'],address").first().isVisible({ timeout: 500 }).catch(() => false));
 
+    // More lenient blocking check - only block on explicit denial messages
     const blocked =
-      !title ||
-      /access denied|chrome-error/i.test(title) ||
+      (title && /access denied|403 forbidden|chrome-error|cloudflare/i.test(title)) ||
       looksHomeBounce;
 
-    console.log(`[runOnce] Blocked check: ${blocked}, Title: ${title}`);
+    console.log(`[runOnce] 🔒 Blocked check: ${blocked} (homeBounce: ${looksHomeBounce}, Title: ${title || 'empty'})`);
 
     if (blocked) {
       console.log("[runOnce] ❌ Page is blocked/empty - capturing screenshot (if enabled) and returning");
@@ -259,13 +244,13 @@ async function runOnce(
     }
 
     // Extract once with timeout
-    console.log("[extract] 📊 Starting data extraction (timeout: 15s)...");
+    console.log("[runOnce] 📊 Starting data extraction (timeout: 10s)...");
     let extracted = await withTimeout(
       extractOnce(page, selectors || {}),
-      15000,
-      "Extraction timeout after 15s"
+      10000,
+      "Extraction timeout after 10s"
     ).catch((e) => {
-      console.error("[extract] ❌ Extraction failed:", e.message);
+      console.error("[runOnce] ❌ Extraction failed:", e.message);
       return {
         title: null,
         address: null,
@@ -274,6 +259,7 @@ async function runOnce(
         capRate: null,
       };
     });
+    console.log("[runOnce] ✅ Extraction complete");
     
     console.log("[extract] ✅ Initial extraction complete:", {
       hasTitle: !!extracted.title,
@@ -500,19 +486,34 @@ async function gotoWithGrace(page: Page, u: string) {
   // 1) try commit-first (fast), then fallback to domcontentloaded
   try {
     console.time(label);
-    await page.goto(u, { waitUntil: "commit", timeout: 15000 });
+    const response = await page.goto(u, { waitUntil: "commit", timeout: 15000 });
+    const status = response?.status();
+    console.log(`${label} HTTP Status: ${status}`);
+    
     // give a short DOM settle
     await page.waitForLoadState("domcontentloaded", { timeout: 4000 }).catch(() => {});
     console.timeEnd(label);
-    console.log(`${label} ✅ Commit successful in ${Date.now() - start}ms`);
+    console.log(`${label} ✅ Commit successful in ${Date.now() - start}ms (status: ${status})`);
+    
+    // Check for HTTP errors
+    if (status && status >= 400) {
+      console.warn(`${label} ⚠️ HTTP ${status} error - site may be blocking`);
+    }
   } catch (err1) {
-    console.warn(`${label} ⚠️ commit goto failed: ${String(err1).slice(0,100)}`);
+    console.warn(`${label} ⚠️ commit goto failed: ${String(err1).slice(0,150)}`);
+    
+    // Check if it's an HTTP error
+    if (String(err1).includes('ERR_HTTP_RESPONSE_CODE_FAILURE')) {
+      console.error(`${label} ❌ Crexi is blocking the request with HTTP error`);
+      throw new Error(`HTTP_BLOCKED: ${u}`);
+    }
+    
     try {
       const fallbackLabel = timerLabel("[browse] goto-fallback");
       console.time(fallbackLabel);
-      await page.goto(u, { waitUntil: "domcontentloaded", timeout: 12000 });
+      const response2 = await page.goto(u, { waitUntil: "domcontentloaded", timeout: 12000 });
       console.timeEnd(fallbackLabel);
-      console.log(`${fallbackLabel} ✅ DOMContentLoaded fallback success in ${Date.now() - start}ms`);
+      console.log(`${fallbackLabel} ✅ DOMContentLoaded fallback success in ${Date.now() - start}ms (status: ${response2?.status()})`);
     } catch (err2) {
       console.error(`${label} ❌ Both goto strategies failed: ${String(err2).slice(0,200)}`);
       throw new Error(`Failed to load page: ${u}`);

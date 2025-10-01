@@ -2,6 +2,7 @@
 import { webSearch } from "./tools/search.js";
 import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
+import { peScorePro } from "./tools/peScorePro.js"; // DealSense PE: Professional scorer
 import type { Deal } from "./lib/types.js";
 
 // ---- Shared URL patterns (strict: only actual property detail pages) ----
@@ -116,8 +117,8 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   let sourceId = 0;
 
   // ── Search: detail-first → broader → general ───────────────────────────────────
-  // Strategy 1: Focused search - use simple site: filter, post-filter for detail pages
-  const detailQuery = `${q} site:crexi.com`;
+  // Strategy 1: Focused search with better keywords to find actual property listings
+  const detailQuery = `${q} property listing for sale site:crexi.com/properties`;
   
   console.log("[agent] 🔍 Search strategy 1:", detailQuery);
   const detail = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
@@ -125,35 +126,69 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   })))) as Array<{ title: string; url: string; snippet: string }>) || [];
   console.log(`[agent] ✅ Strategy 1 returned ${detail.length} raw results`);
   
+  // ✨ SCORE ALL RESULTS with DealSense PE algorithm
+  emit(ctx, "thinking", { text: "Analyzing deal quality with DealSense PE scoring model..." });
+  const scored = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ rows: detail, query: q })))) as Array<{
+    title: string; 
+    url: string; 
+    snippet: string; 
+    peScore: number; 
+    peLabel: string;
+    peFactors: Record<string, number>;
+  }>;
+  
+  console.log(`[agent] 📊 PE Scored ${scored.length} results. Top 3:`);
+  scored.slice(0, 3).forEach((s, i) => {
+    console.log(`[agent]   ${i+1}. [${s.peScore}] ${s.peLabel} - ${s.title?.slice(0, 60)}`);
+  });
+  
+  // Emit top scored sources immediately (value even without browsing!)
+  emit(ctx, "answer_chunk", { text: "<br><h2>🎯 Top Investment Opportunities</h2><p style='color:#8b9db5; margin:8px 0;'>Ranked by DealSense PE Scoring Model</p>" });
+  for (const s of scored.slice(0, 5)) {
+    sourceId++;
+    const source = { id: sourceId, title: s.title, url: s.url, snippet: s.snippet };
+    sources.push(source);
+    emit(ctx, "source_found", { source });
+    
+    // Emit scored lead to answer with analyst rationale
+    const scoreColor = s.peScore >= 80 ? '#5fc88f' : s.peScore >= 70 ? '#6b9aeb' : '#8b9db5';
+    const analystNote = (s as any).analystNote || '';
+    emit(ctx, "answer_chunk", { 
+      text: `<div style='margin:16px 0; padding:14px; background:#0b0f14; border-left:4px solid ${scoreColor}; border-radius:6px;'>
+        <strong style='color:#c9d7ff; font-size:15px;'>[${sourceId}] ${s.title}</strong><br>
+        <div style='margin:8px 0;'>
+          <span style='color:${scoreColor}; font-size:20px; font-weight:700;'>${s.peScore}/100</span>
+          ${s.peLabel ? `<span style='color:#8b9db5; margin-left:10px; font-size:14px;'>${s.peLabel}</span>` : ''}
+        </div>
+        ${analystNote ? `<div style='color:#7c8fa6; font-size:13px; line-height:1.6; margin:8px 0; padding:8px; background:#0a0d12; border-radius:4px;'><strong>Analysis:</strong> ${analystNote}</div>` : ''}
+        <a href='${s.url}' target='_blank' style='color:#6b9aeb; font-size:12px; text-decoration:none; word-break:break-all;'>${s.url}</a>
+      </div>` 
+    });
+  }
+  
   // Log all URLs and their detail status
-  detail.forEach((r, i) => {
+  scored.forEach((r, i) => {
     const isDetail = r.url ? isDetailUrl(r.url) : false;
-    console.log(`[agent]   ${i+1}. ${isDetail ? '✓' : '✗'} ${r.url}`);
+    console.log(`[agent]   ${i+1}. [${r.peScore}] ${isDetail ? '✓' : '✗'} ${r.url}`);
     if (!isDetail && r.url) {
       console.log(`[agent]      ↳ Rejected: ${r.url.includes('/tenants/') ? 'tenant page' : r.url.includes('/categories/') ? 'category page' : r.url.includes('/search') ? 'search page' : 'pattern mismatch'}`);
     }
   });
   
-  // Prioritize Crexi URLs first, then others
-  const crexiCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
-  const otherCandidates = detail.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
-  let candidates = [...crexiCandidates, ...otherCandidates];
-  console.log(`[agent] 📊 Strategy 1 filtered to ${candidates.length} detail URLs (${crexiCandidates.length} Crexi, ${otherCandidates.length} other)`);
-  if (candidates.length > 0) {
-    console.log(`[agent] 🎯 Top candidates:`);
-    candidates.slice(0, 3).forEach((c, i) => console.log(`[agent]   ${i+1}. ${c.url}`));
-  }
+  // Filter for detail URLs and prioritize by score
+  const MIN_BROWSE_SCORE = Number(process.env.MIN_BROWSE_SCORE || "70");
+  const crexiCandidates = scored.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url) && r.peScore >= MIN_BROWSE_SCORE);
+  const otherCandidates = scored.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && r.peScore >= MIN_BROWSE_SCORE);
+  let candidates: any[] = [...crexiCandidates, ...otherCandidates];
   
-  // Emit sources found
-  for (const candidate of candidates.slice(0, 5)) {
-    sourceId++;
-    const source = { id: sourceId, ...candidate };
-    sources.push(source);
-    emit(ctx, "source_found", { source });
+  console.log(`[agent] 📊 Strategy 1 filtered to ${candidates.length} detail URLs with score >= ${MIN_BROWSE_SCORE} (${crexiCandidates.length} Crexi, ${otherCandidates.length} other)`);
+  if (candidates.length > 0) {
+    console.log(`[agent] 🎯 Top browse candidates:`);
+    candidates.slice(0, 3).forEach((c, i) => console.log(`[agent]   ${i+1}. [${c.peScore}] ${c.url}`));
   }
 
-  // Strategy 2: Broader Crexi search
-  if (candidates.length < 3) {
+  // Strategy 2: Broader Crexi search (only if not enough high-scoring candidates)
+  if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Expanding search criteria..." });
     const broaderQuery = `${q} commercial property site:crexi.com`;
     console.log("[agent] 🔍 Search strategy 2 (broader):", broaderQuery);
@@ -161,21 +196,21 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       query: broaderQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
     console.log(`[agent] Strategy 2 returned ${broader.length} results`);
-    const broaderCrexi = broader.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
-    const broaderOther = broader.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
+    
+    // Score broader results
+    const scoredBroader = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ rows: broader, query: q })))) as Array<{
+      title: string; url: string; snippet: string; peScore: number; peLabel: string;
+    }>;
+    
+    const broaderCrexi = scoredBroader.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url) && r.peScore >= MIN_BROWSE_SCORE);
+    const broaderOther = scoredBroader.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && r.peScore >= MIN_BROWSE_SCORE);
     const broaderCandidates = [...broaderCrexi, ...broaderOther];
     console.log(`[agent] Strategy 2 detail URLs: ${broaderCandidates.length}`);
     
-    // Add new sources and candidates
+    // Add new candidates only
     for (const candidate of broaderCandidates) {
       if (!candidates.find(c => c.url === candidate.url)) {
         candidates.push(candidate);
-        if (candidates.length <= 5 && !sources.find(s => s.url === candidate.url)) {
-          sourceId++;
-          const source = { id: sourceId, ...candidate };
-          sources.push(source);
-          emit(ctx, "source_found", { source });
-        }
       }
     }
   }
@@ -247,6 +282,60 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     }
   }
 
+  // ✨ SKIP EXTRACTION MODE - Focus on PE scoring & analytics instead of browsing
+  const SKIP_EXTRACTION = String(process.env.SKIP_EXTRACTION || "true").toLowerCase() === "true";
+  
+  if (SKIP_EXTRACTION && sources.length > 0) {
+    console.log(`[agent] ⚡ SKIP_EXTRACTION=true - generating analytics from ${sources.length} scored sources`);
+    emit(ctx, "thinking", { text: "Generating portfolio analytics and market insights..." });
+    
+    // Calculate portfolio analytics
+    const scores = sources.map((s: any) => scored.find((sc: any) => sc.url === s.url)?.peScore || 0).filter(Boolean);
+    const capRates = sources.map((s: any) => {
+      const sc: any = scored.find((sc: any) => sc.url === s.url);
+      return sc?.peSignals?.cap;
+    }).filter(Boolean);
+    
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    const minScore = scores.length > 0 ? Math.min(...scores) : 0;
+    const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
+    const premiumCount = scores.filter(s => s >= 80).length;
+    const investmentGradeCount = scores.filter(s => s >= 70).length;
+    const avgCapRate = capRates.length > 0 ? (capRates.reduce((a: number, b: number) => a + b, 0) / capRates.length) : null;
+    
+    // Geographic distribution
+    const geoDistribution: Record<string, number> = {};
+    sources.forEach((s: any) => {
+      const sc: any = scored.find((sc: any) => sc.url === s.url);
+      const state = sc?.peSignals?.isFL ? 'FL' : sc?.peSignals?.isTX ? 'TX' : sc?.peSignals?.isCA ? 'CA' : 'Other';
+      geoDistribution[state] = (geoDistribution[state] || 0) + 1;
+    });
+    
+    // Emit analytics with proper HTML formatting
+    emit(ctx, "answer_chunk", { text: `<br><br><h2>📊 Portfolio Analytics</h2><br>` });
+    emit(ctx, "answer_chunk", { text: `<strong>Total Opportunities Identified</strong>: ${sources.length}<br>` });
+    emit(ctx, "answer_chunk", { text: `<strong>Average Deal Quality Score</strong>: ${avgScore}/100<br>` });
+    emit(ctx, "answer_chunk", { text: `<strong>Score Range</strong>: ${minScore} - ${maxScore}<br>` });
+    emit(ctx, "answer_chunk", { text: `<strong>Premium Opportunities</strong> (≥80): ${premiumCount} (${Math.round(premiumCount/sources.length*100)}%)<br>` });
+    emit(ctx, "answer_chunk", { text: `<strong>Investment Grade</strong> (≥70): ${investmentGradeCount} (${Math.round(investmentGradeCount/sources.length*100)}%)<br><br>` });
+    
+    if (avgCapRate) {
+      emit(ctx, "answer_chunk", { text: `<strong>Average Cap Rate</strong>: ${(avgCapRate * 100).toFixed(2)}%<br>` });
+      emit(ctx, "answer_chunk", { text: `<strong>Cap Rate Range</strong>: ${(Math.min(...capRates) * 100).toFixed(2)}% - ${(Math.max(...capRates) * 100).toFixed(2)}%<br><br>` });
+    }
+    
+    emit(ctx, "answer_chunk", { text: `<strong>Geographic Distribution</strong>:<br>` });
+    Object.entries(geoDistribution).sort((a, b) => b[1] - a[1]).forEach(([state, count]) => {
+      emit(ctx, "answer_chunk", { text: `&nbsp;&nbsp;• <strong>${state}</strong>: ${count} ${count === 1 ? 'property' : 'properties'} (${Math.round(count/sources.length*100)}%)<br>` });
+    });
+    
+    emit(ctx, "answer_chunk", { text: `<br><em>Analysis based on proprietary PE scoring model. For detailed property information, click source links above.</em>` });
+    
+    console.log(`[agent] ✅ Analytics generated. Final sources: ${sources.length}`);
+    emit(ctx, "answer_complete", {});
+    return { plan, deals, toolResult: null };
+  }
+  
   // ── Try first few detail URLs ────────────────────────────────────────────────
   if (candidates.length > 0) {
     emit(ctx, "thinking", { text: "Analyzing property listings..." });
@@ -490,11 +579,19 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     // If all fallback URLs failed, do not create mock data
   } else if (deals.length === 0) {
     console.log(`[agent] No deals found and no fallback URLs configured`);
-    emit(ctx, "answer_chunk", { text: "I couldn't find any matching commercial real estate listings. " });
-    emit(ctx, "answer_chunk", { text: "Try a broader search query or paste a direct property URL from Crexi or LoopNet." });
+    
+    // Only emit failure message if we didn't already show scored leads
+    if (sources.length === 0) {
+      emit(ctx, "answer_chunk", { text: "I couldn't find any matching commercial real estate listings. " });
+      emit(ctx, "answer_chunk", { text: "Try a broader search query or paste a direct property URL from Crexi or LoopNet." });
+    } else {
+      // We have scored sources - emit summary
+      console.log(`[agent] ✅ Showing ${sources.length} PE-scored opportunities (extraction failed but scoring succeeded)`);
+      emit(ctx, "answer_chunk", { text: `\n\n*Note: Unable to extract full details due to site restrictions, but ${sources.length} opportunities identified and ranked above.*` });
+    }
   }
   
-  console.log(`[agent] Final deals count: ${deals.length}`);
+  console.log(`[agent] Final deals count: ${deals.length}, Sources: ${sources.length}`);
   
   emit(ctx, "answer_complete", {});
 

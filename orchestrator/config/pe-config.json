@@ -1,0 +1,59 @@
+{
+  "weights": {
+    "tenantLease": 25,
+    "yieldSpread": 20,
+    "marketQuality": 20,
+    "assetFit": 15,
+    "dealEconomics": 10,
+    "executionRisk": 10
+  },
+  "benchmarks": {
+    "riskFreeBps": 430,
+    "minCapBps": 450,
+    "targetSpreadBps": 250
+  },
+  "tenantCredit": {
+    "investmentGrade": [
+      "7-eleven", "cvs", "walgreens", "walmart", "starbucks", "home depot", 
+      "lowe's", "tractor supply", "target", "costco", "whole foods", 
+      "trader joe's", "amazon", "fedex", "ups", "dhl"
+    ],
+    "upperMid": [
+      "dollar general", "chipotle", "chick-fil-a", "aldi", "kroger", 
+      "publix", "albertsons", "safeway", "panera"
+    ],
+    "lowerMid": [
+      "family dollar", "rite aid", "dollar tree"
+    ]
+  },
+  "marketTiers": {
+    "A": [
+      "miami", "orlando", "tampa", "austin", "dallas", "phoenix", "nashville", 
+      "charlotte", "atlanta", "denver", "seattle", "san diego", "los angeles",
+      "boston", "washington dc", "raleigh", "durham"
+    ],
+    "B": [
+      "jacksonville", "san antonio", "raleigh", "salt lake city", "boise",
+      "fort worth", "columbus", "indianapolis", "richmond", "memphis"
+    ],
+    "C": []
+  },
+  "sectorPrefs": {
+    "industrial": 1.0,
+    "ios": 1.0,
+    "retail_nnn": 0.8,
+    "medical": 0.7,
+    "office": 0.4
+  },
+  "dscr": {
+    "ltv": 0.65,
+    "rate": 0.055,
+    "amortYears": 30,
+    "minDscr": 1.20
+  },
+  "executionRules": {
+    "preferDetailUrl": true,
+    "penalizeProfilePages": true,
+    "penalizeCategoryPages": true
+  }
+}

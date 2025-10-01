@@ -91,18 +91,15 @@ export const webSearch = new DynamicTool({
 
       const j: any = await r.json();
 
-      // Normalize → filter → rank → dedupe → cap
-      const rows: SearchRow[] = (j.organic ?? []).map((v: any) => ({
+      // Normalize → rank → dedupe → cap (let agent filter by detail URL)
+      let rows: SearchRow[] = (j.organic ?? []).map((v: any) => ({
         title: v?.title ?? "",
         url: v?.link ?? "",
         snippet: v?.snippet ?? "",
       })).filter((x: SearchRow) => x.url);
 
-      // Keep only detail-like URLs
-      let filtered = rows.filter(r => isDetailUrl(r.url));
-
       // Rank CREXI first
-      filtered.sort((a, b) => {
+      rows.sort((a, b) => {
         const ac = /crexi\.com/i.test(a.url) ? 0 : 1;
         const bc = /crexi\.com/i.test(b.url) ? 0 : 1;
         return ac - bc;
@@ -110,13 +107,13 @@ export const webSearch = new DynamicTool({
 
       // Dedupe by URL
       const seen = new Set<string>();
-      filtered = filtered.filter(r => {
+      rows = rows.filter(r => {
         if (seen.has(r.url)) return false;
         seen.add(r.url);
         return true;
       });
 
-      return JSON.stringify(filtered.slice(0, maxResults));
+      return JSON.stringify(rows.slice(0, maxResults));
     } catch (e: any) {
       if (e?.name === "AbortError") {
         throw new Error(`web_search timeout after ${timeoutMs}ms` );

@@ -1549,6 +1549,22 @@ export class App implements AfterViewChecked {
         break;
       case 'answer_chunk':
         this.answer.update(curr => curr + ev['text']);
+        
+        // Extract portfolio data from script tags in the HTML
+        const text = ev['text'];
+        if (text.includes('window.portfolioData')) {
+          const match = text.match(/window\.portfolioData = ({.*?});/);
+          if (match) {
+            try {
+              const portfolioData = JSON.parse(match[1]);
+              (window as any).portfolioData = portfolioData;
+              console.log('📊 Portfolio data extracted and set:', portfolioData);
+            } catch (e) {
+              console.error('Error parsing portfolio data:', e);
+            }
+          }
+        }
+        
         // Try to initialize charts after adding content
         setTimeout(() => this.initializePortfolioCharts(), 100);
         break;

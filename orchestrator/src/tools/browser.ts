@@ -2,6 +2,8 @@
 import { DynamicTool } from "@langchain/core/tools";
 import { chromium, webkit, BrowserContext, Page } from "playwright";
 
+console.log("[browser] build tag: crexi-fix-v1", new Date().toISOString());
+
 // ---- CREXI URL patterns (strict) ----
 const CREXI_DETAIL_RX =
   /https?:\/\/(?:www\.)?crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i;

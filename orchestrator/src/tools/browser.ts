@@ -34,7 +34,21 @@ async function waitForVisibleAny(page: Page, selectors: string[], timeoutMs: num
 async function waitForCrexiDetailReady(page: Page, timeoutMs = 6000) {
   const winner = await Promise.race([
     (async () => { const end = Date.now() + timeoutMs; while (Date.now() < end) { if (isCrexiDetailUrl(page.url())) return "url-pattern"; await page.waitForTimeout(50);} throw new Error("detail-url timeout"); })(),
-    (async () => { const sel = await waitForVisibleAny(page, ["h1","[itemprop='price']","address,[itemprop='address']","[data-testid*='card']","[class*='card']","a[href*='/property/']"], timeoutMs); return `selector:${sel}`; })(),
+    (async () => { 
+      const sel = await waitForVisibleAny(page, [
+        "h1",
+        "[itemprop='price']",
+        "address,[itemprop='address']",
+        "[data-testid*='price']",
+        "[class*='price']",
+        "[data-testid='property-title']",
+        "[data-testid='property-header']",
+        "[data-testid*='card']",
+        "[class*='card']",
+        "a[href*='/property/']"
+      ], timeoutMs); 
+      return `selector:${sel}`; 
+    })(),
   ]);
   return winner;
 }
@@ -146,18 +160,30 @@ async function runOnce(
       }
     }
 
-    // If bounced to home/category, SPA-settle + auto-drill to a real detail link
+    // If bounced to home/category, SPA-settle + auto-drill to real detail links
     if (!looksDetail(finalUrl)) {
-      console.log("[runOnce] 🔄 Not a detail page, looking for drill link...");
+      console.log("[runOnce] 🔄 Not a detail page, looking for drill links...");
       try {
         await Promise.race([
           (async () => {
             await page.waitForTimeout(700);
-            const detailHref = await withTimeout(findDetailHref(page), 6000, "findDetailHref timeout 6s").catch(() => null);
-            if (detailHref) {
-              autoDrilled = true;
-              await withTimeout(gotoWithGrace(page, detailHref), 12000, "drill goto timeout 12s");
-              finalUrl = page.url();
+
+            // Collect up to 5 candidate detail URLs
+            const hrefs = await withTimeout(findDetailHrefs(page, 5), 6000, "findDetailHrefs 6s").catch(() => []);
+            console.log("[runOnce] 🔗 Drill candidates:", hrefs.length);
+
+            for (const href of hrefs) {
+              try {
+                await withTimeout(gotoWithGrace(page, href), 12000, "drill goto 12s");
+                finalUrl = page.url();
+                if (looksDetail(finalUrl)) {
+                  autoDrilled = true;
+                  console.log("[runOnce] ✅ Drilled to detail:", finalUrl);
+                  break; // we're on a true detail now
+                }
+              } catch (e: any) {
+                console.log("[runOnce] ⚠️ Drill candidate failed:", href, e?.message);
+              }
             }
           })(),
           new Promise((_, rej) => setTimeout(() => rej(new Error("drill phase timeout 8s")), 8000)),
@@ -292,6 +318,28 @@ async function findDetailHref(page: Page) {
     });
     return href;
   } catch { return null; }
+}
+
+async function findDetailHrefs(page: Page, limit = 5): Promise<string[]> {
+  try {
+    return await page.evaluate((arg: { rxSrc: string; limitCount: number }) => {
+      const DETAIL = new RegExp(arg.rxSrc, "i");
+      const anchors = Array.from(document.querySelectorAll("a[href]")) as HTMLAnchorElement[];
+      const out: string[] = [];
+      const seen = new Set<string>();
+      for (const a of anchors) {
+        const href = a.href;
+        if (DETAIL.test(href) && !seen.has(href)) {
+          seen.add(href);
+          out.push(href);
+          if (out.length >= arg.limitCount) break;
+        }
+      }
+      return out;
+    }, { rxSrc: CREXI_DETAIL_RX.source, limitCount: limit });
+  } catch {
+    return [];
+  }
 }
 
 /** Headed-mode toggles via env:

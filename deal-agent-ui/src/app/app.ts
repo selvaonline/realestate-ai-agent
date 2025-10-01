@@ -602,13 +602,11 @@ export class SafeHtmlPipe implements PipeTransform {
       font-size: 13px;
       word-break: break-all;
       transition: color 0.2s;
-    }  flex: 1;
+      flex: 1;
     }
     .source-title:hover { 
       color: #1e40af; 
       text-decoration: underline; 
-    }
-{{ ... }}
     }
     .url-link:hover {
       color: #a8c5f0;

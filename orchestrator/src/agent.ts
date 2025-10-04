@@ -110,6 +110,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   emit(ctx, "thinking", { text: "🔍 Understanding your query..." });
   emit(ctx, "thinking", { text: "📊 Loading DealSense PE scoring model..." });
   emit(ctx, "thinking", { text: "📈 Fetching real-time market data (Treasury rates, labor statistics)..." });
+  emit(ctx, "thinking", { text: "🧠 AI agent performs reasoning: search, normalize tenants, apply PE & Risk scoring" });
   
   // Simple plan - no LLM needed, we know what to search
   const plan = `Searching Crexi.com for: ${q}`;

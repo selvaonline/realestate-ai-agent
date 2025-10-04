@@ -8,7 +8,8 @@ export type AgentEvent =
 @Injectable({ providedIn: 'root' })
 export class AgentService {
   // Point directly at your orchestrator (Node) that serves /run, /events/:runId, /result/:runId
-  private base = environment.apiUrl;
+  // Allow overriding via localStorage('apiUrl') for cross-machine/dev setups
+  private base = (localStorage.getItem('apiUrl') || environment.apiUrl).replace(/\/$/, '');
 
   async startRun(query: string): Promise<string> {
     const r = await fetch(`${this.base}/run`, {

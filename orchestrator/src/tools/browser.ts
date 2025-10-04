@@ -1,8 +1,9 @@
 // src/tools/browser.ts
 import { DynamicTool } from "@langchain/core/tools";
 import { chromium, webkit, BrowserContext, Page } from "playwright";
+import { extractLeaseTerms, LeaseTerms } from "../lease-extractor.js";
 
-console.log("[browser] build tag: crexi-fix-v2-stealth", new Date().toISOString());
+console.log("[browser] build tag: crexi-fix-v3-lease-extraction", new Date().toISOString());
 
 // ------------------- runtime config & helpers -------------------
 const CAPTURE_ON_BLOCK = String(process.env.CAPTURE_ON_BLOCK || "true").toLowerCase() === "true";
@@ -144,6 +145,7 @@ type Extracted = {
   autoDrilled?: boolean;
   finalUrl?: string;
   blocked?: boolean;
+  lease?: LeaseTerms; // New: lease extraction results
 };
 
 function looksDetail(u: string) {
@@ -631,7 +633,20 @@ async function extractOnce(page: Page, sels: Record<string, string>) {
   const capRate     = (() => { const c = bodyText.match(capRegex)?.[2] ?? null; return c ? Number(c) / 100 : null; })();
   const address     = addressFromSelectors ?? jsonldAddress ?? metaAddress ?? addressRegexGuess;
 
-  return { title, address, askingPrice, noi, capRate };
+  // NEW: Lease extraction from body text
+  console.log("[extractOnce] 📋 Extracting lease terms...");
+  let lease: LeaseTerms | undefined;
+  try {
+    // Use regex-only extraction (fast, no LLM cost for now)
+    // In production, pass LLM invoke function for hybrid extraction
+    lease = await extractLeaseTerms(bodyText, undefined, { skipLLM: true });
+    console.log(`[extractOnce] ✅ Lease extracted: ${lease.leaseType}, confidence: ${lease.confidence}`);
+  } catch (e) {
+    console.log("[extractOnce] ⚠️ Lease extraction failed:", (e as Error).message);
+    lease = undefined;
+  }
+
+  return { title, address, askingPrice, noi, capRate, lease };
 }
 
 async function safeScreenshot(page: Page, opts: { fullPage?: boolean } = { fullPage: false }): Promise<string | null> {

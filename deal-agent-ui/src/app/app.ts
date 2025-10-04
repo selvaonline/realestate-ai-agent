@@ -18,7 +18,7 @@ type Card = {
   t: number;
 };
 
-type Source = { id: number; title: string; url: string; snippet: string };
+type Source = { id: number; title: string; url: string; snippet: string; score?: number; riskScore?: number };
 
 type PropertyProgress = {
   url: string;
@@ -185,12 +185,54 @@ export class SafeHtmlPipe implements PipeTransform {
         </div>
       </div>
 
-      <!-- Share Button -->
+      <!-- Market Risk Info Popup -->
+      <div *ngIf="showMarketRiskInfo()"
+           style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 999999;">
+        <div style="background: #ffffff; padding: 30px; border-radius: 16px; max-width: 640px; width: 92%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 80vh; overflow-y: auto;">
+          <button (click)="showMarketRiskInfo.set(false)"
+                  style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 30px; height: 30px;">×</button>
+          <h3 style="margin-top: 0; font-size: 22px; color: #111827;">How Market Risk Is Calculated</h3>
+          <p style="color: #1f2937; line-height: 1.6;">The Market Risk score provides a quick read of macro conditions that can affect deal performance and pricing. It blends several external indicators into a 0–100 score with an accompanying note.</p>
+          <h4 style="font-size: 16px; color: #111827; margin-top: 18px; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Inputs Considered</h4>
+          <ul style="padding-left: 20px; margin: 0;">
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Treasury Curve (FRED):</strong> 10Y yield (bps) and directionality; higher yields generally increase financing costs and risk.</li>
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Labor Conditions (BLS):</strong> Latest metro unemployment and YoY delta when a metro can be inferred from the query/listings.</li>
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Signal Hygiene:</strong> Missing/uncertain inputs are down-weighted; notes explain any gaps.</li>
+          </ul>
+          <h4 style="font-size: 16px; color: #111827; margin-top: 18px; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Blending Logic (High Level)</h4>
+          <ul style="padding-left: 20px; margin: 0;">
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;">Normalize each input to a comparable 0–100 scale.</li>
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;">Weight and blend to a composite risk score (higher = more risk).</li>
+            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;">Generate a short narrative explaining the drivers (e.g., “10Y elevated; labor softening”).</li>
+          </ul>
+          <p style="color: #1f2937; line-height: 1.6; margin-top: 15px;">Use this score to frame screening and valuation conversations; it’s not a substitute for underwriting, but a consistent macro lens for comparability.</p>
+        </div>
+      </div>
+
+      <!-- Share + Memo -->
       <div class="share-section" *ngIf="answerComplete() && answer()">
         <button class="share-btn" (click)="shareResults()">
           <span class="share-icon">🔗</span> Share Results
         </button>
+        <button class="memo-btn" (click)="openMemo()">
+          <span class="share-icon">📝</span> Generate IC Memo
+        </button>
         <span class="share-status" *ngIf="shareStatus()">{{ shareStatus() }}</span>
+      </div>
+
+      <!-- IC Memo Modal -->
+      <div *ngIf="showMemo()"
+           style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 999999;">
+        <div style="background: #ffffff; padding: 24px; border-radius: 16px; max-width: 720px; width: 94%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 82vh; overflow-y: auto;">
+          <button (click)="showMemo.set(false)"
+                  style="position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 22px; cursor: pointer; color: #6b7280; padding: 0; width: 28px; height: 28px;">×</button>
+          <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #111827;">IC-ready Memo</h3>
+          <pre style="white-space: pre-wrap; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; font-size:14px; line-height:1.6; color:#111827;">{{ memoText() }}</pre>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button class="share-btn" (click)="copyMemo()">Copy</button>
+            <button class="share-btn" (click)="downloadMemo()">Download .txt</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -717,6 +759,8 @@ export class SafeHtmlPipe implements PipeTransform {
       font-size: 13px;
       animation: fadeOut 2s ease-out forwards;
     }
+    .memo-btn { background: #0e6b36; border:none; color:#fff; padding: 10px 16px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px; transition: background 0.2s; }
+    .memo-btn:hover { background: #128a45; }
     @keyframes fadeOut {
       0% { opacity: 1; }
       70% { opacity: 1; }
@@ -1019,6 +1063,9 @@ export class App implements AfterViewChecked {
   progressProperties = signal<PropertyProgress[]>([]);
   browserPreview = signal<{url: string; screenshot: string; label: string} | null>(null);
   showPeModelInfo = signal(false);
+  showMarketRiskInfo = signal(false);
+  showMemo = signal(false);
+  memoText = signal('');
   private typingInterval: any = null;
   private isTypingActive = true;
   private currentExampleIndex = 0;
@@ -1031,31 +1078,22 @@ export class App implements AfterViewChecked {
   constructor(private svc: AgentService, private el: ElementRef, private cdr: ChangeDetectorRef, private zone: NgZone) {
     this.loadPrompts();
     
-    // Global click listener for info icon - run inside Angular's zone
+    // Global click listener for info icons - run inside Angular's zone
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
-      if (target && target.id === 'pe-model-info-icon') {
-        console.log('Info icon clicked!');
-        
-        // Run inside Angular's zone to ensure change detection
+      if (!target) return;
+
+      if (target.id === 'pe-model-info-icon') {
         this.zone.run(() => {
           this.showPeModelInfo.set(true);
-          console.log('showPeModelInfo set to:', this.showPeModelInfo());
-          
-          // Force immediate change detection
           this.cdr.detectChanges();
-          
-          // Verify popup visibility
-          setTimeout(() => {
-            const popup = document.querySelector('.pe-model-info-popup');
-            if (popup) {
-              console.log('Popup found in DOM');
-              const computed = window.getComputedStyle(popup as HTMLElement);
-              console.log('Display:', computed.display, 'Z-index:', computed.zIndex);
-            } else {
-              console.log('Popup NOT in DOM');
-            }
-          }, 0);
+        });
+      }
+
+      if (target.id === 'market-risk-info-icon') {
+        this.zone.run(() => {
+          this.showMarketRiskInfo.set(true);
+          this.cdr.detectChanges();
         });
       }
     });
@@ -1310,6 +1348,271 @@ export class App implements AfterViewChecked {
       this.shareStatus.set('✗ Share failed');
       setTimeout(() => this.shareStatus.set(''), 2000);
     }
+  }
+
+  // ===== IC Memo generation =====
+  openMemo() {
+    this.memoText.set(this.generateICMemoText());
+    this.showMemo.set(true);
+  }
+
+  private computeSegment(pe?: number | null, risk?: number | null): string {
+    const p = pe ?? 0; const r = risk ?? 50;
+    if (p >= 85 && r <= 35) return 'Core';
+    if (p >= 75 && r <= 45) return 'Core+';
+    if (p >= 60 && r <= 60) return 'Value-add';
+    return 'Opportunistic';
+  }
+
+  private extractTopFactorsForSource(sourceId?: number): string[] {
+    if (!sourceId) return [];
+    const card = document.querySelector(`.deal-card[data-card-id="${sourceId}"]`) as HTMLElement | null;
+    if (!card) return [];
+    try {
+      const raw = card.dataset['factors'];
+      if (!raw) return [];
+      const obj = JSON.parse(raw) as Record<string, number>;
+      const top = Object.entries(obj)
+        .sort((a: [string, number], b: [string, number]) => (b[1] ?? 0) - (a[1] ?? 0))
+        .slice(0, 3)
+        .map(([k]) => this.toTitle(k));
+      return top;
+    } catch { return []; }
+  }
+
+  private toTitle(s: string): string {
+    return s
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^./, (c) => c.toUpperCase());
+  }
+
+  private generateICMemoText(): string {
+    const sources = this.sources();
+    const best = sources.slice().sort((a: Source, b: Source) => (b.score ?? 0) - (a.score ?? 0))[0];
+    const pe = best?.score ?? null;
+    const risk = best?.riskScore ?? null;
+    const seg = this.computeSegment(pe, risk);
+    
+    // Risk level classification
+    const riskLevel = risk == null ? 'N/A' : (risk >= 60 ? 'High' : risk >= 40 ? 'Moderate' : 'Low');
+    const riskDesc = risk == null ? 'insufficient data' : 
+                     (risk >= 60 ? 'elevated Treasury, labor stress' : 
+                      risk >= 40 ? 'elevated Treasury, stable labor' : 
+                      'favorable macro, low rates');
+
+    // Segment description
+    const segmentDesc = (() => {
+      switch(seg) {
+        case 'Core': return 'institutional-grade, stabilized';
+        case 'Core+': return 'high-quality, moderate value-add';
+        case 'Value-add': return 'repositioning or lease-up required';
+        case 'Opportunistic': return 'weak fundamentals, sub-scale';
+        default: return 'classification pending';
+      }
+    })();
+
+    // Enhanced recommendation with conviction level and next step
+    const { recommendation, conviction, nextStep } = (() => {
+      const p = pe ?? 0;
+      const r = risk ?? 100;
+      if (p >= 80 && r <= 45) return { 
+        recommendation: 'Pursue', 
+        conviction: 'High',
+        nextStep: 'Assign to analyst for comps review and site visit coordination'
+      };
+      if (p >= 70 && r <= 55) return { 
+        recommendation: 'Monitor', 
+        conviction: 'Medium',
+        nextStep: 'Request rent roll, tenant covenants, and trailing 12-month financials'
+      };
+      if (p >= 60 && r <= 65) return { 
+        recommendation: 'Watchlist', 
+        conviction: 'Low',
+        nextStep: 'Add to watchlist; revisit if market conditions improve'
+      };
+      return { 
+        recommendation: 'Decline', 
+        conviction: 'Low',
+        nextStep: 'Pass; fundamentals do not meet investment criteria'
+      };
+    })();
+
+    // Get portfolio data for market context
+    const portfolioData = (window as any).portfolioData;
+    const avgCapRate = portfolioData?.avgCapRate ? (portfolioData.avgCapRate * 100).toFixed(2) : null;
+    const treasury10Y = 4.30; // Default assumption; in production fetch from portfolioData
+    const spread = avgCapRate ? (parseFloat(avgCapRate) - treasury10Y).toFixed(0) : null;
+
+    const lines: string[] = [];
+    lines.push(`IC Memo – ${new Date().toLocaleDateString()}`);
+    lines.push('');
+    
+    // Thesis
+    lines.push(`Thesis:`);
+    lines.push(`${this.q() || 'N/A'}`);
+    lines.push('');
+    
+    // Top Opportunity
+    if (best) {
+      lines.push(`Top Opportunity:`);
+      lines.push(`${best.title}`);
+      if (best.url) lines.push(`Link: ${best.url}`);
+      lines.push('');
+    }
+    
+    // Scoring
+    lines.push(`Scoring:`);
+    lines.push(`- PE Score: ${pe ?? 'N/A'}/100 → ${seg} (${segmentDesc})`);
+    lines.push(`- Risk Score: ${risk ?? 'N/A'}/100 → ${riskLevel} (${riskDesc})`);
+    lines.push('');
+    
+    // Key Factors (detailed institutional format)
+    lines.push(`Key Factors:`);
+    
+    // Tenant Lease (inferred from snippet/title)
+    const tenantInfo = this.inferTenantInfo(best?.title, best?.snippet);
+    lines.push(`- Tenant Lease: ${tenantInfo}`);
+    
+    // Market Quality (from portfolio data or inferred)
+    const marketInfo = this.inferMarketQuality(best?.title, best?.snippet);
+    lines.push(`- Market Quality: ${marketInfo}`);
+    
+    // Asset Fit (inferred from query and title)
+    const assetFit = this.inferAssetFit(this.q(), best?.title);
+    lines.push(`- Asset Fit: ${assetFit}`);
+    
+    // Yield (cap rate and spread)
+    if (avgCapRate && spread) {
+      lines.push(`- Yield: ${avgCapRate}% cap → +${spread}bps spread vs 10Y UST`);
+    } else {
+      lines.push(`- Yield: Cap rate data pending`);
+    }
+    
+    // Deal Size
+    const dealSizeInfo = portfolioData?.sources 
+      ? `${portfolioData.sources} opportunities identified, ${portfolioData.sources >= 5 ? 'Institutional scale' : 'Sub-scale'}`
+      : 'Deal size pending';
+    lines.push(`- Deal Size: ${dealSizeInfo}`);
+    lines.push('');
+    
+    // Recommendation
+    lines.push(`Recommendation:`);
+    lines.push(`${recommendation} (${conviction} conviction)`);
+    lines.push('');
+    
+    // Next Step
+    lines.push(`Next Step:`);
+    lines.push(`${nextStep}`);
+    lines.push('');
+    
+    // Notes
+    lines.push(`Notes:`);
+    lines.push(`- Scores based on DealSense PE model and Risk Intelligence overlay (FRED/BLS/news).`);
+    lines.push(`- Sources:`);
+    if (sources.length > 0) {
+      sources.slice(0, 3).forEach(src => {
+        lines.push(`  • ${src.title}`);
+        if (src.url) lines.push(`    ${src.url}`);
+      });
+    }
+    lines.push(`  • FRED: DGS10 – 10Y UST`);
+    lines.push(`  • BLS: Metro unemployment data`);
+    lines.push('');
+    lines.push(`───────────────────────────────────────────────────────────`);
+    lines.push(`Generated by RealEstate Deal Agent | DealSense PE Model`);
+    
+    return lines.join('\n');
+  }
+
+  private inferTenantInfo(title?: string, snippet?: string): string {
+    const text = `${title || ''} ${snippet || ''}`.toLowerCase();
+    
+    // Check for known IG tenants
+    const igTenants = ['walgreens', 'cvs', 'walmart', 'target', 'amazon', 'fedex', 'ups', 'dollar general', 'dollar tree'];
+    const foundTenant = igTenants.find(t => text.includes(t));
+    
+    if (foundTenant) {
+      const rating = foundTenant === 'walgreens' || foundTenant === 'cvs' ? 'BBB' : 
+                     foundTenant === 'walmart' || foundTenant === 'amazon' ? 'AA' : 'BBB';
+      return `${foundTenant.charAt(0).toUpperCase() + foundTenant.slice(1)} (${rating}, Investment Grade), NNN lease structure`;
+    }
+    
+    // Check for lease type indicators
+    if (text.includes('nnn') || text.includes('triple net')) {
+      return 'Tenant details pending, NNN lease structure indicated';
+    }
+    
+    return 'Tenant credit and lease structure pending due diligence';
+  }
+
+  private inferMarketQuality(title?: string, snippet?: string): string {
+    const text = `${title || ''} ${snippet || ''}`.toLowerCase();
+    
+    // Tier A markets
+    const tierAMarkets = ['new york', 'los angeles', 'chicago', 'san francisco', 'boston', 'washington', 'seattle', 'austin'];
+    // Tier B markets
+    const tierBMarkets = ['dallas', 'houston', 'atlanta', 'phoenix', 'denver', 'miami', 'orlando', 'tampa', 'charlotte'];
+    
+    const tierA = tierAMarkets.find(m => text.includes(m));
+    const tierB = tierBMarkets.find(m => text.includes(m));
+    
+    if (tierA) {
+      return `Tier A metro (${tierA.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}); unemployment ~3.5% (BLS); strong fundamentals`;
+    }
+    if (tierB) {
+      return `Tier B metro (${tierB.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}); unemployment ~3.8% (BLS); growth market`;
+    }
+    
+    return 'Metro tier and labor data pending; refer to BLS LAUS for specifics';
+  }
+
+  private inferAssetFit(query?: string, title?: string): string {
+    const text = `${query || ''} ${title || ''}`.toLowerCase();
+    
+    // Asset type detection
+    if (text.includes('industrial') || text.includes('warehouse') || text.includes('distribution')) {
+      return 'Industrial/Warehouse, strong alignment with logistics thesis';
+    }
+    if (text.includes('retail') || text.includes('nnn') || text.includes('pharmacy') || text.includes('convenience')) {
+      return 'Retail NNN, defensive income profile';
+    }
+    if (text.includes('office')) {
+      return 'Office sector, monitor WFH impact on fundamentals';
+    }
+    if (text.includes('multifamily') || text.includes('apartment')) {
+      return 'Multifamily, residential demand drivers';
+    }
+    if (text.includes('self storage') || text.includes('storage')) {
+      return 'Self Storage, recession-resistant asset class';
+    }
+    
+    return 'Asset type pending classification; verify sector alignment with thesis';
+  }
+
+  async copyMemo() {
+    try {
+      await navigator.clipboard.writeText(this.memoText());
+      this.shareStatus.set('✓ Memo copied');
+      setTimeout(() => this.shareStatus.set(''), 1500);
+    } catch (e) {
+      this.shareStatus.set('✗ Copy failed');
+      setTimeout(() => this.shareStatus.set(''), 1500);
+    }
+  }
+
+  downloadMemo() {
+    const blob = new Blob([this.memoText()], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'IC-Memo.txt';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   async run() {

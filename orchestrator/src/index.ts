@@ -28,7 +28,24 @@ function sub(runId: string, fn: Subscriber) {
 // HTTP surface
 // ───────────────────────────────────────────────────────────────────────────────
 const app = express();
-app.use(cors());
+
+// Configurable CORS (comma-separated origins in CORS_ORIGINS, default "*")
+const rawOrigins = process.env.CORS_ORIGINS || "*";
+const allowedOrigins = rawOrigins.split(",").map((s) => s.trim()).filter(Boolean);
+
+const corsOptions: any = {
+  origin: (origin: string | undefined, cb: (err: Error | null, ok?: boolean) => void) => {
+    if (!origin) return cb(null, true); // same-origin or curl
+    if (rawOrigins === "*" || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "4mb" }));
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
@@ -73,11 +90,17 @@ app.post("/run", async (req, res) => {
 app.get("/events/:runId", (req, res) => {
   const { runId } = req.params;
 
+  const reqOrigin = (req.headers.origin as string | undefined) || "";
+  const allowOrigin = rawOrigins === "*" && reqOrigin ? reqOrigin
+                    : (reqOrigin && allowedOrigins.includes(reqOrigin) ? reqOrigin : "*");
+
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
     Connection: "keep-alive",
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Credentials": "true",
+    Vary: "Origin",
   });
 
   // Heartbeat to keep intermediaries from closing the stream

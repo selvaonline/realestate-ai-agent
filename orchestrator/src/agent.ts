@@ -192,6 +192,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       text: `<div style='background:#fff3e0; padding:14px 18px; border-radius:10px; margin:0 0 20px 0; border-left:4px solid ${riskBase.riskScore >= 60 ? '#ff9800' : riskBase.riskScore >= 40 ? '#ffc107' : '#4caf50'};'>
         <strong style='color:#1a2332; font-size:14px;'>📊 Market Risk: ${riskBase.riskScore}/100</strong>
         <span style='color:#5b7a9f; font-size:13px; margin-left:8px;'>${riskBase.riskNote}</span>
+        <span style='color:#9ca3af; font-size:12px; margin-left:12px;'>· <a id="market-risk-info-icon" style="color:#6b7280; text-decoration: underline; cursor: pointer;">How market risk calculated?</a></span>
       </div>` 
     });
   }
@@ -206,20 +207,38 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     sources.push(source);
     emit(ctx, "source_found", { source });
 
-    // Emit scored lead to answer with analyst rationale + chart data
+    // Enhanced color-coded scoring with classification labels
     const scoreTier = s.peScore >= 80 ? 'Premium' : s.peScore >= 70 ? 'Investment Grade' : 'Watchlist';
-    const scoreColor = s.peScore >= 80 ? '#2f8f5b' : s.peScore >= 70 ? '#f28b30' : '#8758ce';
-    const scoreBg = s.peScore >= 80 ? '#e5f5ec' : s.peScore >= 70 ? '#fff1e3' : '#f1e8ff';
+    const scoreColor = s.peScore >= 70 ? '#2f8f5b' : s.peScore >= 40 ? '#f28b30' : '#d9534f';
+    const scoreBg = s.peScore >= 70 ? '#e5f5ec' : s.peScore >= 40 ? '#fff1e3' : '#fdecea';
+    const classification = s.peScore >= 85 ? 'Core' : s.peScore >= 75 ? 'Core+' : s.peScore >= 60 ? 'Value-add' : 'Opportunistic';
+    const classDesc = s.peScore >= 85 ? 'institutional-grade' : s.peScore >= 75 ? 'high-quality' : s.peScore >= 60 ? 'repositioning' : 'sub-scale';
+    
     const analystNote = (s as any).analystNote || '';
     const factors = s.peFactors || {};
     const snippet = (s.snippet || '').replace(/\s+/g, ' ').trim();
-    const riskColor = riskBase.riskScore >= 60 ? '#d9534f' : riskBase.riskScore >= 40 ? '#f0ad4e' : '#3c9a5f';
-    const riskBg = riskBase.riskScore >= 60 ? '#fdecea' : riskBase.riskScore >= 40 ? '#fff4e5' : '#e8f7f0';
-    const riskLabel = riskBase.riskScore >= 60 ? 'Elevated Risk' : riskBase.riskScore >= 40 ? 'Moderate Risk' : 'Favorable Risk';
+    
+    // Enhanced risk color coding
+    const riskColor = riskBase.riskScore < 40 ? '#3c9a5f' : riskBase.riskScore < 70 ? '#f0ad4e' : '#d9534f';
+    const riskBg = riskBase.riskScore < 40 ? '#e8f7f0' : riskBase.riskScore < 70 ? '#fff4e5' : '#fdecea';
+    const riskLabel = riskBase.riskScore < 40 ? 'Low' : riskBase.riskScore < 70 ? 'Moderate' : 'High';
+    const riskDesc = riskBase.riskScore < 40 ? 'favorable macro' : riskBase.riskScore < 70 ? 'elevated Treasury' : 'elevated Treasury, labor stress';
+    
+    // Next Step guidance based on PE + Risk
+    const nextStep = (() => {
+      if (s.peScore >= 80 && riskBase.riskScore <= 45) return 'Assign to analyst for comps review and site visit coordination';
+      if (s.peScore >= 70 && riskBase.riskScore <= 55) return 'Request rent roll, tenant covenants, and trailing 12-month financials';
+      if (s.peScore >= 60 && riskBase.riskScore <= 65) return 'Add to watchlist; revisit if market conditions improve';
+      return 'Pass; fundamentals do not meet investment criteria';
+    })();
+    
     const isLast = index === topResults.length - 1;
     const dividerStyle = isLast ? '' : 'border-bottom: 1px solid #e2e8f0;';
 
-    emit(ctx, "answer_chunk", { text: `<div class="deal-card" data-score="${s.peScore}" data-factors='${JSON.stringify(factors)}' data-card-id="${sourceId}" style="padding: 22px 26px; ${dividerStyle}"><div style="display:flex; align-items:flex-start; gap:24px;"><div style="flex:0 0 auto;"><div style="width:56px; height:56px; border-radius:14px; background:${scoreBg}; display:flex; align-items:center; justify-content:center; font-weight:700; color:${scoreColor}; font-size:18px;">${sourceId}</div></div><div style="flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; align-items:center; gap:16px;"><div style="min-width:0;"><div style="color:#1a2332; font-size:18px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.title || 'Investment Opportunity'}</div><div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${scoreBg}; color:${scoreColor}; border-radius:999px; font-size:12px; font-weight:600;">PE ${s.peScore}/100 · ${scoreTier}</span><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${riskBg}; color:${riskColor}; border-radius:999px; font-size:12px; font-weight:600;">Risk ${riskBase.riskScore}/100 · ${riskLabel}</span>${s.peLabel ? `<span style="color:#64748b; font-size:12px;">${s.peLabel}</span>` : ''}</div></div><div style="flex:0 0 auto; text-align:right;"><button type="button" onclick="event.stopPropagation(); window.open('${s.url}', '_blank');" style="padding:10px 20px; background:#111928; color:#ffffff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s;">View Listing</button><div style="margin-top:6px;"><button type="button" class="show-breakdown" style="padding:6px 12px; background:#f8fafc; border:1px solid #d0d5dd; color:#475569; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;">📊 Deal Factors</button></div></div></div>${snippet ? `<div style="margin-top:14px; color:#64748b; font-size:13px; line-height:1.6;">${snippet}</div>` : ''}${analystNote ? `<div style="margin-top:12px; color:#475569; font-size:13px; line-height:1.6; background:#f8fafc; padding:12px 14px; border-radius:10px;">${analystNote}</div>` : ''}</div></div><div id="chart-container-${sourceId}" style="display:none; margin:18px 0 0 0; padding:18px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;"><canvas id="factor-chart-${sourceId}" width="400" height="200"></canvas></div></div>` });
+    // Build Quick Facts row
+    const quickFacts = `<div style="display:flex; gap:16px; flex-wrap:wrap; margin:12px 0; padding:12px; background:#f8fafc; border-radius:8px; font-size:12px;"><div><span style="color:#64748b; font-weight:600;">Tenant:</span> <span style="color:#1a2332;">Not disclosed</span></div><div><span style="color:#64748b; font-weight:600;">Lease:</span> <span style="color:#1a2332;">Pending extraction</span></div><div><span style="color:#64748b; font-weight:600;">Cap Rate:</span> <span style="color:#1a2332;">Not stated</span></div><div><span style="color:#64748b; font-weight:600;">NOI:</span> <span style="color:#1a2332;">Not stated</span></div><div><span style="color:#64748b; font-weight:600;">Classification:</span> <span style="color:${scoreColor}; font-weight:600;">${classification}</span></div></div>`;
+    
+    emit(ctx, "answer_chunk", { text: `<div class="deal-card" data-score="${s.peScore}" data-factors='${JSON.stringify(factors)}' data-card-id="${sourceId}" style="padding: 22px 26px; ${dividerStyle}"><div style="display:flex; align-items:flex-start; gap:24px;"><div style="flex:0 0 auto;"><div style="width:56px; height:56px; border-radius:14px; background:${scoreBg}; display:flex; align-items:center; justify-content:center; font-weight:700; color:${scoreColor}; font-size:18px;">${sourceId}</div></div><div style="flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; align-items:center; gap:16px;"><div style="min-width:0;"><div style="color:#1a2332; font-size:18px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.title || 'Investment Opportunity'}</div><div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${scoreBg}; color:${scoreColor}; border-radius:999px; font-size:12px; font-weight:600;">PE ${s.peScore}/100 → ${classification} (${classDesc})</span><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${riskBg}; color:${riskColor}; border-radius:999px; font-size:12px; font-weight:600;">Risk ${riskBase.riskScore}/100 → ${riskLabel} (${riskDesc})</span></div></div><div style="flex:0 0 auto; text-align:right;"><button type="button" onclick="event.stopPropagation(); window.open('${s.url}', '_blank');" style="padding:10px 20px; background:#111928; color:#ffffff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s;">View Listing</button><div style="margin-top:6px;"><button type="button" class="show-breakdown" style="padding:6px 12px; background:#f8fafc; border:1px solid #d0d5dd; color:#475569; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;">📊 Deal Factors</button></div></div></div>${quickFacts}${snippet ? `<div style="margin-top:14px; color:#64748b; font-size:13px; line-height:1.6;">${snippet}</div>` : ''}${analystNote ? `<div style="margin-top:12px; color:#475569; font-size:13px; line-height:1.6; background:#f8fafc; padding:12px 14px; border-radius:10px;">${analystNote}</div>` : ''}<div style="margin-top:16px; padding:12px; background:#f0f9ff; border-left:3px solid #3b82f6; border-radius:6px; font-size:13px;"><strong style="color:#1e40af;">Next Step:</strong> <span style="color:#475569;">${nextStep}</span></div></div></div><div id="chart-container-${sourceId}" style="display:none; margin:18px 0 0 0; padding:18px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;"><canvas id="factor-chart-${sourceId}" width="400" height="200"></canvas></div></div>` });
     if (!isLast) {
       emit(ctx, "answer_chunk", { text: `<div style="border-top:1px solid #e2e8f0;"></div>` });
     }

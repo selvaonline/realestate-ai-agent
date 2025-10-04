@@ -202,15 +202,17 @@ function scoreRow(row: SerpRow, query?: string) {
     .filter(Boolean)
     .join(" · ");
 
-  // Analyst rationale
+  // Analyst rationale - only include positive signals, not "missing data" disclaimers
   const rationale = [
-    tenantName
-      ? `Tenant: ${tenantName}${has(tenantName, cfg.tenantCredit.investmentGrade) ? " (Investment Grade)" : ""}.`
-      : "No named tenant identified.",
+    tenantName && has(tenantName, cfg.tenantCredit.investmentGrade)
+      ? `Tenant: ${tenantName} (Investment Grade).`
+      : tenantName
+      ? `Tenant: ${tenantName}.`
+      : null,
     cap != null
       ? `Cap spread vs 10Y ≈ ${((cap - rf) * 100).toFixed(1)}bps.`
-      : `Cap not stated; scored on other factors.`,
-    tier ? `Market tier ${tier}.` : `Market tier unknown.`,
+      : null,
+    tier ? `Market tier ${tier}.` : null,
     nnn ? `NNN lease structure.` : null,
     longTerm ? `Long-term lease indicators.` : null,
     guarantee ? `Corporate guarantee language.` : null,

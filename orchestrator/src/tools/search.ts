@@ -58,8 +58,9 @@ export const webSearch = new DynamicTool({
 
     const userQuery = typeof args === "string" ? (args as string) : (args as any).query;
 
-    // Use query as-is; agent already adds site:crexi.com
-    const q = userQuery;
+    // Search across multiple CRE domains in one pass
+    const DOMAINS = ["crexi.com","loopnet.com","brevitas.com","commercialexchange.com","biproxi.com"];
+    const q = `${userQuery} (${DOMAINS.map(d => ` site:${d}`).join(" OR ")}) "for sale"`;
 
     const controller = new AbortController();
     const to = setTimeout(() => controller.abort(), timeoutMs);
@@ -89,7 +90,15 @@ export const webSearch = new DynamicTool({
 
       const j: any = await r.json();
       
-      console.log("[search] serper organic count:", (j.organic||[]).length);
+      const rowsRaw = j.organic ?? [];
+      console.log("[search] serper organic count:", rowsRaw.length);
+      
+      // Per-domain debug
+      const byDomain = rowsRaw.reduce((m:any, v:any) => {
+        try { const d = new URL(v.link).hostname.replace(/^www\./,""); m[d]=(m[d]||0)+1; } catch {}
+        return m;
+      }, {});
+      console.log("[search] per-domain counts:", byDomain);
 
       // Normalize → rank → dedupe → cap (let agent filter by detail URL)
       let rows: SearchRow[] = (j.organic ?? []).map((v: any) => ({
@@ -98,12 +107,8 @@ export const webSearch = new DynamicTool({
         snippet: v?.snippet ?? "",
       })).filter((x: SearchRow) => x.url);
 
-      // Rank CREXI first
-      rows.sort((a, b) => {
-        const ac = /crexi\.com/i.test(a.url) ? 0 : 1;
-        const bc = /crexi\.com/i.test(b.url) ? 0 : 1;
-        return ac - bc;
-      });
+      // Domain-agnostic ranking (removed CREXi bias)
+      // rows are already in relevance order from SERPER
 
       // Dedupe by URL
       const seen = new Set<string>();

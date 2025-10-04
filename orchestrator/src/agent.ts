@@ -7,18 +7,25 @@ import { riskBlender } from "./tools/riskBlender.js";
 import { fred10Y, blsMetroUnemp, inferMetroSeriesIdFromText } from "./infra/market.js";
 import type { Deal } from "./lib/types.js";
 
-// ---- Shared URL patterns (relaxed to allow more valid property pages) ----
-const CREXI_DETAIL_RX =
-  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/[^?#]+/i;
-const CREXI_NON_DETAIL_DISALLOWED =
-  /\/(?:for-sale|for-lease|tenants|categories|search|results)\/|\/(TX|CA|FL|NY|IL|GA|NC|VA|WA|AZ|MA|TN|CO|MD|OR|MI|MO|WI|MN|AL|LA|KY|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|WV|ID|HI|NH|ME|RI|MT|DE|SD|ND|AK|VT|WY)$/i;
-const isDetailUrl = (u: string) => {
-  if (/crexi\.com/i.test(u)) return CREXI_DETAIL_RX.test(u) && !CREXI_NON_DETAIL_DISALLOWED.test(u);
-  return /loopnet\.com\/Listing\//i.test(u)
-      || /propertyshark\.com\/.*\/Property\//i.test(u)
-      || /realnex\.com\/listing\//i.test(u)
-      || /realtor\.com\/(commercial|realestateandhomes-detail)\//i.test(u);
+// ---- Multi-source URL patterns ----
+const DETAIL_RX = {
+  crexi: /crexi\.com\/(?:property|sale|lease)\/[^/?#]+\/[a-z0-9]+/i,
+  loopnet: /loopnet\.com\/Listing\/[^?#]+/i,
+  brevitas: /brevitas\.com\/listing\/[^?#]+/i,
+  commercialexchange: /commercialexchange\.com\/property\/[^?#]+/i,
+  biproxi: /biproxi\.com\/(?:property|listing)\/[^?#]+/i,
 };
+
+const LIST_RX = {
+  crexi: /crexi\.com\/properties\//i,
+  loopnet: /loopnet\.com\/(search|for-sale|for-lease)/i,
+  brevitas: /brevitas\.com\/search/i,
+  commercialexchange: /commercialexchange\.com\/property\/search/i,
+  biproxi: /biproxi\.com\/search/i,
+};
+
+const isDetailUrl = (u: string) => Object.values(DETAIL_RX).some(rx => rx.test(u));
+const isListUrl = (u: string) => Object.values(LIST_RX).some(rx => rx.test(u));
 
 /** ✅ Fallback URLs - disabled for now (extraction too slow) */
 const DEMO_FALLBACK_URLS: string[] = [
@@ -113,7 +120,11 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   emit(ctx, "thinking", { text: "🧠 AI agent performs reasoning: search, normalize tenants, apply PE & Risk scoring" });
   
   // Simple plan - no LLM needed, we know what to search
-  const plan = `Searching Crexi.com for: ${q}`;
+  const plan = `Searching multiple CRE sources for: ${q}`;
+  
+  // Multi-domain constants
+  const DOMAINS = ["crexi.com","loopnet.com","brevitas.com","commercialexchange.com","biproxi.com"];
+  const MD_QUERY = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) "for sale"`;
 
   emit(ctx, "thinking", { text: "🏢 Searching commercial real estate listings..." });
   
@@ -121,15 +132,22 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   const sources: Array<{ id: number; title: string; url: string; snippet: string; score?: number; riskScore?: number }> = [];
   let sourceId = 0;
 
-  // ── Search: detail-first → broader → general ───────────────────────────────────
-  // Strategy 1: Focused search with better keywords to find actual property listings
-  const detailQuery = `${q} property listing for sale site:crexi.com/properties`;
+  // ── Search: detail-first → broader → general (multi-domain) ───────────────────────────────────
+  // Strategy 1: Focused multi-domain search
+  const detailQuery = MD_QUERY;
   
-  console.log("[agent] 🔍 Search strategy 1:", detailQuery);
+  console.log("[agent] 🔍 Search strategy 1 (multi-domain):", detailQuery);
   const detail = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
-    query: detailQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
+    query: detailQuery, preferCrexi: false, maxResults: 20, timeoutMs: 10000
   })))) as Array<{ title: string; url: string; snippet: string }>) || [];
   console.log(`[agent] ✅ Strategy 1 returned ${detail.length} raw results`);
+  
+  // Per-domain debug
+  const perDomain = detail.reduce((m:any,r:any)=>{
+    try { const d = new URL(r.url).hostname.replace(/^www\./,""); m[d]=(m[d]||0)+1; } catch {}
+    return m;
+  }, {});
+  console.log("[agent] Strategy 1 per-domain:", perDomain);
   
   // ✨ SCORE ALL RESULTS with DealSense PE algorithm
   emit(ctx, "thinking", { text: "Analyzing deal quality with DealSense PE scoring model..." });
@@ -269,13 +287,13 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     candidates.slice(0, 3).forEach((c, i) => console.log(`[agent]   ${i+1}. [${c.peScore}] ${c.url}`));
   }
 
-  // Strategy 2: Broader Crexi search (only if not enough high-scoring candidates)
+  // Strategy 2: Broader multi-domain search (only if not enough high-scoring candidates)
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Expanding search criteria..." });
-    const broaderQuery = `${q} commercial property site:crexi.com`;
-    console.log("[agent] 🔍 Search strategy 2 (broader):", broaderQuery);
+    const broaderQuery = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) commercial property for sale`;
+    console.log("[agent] 🔍 Search strategy 2 (broader multi-domain):", broaderQuery);
     const broader = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
-      query: broaderQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
+      query: broaderQuery, preferCrexi: false, maxResults: 20, timeoutMs: 10000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
     console.log(`[agent] Strategy 2 returned ${broader.length} results`);
     
@@ -284,10 +302,8 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       title: string; url: string; snippet: string; peScore: number; peLabel: string;
     }>;
     
-    const broaderCrexi = scoredBroader.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url) && r.peScore >= MIN_BROWSE_SCORE);
-    const broaderOther = scoredBroader.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && r.peScore >= MIN_BROWSE_SCORE);
-    const broaderCandidates = [...broaderCrexi, ...broaderOther];
-    console.log(`[agent] Strategy 2 detail URLs: ${broaderCandidates.length}`);
+    const broaderCandidates = scoredBroader.filter((r) => r?.url && (isDetailUrl(r.url) || isListUrl(r.url)) && r.peScore >= MIN_BROWSE_SCORE);
+    console.log(`[agent] Strategy 2 detail/list URLs: ${broaderCandidates.length}`);
     
     // Add new candidates only
     for (const candidate of broaderCandidates) {
@@ -297,19 +313,17 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     }
   }
 
-  // Strategy 3: General search - cast wider net but filter out LoopNet
+  // Strategy 3: Very broad multi-domain search
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Trying broader search..." });
-    const generalQuery = `${q} commercial real estate crexi`;
-    console.log("[agent] 🔍 Search strategy 3 (broadest):", generalQuery);
+    const generalQuery = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")})`;
+    console.log("[agent] 🔍 Search strategy 3 (broadest multi-domain):", generalQuery);
     const general = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
-      query: generalQuery, preferCrexi: true, maxResults: 12, timeoutMs: 9000
+      query: generalQuery, preferCrexi: false, maxResults: 20, timeoutMs: 10000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
     console.log(`[agent] Strategy 3 returned ${general.length} results`);
-    const generalCrexi = general.filter((r) => r?.url && isDetailUrl(r.url) && /crexi\.com/i.test(r.url));
-    const generalOther = general.filter((r) => r?.url && isDetailUrl(r.url) && !/crexi\.com/i.test(r.url) && !/loopnet\.com/i.test(r.url));
-    const generalCandidates = [...generalCrexi, ...generalOther];
-    console.log(`[agent] Strategy 3 detail URLs: ${generalCandidates.length}`);
+    const generalCandidates = general.filter((r) => r?.url && (isDetailUrl(r.url) || isListUrl(r.url)));
+    console.log(`[agent] Strategy 3 detail/list URLs: ${generalCandidates.length}`);
     
     // Add new sources and candidates
     for (const candidate of generalCandidates) {
@@ -325,7 +339,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     }
   }
   
-  // Dedupe and rank (CREXI first)
+  // Dedupe (domain-agnostic, no CREXi bias)
   const seen = new Set<string>();
   candidates = candidates
     .filter(c => {
@@ -333,31 +347,22 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       if (seen.has(c.url)) return false;
       seen.add(c.url);
       return true;
-    })
-    .sort((a, b) => {
-      const ac = /crexi\.com/i.test(a.url) ? 0 : 1;
-      const bc = /crexi\.com/i.test(b.url) ? 0 : 1;
-      return ac - bc;
     });
 
   console.log(`[agent] Total candidates after all searches: ${candidates.length}`);
   
-  // Fix 1: Relax to list/brokerage pages when 0 detail URLs (let Playwright auto-drill)
+  // Fix 1: Relax to list/brokerage pages when 0 detail URLs (let Playwright auto-drill) - MULTI-DOMAIN
   if (candidates.length === 0) {
     emit(ctx, "thinking", { text: "No detail pages found; trying list pages for drill-in…" });
-    const relaxedQuery = `${q} commercial property site:crexi.com`;
-    console.log("[agent] 🔎 Last-resort query (accepting list/brokerage pages for drilling):", relaxedQuery);
+    const relaxedQuery = `${q} "for sale" (${DOMAINS.map(d=>` site:${d}`).join(" OR ")})`;
+    console.log("[agent] 🔎 Last-resort query (multi-domain list pages):", relaxedQuery);
 
     const relaxed = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
-      query: relaxedQuery, preferCrexi: true, maxResults: 15, timeoutMs: 9000
+      query: relaxedQuery, preferCrexi: false, maxResults: 20, timeoutMs: 10000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
 
-    // Accept ANY crexi.com page - brokerage pages have property links we can drill into
-    // Also accept /properties/ list pages which often have good drill-in targets
-    const listPages = relaxed.filter(r => 
-      /crexi\.com/i.test(r.url) && 
-      !/\/(tenants|categories|search|results)\//.test(r.url)
-    );
+    // Accept list/search pages from any domain (we'll auto-drill bounded)
+    const listPages = relaxed.filter(r => r?.url && isListUrl(r.url));
     
     if (listPages.length > 0) {
       // Score the list pages too so we prioritize better ones
@@ -369,7 +374,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
       // Push up to 3 highest-scoring list pages; runOnce() will bounded-drill to detail from each
       const topList = scoredList.sort((a, b) => b.peScore - a.peScore).slice(0, 3);
       candidates.push(...topList);
-      console.log(`[agent] ✅ Using ${candidates.length} CREXI pages for auto-drill:`, candidates.map(c => `[${c.peScore}] ${c.url}`));
+      console.log(`[agent] ✅ Using ${candidates.length} multi-domain pages for auto-drill:`, candidates.map(c => `[${c.peScore}] ${c.url}`));
       candidates.forEach((c, i) => {
         sourceId++;
         const source = { id: sourceId, title: c.title, url: c.url, snippet: c.snippet, score: c.peScore, riskScore: riskBase.riskScore };
@@ -377,7 +382,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
         emit(ctx, "source_found", { source });
       });
     } else {
-      console.log("[agent] ❌ No CREXI pages found (relaxed search)");
+      console.log("[agent] ❌ No list pages found (relaxed multi-domain search)");
     }
   }
 

@@ -1,0 +1,94 @@
+      <!-- PE Model Info Popup with inline styles -->
+      <div *ngIf="showPeModelInfo()" 
+           style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 999999;">
+        <div style="background: #ffffff; padding: 32px; border-radius: 16px; max-width: 720px; width: 94%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 85vh; overflow-y: auto;">
+          <button (click)="showPeModelInfo.set(false)" 
+                  style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 30px; height: 30px;">×</button>
+          
+          <h3 style="margin-top: 0; font-size: 24px; color: #111827; font-weight: 700;">🧠 How the DealSense PE Model Works</h3>
+          
+          <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 14px 18px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 0; color: #065f46; line-height: 1.6; font-weight: 500;">
+              The DealSense Private Equity (PE) Model scores each property on a 1–100 scale, indicating its overall investment appeal. A higher score = stronger fundamentals and better strategic fit.
+            </p>
+          </div>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Key Factors Evaluated</h4>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Financial Performance</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Cap rate, NOI, asking price, yield spread vs. Treasury, and potential value-add upside.</p>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Location Strength</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Market tier (A/B/C), demographic growth, rent trends, and proximity to key infrastructure or employment hubs.</p>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Asset Quality</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Property type, age, physical condition, and tenant credit profile (IG vs. non-IG).</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Lease & Risk Profile</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Lease term remaining, rent escalations, renewal options, and local market volatility.</p>
+          </div>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Blending Logic (High-Level)</h4>
+          
+          <ol style="padding-left: 20px; margin: 0; color: #4b5563; line-height: 1.8;">
+            <li style="margin-bottom: 8px;">Normalize each factor to a 0–100 scale</li>
+            <li style="margin-bottom: 8px;">Weight by relevance (Financial ≈ 30%, Location ≈ 25%, Asset ≈ 25%, Lease/Risk ≈ 20%)</li>
+            <li style="margin-bottom: 8px;">Combine into a composite PE Score</li>
+          </ol>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Interpretation</h4>
+          
+          <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+            <thead>
+              <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Score</th>
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Classification</th>
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #059669; font-weight: 600;">80–100</td>
+                <td style="padding: 10px; color: #4b5563;">Core / Core+</td>
+                <td style="padding: 10px; color: #4b5563;">Strong fundamentals, attractive yield, low risk</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #3b82f6; font-weight: 600;">60–79</td>
+                <td style="padding: 10px; color: #4b5563;">Value-Add</td>
+                <td style="padding: 10px; color: #4b5563;">Solid deal, moderate risk, potential upside</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #f59e0b; font-weight: 600;">40–59</td>
+                <td style="padding: 10px; color: #4b5563;">Opportunistic</td>
+                <td style="padding: 10px; color: #4b5563;">Higher risk, needs repositioning or short lease term</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; color: #dc2626; font-weight: 600;">0–39</td>
+                <td style="padding: 10px; color: #4b5563;">Watch / Decline</td>
+                <td style="padding: 10px; color: #4b5563;">Weak fundamentals or incomplete data</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">How to Use It</h4>
+          
+          <ul style="padding-left: 20px; margin: 0; color: #4b5563; line-height: 1.8;">
+            <li style="margin-bottom: 8px;">Quickly rank and compare new opportunities</li>
+            <li style="margin-bottom: 8px;">Focus due diligence on high-scoring deals</li>
+            <li style="margin-bottom: 8px;">Use alongside the Market Risk Score for balanced decision-making</li>
+          </ul>
+          
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 8px; margin: 20px 0 0 0;">
+            <p style="margin: 0; color: #92400e; line-height: 1.6; font-weight: 500;">
+              ✅ The PE Model doesn't replace underwriting—it standardizes early-stage screening, making deal comparison faster, transparent, and data-driven.
+            </p>
+          </div>
+        </div>
+      </div>

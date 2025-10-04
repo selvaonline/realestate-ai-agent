@@ -56,6 +56,9 @@ export class SafeHtmlPipe implements PipeTransform {
              [placeholder]="typingPlaceholder()" 
              (focus)="stopTyping()" />
       <button (click)="run()" [disabled]="busy()">{{ busy() ? 'Running...' : 'Search' }}</button>
+      <button *ngIf="answer() || sources().length" (click)="newSearch()" class="new-search-btn" [disabled]="busy()">
+        <span class="new-search-icon">🔄</span> New Search
+      </button>
     </div>
 
     <!-- Perplexity-style Answer Section -->
@@ -169,43 +172,195 @@ export class SafeHtmlPipe implements PipeTransform {
       <!-- PE Model Info Popup with inline styles -->
       <div *ngIf="showPeModelInfo()" 
            style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 999999;">
-        <div style="background: #ffffff; padding: 30px; border-radius: 16px; max-width: 600px; width: 90%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 80vh; overflow-y: auto;">
+        <div style="background: #ffffff; padding: 32px; border-radius: 16px; max-width: 720px; width: 94%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 85vh; overflow-y: auto;">
           <button (click)="showPeModelInfo.set(false)" 
                   style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 30px; height: 30px;">×</button>
-          <h3 style="margin-top: 0; font-size: 22px; color: #111827;">How the DealSense PE Model Works</h3>
-          <p style="color: #1f2937; line-height: 1.6;">The DealSense Proprietary Equity (PE) Model is a sophisticated algorithm designed to evaluate commercial real estate investment opportunities by analyzing a wide range of factors. It provides a comprehensive score from 1 to 100, where a higher score indicates a more favorable investment.</p>
-          <h4 style="font-size: 16px; color: #111827; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Key Factors Analyzed:</h4>
-          <ul style="padding-left: 20px; margin: 0;">
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Financial Metrics:</strong> Cap Rate, NOI, Asking Price, and potential for value-add opportunities.</li>
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Location Analysis:</strong> Demographics, market trends, and proximity to key infrastructure.</li>
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Asset Quality:</strong> Property type, age, condition, and tenant quality.</li>
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Risk Assessment:</strong> Lease terms, market volatility, and economic indicators.</li>
+          
+          <h3 style="margin-top: 0; font-size: 24px; color: #111827; font-weight: 700;">🧠 How the DealSense PE Model Works</h3>
+          
+          <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 14px 18px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 0; color: #065f46; line-height: 1.6; font-weight: 500;">
+              The DealSense Private Equity (PE) Model scores each property on a 1–100 scale, indicating its overall investment appeal. A higher score = stronger fundamentals and better strategic fit.
+            </p>
+          </div>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Key Factors Evaluated</h4>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Financial Performance</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Cap rate, NOI, asking price, yield spread vs. Treasury, and potential value-add upside.</p>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Location Strength</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Market tier (A/B/C), demographic growth, rent trends, and proximity to key infrastructure or employment hubs.</p>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Asset Quality</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Property type, age, physical condition, and tenant credit profile (IG vs. non-IG).</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Lease & Risk Profile</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">Lease term remaining, rent escalations, renewal options, and local market volatility.</p>
+          </div>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Blending Logic (High-Level)</h4>
+          
+          <ol style="padding-left: 20px; margin: 0; color: #4b5563; line-height: 1.8;">
+            <li style="margin-bottom: 8px;">Normalize each factor to a 0–100 scale</li>
+            <li style="margin-bottom: 8px;">Weight by relevance (Financial ≈ 30%, Location ≈ 25%, Asset ≈ 25%, Lease/Risk ≈ 20%)</li>
+            <li style="margin-bottom: 8px;">Combine into a composite PE Score</li>
+          </ol>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Interpretation</h4>
+          
+          <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+            <thead>
+              <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Score</th>
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Classification</th>
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #059669; font-weight: 600;">80–100</td>
+                <td style="padding: 10px; color: #4b5563;">Core / Core+</td>
+                <td style="padding: 10px; color: #4b5563;">Strong fundamentals, attractive yield, low risk</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #3b82f6; font-weight: 600;">60–79</td>
+                <td style="padding: 10px; color: #4b5563;">Value-Add</td>
+                <td style="padding: 10px; color: #4b5563;">Solid deal, moderate risk, potential upside</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #f59e0b; font-weight: 600;">40–59</td>
+                <td style="padding: 10px; color: #4b5563;">Opportunistic</td>
+                <td style="padding: 10px; color: #4b5563;">Higher risk, needs repositioning or short lease term</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; color: #dc2626; font-weight: 600;">0–39</td>
+                <td style="padding: 10px; color: #4b5563;">Watch / Decline</td>
+                <td style="padding: 10px; color: #4b5563;">Weak fundamentals or incomplete data</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">How to Use It</h4>
+          
+          <ul style="padding-left: 20px; margin: 0; color: #4b5563; line-height: 1.8;">
+            <li style="margin-bottom: 8px;">Quickly rank and compare new opportunities</li>
+            <li style="margin-bottom: 8px;">Focus due diligence on high-scoring deals</li>
+            <li style="margin-bottom: 8px;">Use alongside the Market Risk Score for balanced decision-making</li>
           </ul>
-          <p style="color: #1f2937; line-height: 1.6; margin-top: 15px;">This model helps investors quickly identify and rank deals that align with their strategic goals, saving time and providing a data-driven foundation for due diligence.</p>
+          
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 8px; margin: 20px 0 0 0;">
+            <p style="margin: 0; color: #92400e; line-height: 1.6; font-weight: 500;">
+              ✅ The PE Model doesn't replace underwriting—it standardizes early-stage screening, making deal comparison faster, transparent, and data-driven.
+            </p>
+          </div>
         </div>
       </div>
+
 
       <!-- Market Risk Info Popup -->
       <div *ngIf="showMarketRiskInfo()"
            style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 999999;">
-        <div style="background: #ffffff; padding: 30px; border-radius: 16px; max-width: 640px; width: 92%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 80vh; overflow-y: auto;">
+        <div style="background: #ffffff; padding: 32px; border-radius: 16px; max-width: 720px; width: 94%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); color: #1f2937; max-height: 85vh; overflow-y: auto;">
           <button (click)="showMarketRiskInfo.set(false)"
                   style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 30px; height: 30px;">×</button>
-          <h3 style="margin-top: 0; font-size: 22px; color: #111827;">How Market Risk Is Calculated</h3>
-          <p style="color: #1f2937; line-height: 1.6;">The Market Risk score provides a quick read of macro conditions that can affect deal performance and pricing. It blends several external indicators into a 0–100 score with an accompanying note.</p>
-          <h4 style="font-size: 16px; color: #111827; margin-top: 18px; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Inputs Considered</h4>
-          <ul style="padding-left: 20px; margin: 0;">
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Treasury Curve (FRED):</strong> 10Y yield (bps) and directionality; higher yields generally increase financing costs and risk.</li>
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Labor Conditions (BLS):</strong> Latest metro unemployment and YoY delta when a metro can be inferred from the query/listings.</li>
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;"><strong>Signal Hygiene:</strong> Missing/uncertain inputs are down-weighted; notes explain any gaps.</li>
+          
+          <h3 style="margin-top: 0; font-size: 24px; color: #111827; font-weight: 700;">📊 How Market Risk Is Calculated</h3>
+          
+          <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 14px 18px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 0; color: #1e40af; line-height: 1.6; font-weight: 500;">
+              Gives a quick snapshot of macro conditions that can affect deal performance, financing cost, and pricing.
+            </p>
+          </div>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Inputs Considered</h4>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Treasury Curve (FRED):</div>
+            <p style="margin: 0 0 8px 0; color: #4b5563; line-height: 1.6;">10-Year U.S. Treasury yield and its recent trend.</p>
+            <ul style="padding-left: 20px; margin: 0; color: #4b5563;">
+              <li style="margin-bottom: 4px;">Rising yields → higher borrowing cost → ↑ risk</li>
+              <li style="margin-bottom: 4px;">Falling yields → cheaper capital → ↓ risk</li>
+            </ul>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Labor Conditions (BLS):</div>
+            <p style="margin: 0 0 8px 0; color: #4b5563; line-height: 1.6;">Metro unemployment rate and YoY change (when metro is detected).</p>
+            <ul style="padding-left: 20px; margin: 0; color: #4b5563;">
+              <li style="margin-bottom: 4px;">Rising unemployment → softening demand → ↑ risk</li>
+              <li style="margin-bottom: 4px;">Stable or improving labor → ↓ risk</li>
+            </ul>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <div style="font-weight: 600; color: #111827; margin-bottom: 6px;">Signal Confidence:</div>
+            <p style="margin: 0; color: #4b5563; line-height: 1.6;">When data is missing or uncertain, weights are adjusted and notes explain any gaps.</p>
+          </div>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Blending Logic</h4>
+          
+          <ol style="padding-left: 20px; margin: 0; color: #4b5563; line-height: 1.8;">
+            <li style="margin-bottom: 8px;">Normalize each input to a 0–100 scale (50 = neutral)</li>
+            <li style="margin-bottom: 8px;">Weight and blend: Treasury ≈ 40%, Labor ≈ 30%, News/Sentiment ≈ 20%, Data Quality ≈ 10%</li>
+            <li style="margin-bottom: 8px;">Combine into a single score (higher = more risk)</li>
+            <li style="margin-bottom: 8px;">Generate a short narrative — e.g., "10Y elevated; labor softening"</li>
+          </ol>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">How to Read It</h4>
+          
+          <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+            <thead>
+              <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Score</th>
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Meaning</th>
+                <th style="padding: 10px; text-align: left; color: #111827; font-weight: 600;">Macro Signal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #059669; font-weight: 600;">0–39</td>
+                <td style="padding: 10px; color: #4b5563;">Low risk</td>
+                <td style="padding: 10px; color: #4b5563;">Favorable rates, strong labor</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #f59e0b; font-weight: 600;">40–59</td>
+                <td style="padding: 10px; color: #4b5563;">Moderate</td>
+                <td style="padding: 10px; color: #4b5563;">Balanced environment</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 10px; color: #f97316; font-weight: 600;">60–79</td>
+                <td style="padding: 10px; color: #4b5563;">Elevated</td>
+                <td style="padding: 10px; color: #4b5563;">Rates rising or labor weakening</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; color: #dc2626; font-weight: 600;">80–100</td>
+                <td style="padding: 10px; color: #4b5563;">High</td>
+                <td style="padding: 10px; color: #4b5563;">Macro stress / tight credit</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h4 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: 600;">Use It For</h4>
+          
+          <ul style="padding-left: 20px; margin: 0; color: #4b5563; line-height: 1.8;">
+            <li style="margin-bottom: 8px;">Framing screening and valuation discussions</li>
+            <li style="margin-bottom: 8px;">Comparing deals across time or markets</li>
+            <li style="margin-bottom: 8px;">Gauging the "macro weather" — not replacing underwriting, but adding context</li>
           </ul>
-          <h4 style="font-size: 16px; color: #111827; margin-top: 18px; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Blending Logic (High Level)</h4>
-          <ul style="padding-left: 20px; margin: 0;">
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;">Normalize each input to a comparable 0–100 scale.</li>
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;">Weight and blend to a composite risk score (higher = more risk).</li>
-            <li style="margin-bottom: 10px; line-height: 1.6; color: #1f2937;">Generate a short narrative explaining the drivers (e.g., “10Y elevated; labor softening”).</li>
-          </ul>
-          <p style="color: #1f2937; line-height: 1.6; margin-top: 15px;">Use this score to frame screening and valuation conversations; it’s not a substitute for underwriting, but a consistent macro lens for comparability.</p>
+          
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 8px; margin: 20px 0 0 0;">
+            <p style="margin: 0; color: #92400e; line-height: 1.6; font-weight: 500;">
+              ✅ Neutral baseline is 50. Scores move up or down with interest-rate and labor trends.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -346,6 +501,17 @@ export class SafeHtmlPipe implements PipeTransform {
     button { padding:12px 24px; background:#2f5cff; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:15px; }
     button:hover:not(:disabled) { background:#4169ff; }
     button:disabled { opacity:0.6; cursor:not-allowed; }
+    
+    .new-search-btn { 
+      background:#10b981; 
+      display:flex; 
+      align-items:center; 
+      gap:8px; 
+      padding:12px 20px;
+      transition: all 0.2s ease;
+    }
+    .new-search-btn:hover:not(:disabled) { background:#059669; transform: translateY(-1px); }
+    .new-search-icon { font-size:16px; }
 
     /* Perplexity-style sections */
     .perplexity-section { margin-top: 24px; }
@@ -1613,6 +1779,32 @@ export class App implements AfterViewChecked {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  newSearch() {
+    // Clear all results and reset to initial state
+    this.q.set('');
+    this.cards.set([]);
+    this.deals.set([]);
+    this.sources.set([]);
+    this.answer.set('');
+    this.answerComplete.set(false);
+    this.shareStatus.set('');
+    this.progressProperties.set([]);
+    this.browserPreview.set(null);
+    this.showMemo.set(false);
+    this.memoText.set('');
+    this.portfolioChartsInitialized = false;
+    
+    // Restart typing animation
+    this.isTypingActive = true;
+    this.startTypingAnimation();
+    
+    // Focus on input
+    setTimeout(() => {
+      const input = document.querySelector('input') as HTMLInputElement;
+      if (input) input.focus();
+    }, 100);
   }
 
   async run() {

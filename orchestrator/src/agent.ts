@@ -7,11 +7,11 @@ import { riskBlender } from "./tools/riskBlender.js";
 import { fred10Y, blsMetroUnemp, inferMetroSeriesIdFromText } from "./infra/market.js";
 import type { Deal } from "./lib/types.js";
 
-// ---- Shared URL patterns (strict: only actual property detail pages) ----
+// ---- Shared URL patterns (relaxed to allow more valid property pages) ----
 const CREXI_DETAIL_RX =
-  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/\d+\/[^/?#]+/i;
+  /https?:\/\/(?:www\.)?crexi\.com\/(property|sale|lease|properties)\/[^?#]+/i;
 const CREXI_NON_DETAIL_DISALLOWED =
-  /\/(?:for-sale|for-lease|tenants|categories|search|results|brokerage|brokerages)\/|\/(TX|CA|FL|NY|IL|GA|NC|VA|WA|AZ|MA|TN|CO|MD|OR|MI|MO|WI|MN|AL|LA|KY|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|WV|ID|HI|NH|ME|RI|MT|DE|SD|ND|AK|VT|WY)\//i;
+  /\/(?:for-sale|for-lease|tenants|categories|search|results)\/|\/(TX|CA|FL|NY|IL|GA|NC|VA|WA|AZ|MA|TN|CO|MD|OR|MI|MO|WI|MN|AL|LA|KY|OK|CT|UT|IA|NV|AR|MS|KS|NM|NE|WV|ID|HI|NH|ME|RI|MT|DE|SD|ND|AK|VT|WY)$/i;
 const isDetailUrl = (u: string) => {
   if (/crexi\.com/i.test(u)) return CREXI_DETAIL_RX.test(u) && !CREXI_NON_DETAIL_DISALLOWED.test(u);
   return /loopnet\.com\/Listing\//i.test(u)
@@ -344,21 +344,38 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   
   // Fix 1: Relax to list/brokerage pages when 0 detail URLs (let Playwright auto-drill)
   if (candidates.length === 0) {
-    emit(ctx, "thinking", { text: "No detail pages found; using list page to auto-drill…" });
-    const relaxedQuery = `${q} site:crexi.com`;
+    emit(ctx, "thinking", { text: "No detail pages found; trying list pages for drill-in…" });
+    const relaxedQuery = `${q} commercial property site:crexi.com`;
     console.log("[agent] 🔎 Last-resort query (accepting list/brokerage pages for drilling):", relaxedQuery);
 
     const relaxed = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
-      query: relaxedQuery, preferCrexi: true, maxResults: 10, timeoutMs: 9000
+      query: relaxedQuery, preferCrexi: true, maxResults: 15, timeoutMs: 9000
     })))) as Array<{ title: string; url: string; snippet: string }>) || [];
 
     // Accept ANY crexi.com page - brokerage pages have property links we can drill into
-    const listPages = relaxed.filter(r => /crexi\.com/i.test(r.url) && !/\/(tenants|categories)\//.test(r.url));
+    // Also accept /properties/ list pages which often have good drill-in targets
+    const listPages = relaxed.filter(r => 
+      /crexi\.com/i.test(r.url) && 
+      !/\/(tenants|categories|search|results)\//.test(r.url)
+    );
+    
     if (listPages.length > 0) {
-      // Push up to 3 list pages; runOnce() will bounded-drill to detail from each
-      candidates.push(...listPages.slice(0, 3));
-      console.log(`[agent] ✅ Using ${candidates.length} CREXI pages for auto-drill:`, candidates.map(c => c.url));
-      candidates.forEach((c, i) => emit(ctx, "source_found", { source: { id: 990 + i, ...c } }));
+      // Score the list pages too so we prioritize better ones
+      const scoredList = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ 
+        rows: listPages, 
+        query: q 
+      })))) as Array<{ title: string; url: string; snippet: string; peScore: number; peLabel: string }>;
+      
+      // Push up to 3 highest-scoring list pages; runOnce() will bounded-drill to detail from each
+      const topList = scoredList.sort((a, b) => b.peScore - a.peScore).slice(0, 3);
+      candidates.push(...topList);
+      console.log(`[agent] ✅ Using ${candidates.length} CREXI pages for auto-drill:`, candidates.map(c => `[${c.peScore}] ${c.url}`));
+      candidates.forEach((c, i) => {
+        sourceId++;
+        const source = { id: sourceId, title: c.title, url: c.url, snippet: c.snippet, score: c.peScore, riskScore: riskBase.riskScore };
+        sources.push(source);
+        emit(ctx, "source_found", { source });
+      });
     } else {
       console.log("[agent] ❌ No CREXI pages found (relaxed search)");
     }
@@ -372,10 +389,50 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   if (SKIP_EXTRACTION) {
     console.log(`[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from ${sources.length} scored sources`);
     
-    // If no sources found, just complete
+    // If no sources found, provide helpful suggestions
     if (sources.length === 0) {
       console.log(`[agent] ⚠️ No scored sources available for analytics`);
-      emit(ctx, "answer_chunk", { text: "<br><p style='color:#eb8b5f;'>No property listings found matching your criteria. Try broadening your search terms or different location.</p>" });
+      
+      const noResultsMessage = `
+        <div style="background:#fff3e0; border:1px solid #ffb74d; border-radius:12px; padding:24px; margin:20px 0;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+            <span style="font-size:32px;">🔍</span>
+            <h3 style="margin:0; color:#e65100; font-size:18px;">No Property Listings Found</h3>
+          </div>
+          
+          <p style="color:#5d4037; margin:12px 0; line-height:1.6;">
+            We couldn't find any properties matching your specific criteria. This could mean:
+          </p>
+          
+          <ul style="color:#5d4037; margin:12px 0 16px 20px; line-height:1.8;">
+            <li>The search terms are too specific (try removing some filters)</li>
+            <li>The location might not have active listings (try nearby cities)</li>
+            <li>Cap rate or price requirements are too restrictive</li>
+          </ul>
+          
+          <div style="background:#ffffff; border-left:3px solid #ff9800; padding:12px 16px; border-radius:6px; margin-top:16px;">
+            <strong style="color:#e65100;">💡 Suggestions:</strong>
+            <ul style="margin:8px 0 0 20px; color:#5d4037; line-height:1.6;">
+              <li>Try broader location: "Florida" instead of specific cities</li>
+              <li>Remove specific requirements: cap rate, price range, or lease terms</li>
+              <li>Use general terms: "Walgreens NNN for sale" or "CVS pharmacy properties"</li>
+              <li>Try different property types: "retail NNN" or "single tenant net lease"</li>
+            </ul>
+          </div>
+          
+          <div style="margin-top:16px; padding:12px; background:#e3f2fd; border-radius:6px;">
+            <strong style="color:#1565c0;">🎯 Example searches that work well:</strong>
+            <ul style="margin:8px 0 0 20px; color:#1565c0; line-height:1.6; font-size:13px;">
+              <li>"Walgreens OR CVS single tenant NNN for sale"</li>
+              <li>"Industrial warehouse for sale Texas"</li>
+              <li>"Retail NNN properties Florida cap rate 5-7%"</li>
+              <li>"Medical office building for sale"</li>
+            </ul>
+          </div>
+        </div>
+      `;
+      
+      emit(ctx, "answer_chunk", { text: noResultsMessage });
       emit(ctx, "answer_complete", {});
       return { plan, deals, toolResult: null };
     }

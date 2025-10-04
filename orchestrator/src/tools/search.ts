@@ -58,9 +58,9 @@ export const webSearch = new DynamicTool({
 
     const userQuery = typeof args === "string" ? (args as string) : (args as any).query;
 
-    // Search across multiple CRE domains in one pass
+    // Search across multiple CRE domains in one pass (exclude PDFs and CDN hosts)
     const DOMAINS = ["crexi.com","loopnet.com","brevitas.com","commercialexchange.com","biproxi.com"];
-    const q = `${userQuery} (${DOMAINS.map(d => ` site:${d}`).join(" OR ")}) "for sale"`;
+    const q = `${userQuery} (${DOMAINS.map(d => ` site:${d}`).join(" OR ")}) "for sale" -filetype:pdf -site:images.loopnet.com`;
 
     const controller = new AbortController();
     const to = setTimeout(() => controller.abort(), timeoutMs);
@@ -93,12 +93,12 @@ export const webSearch = new DynamicTool({
       const rowsRaw = j.organic ?? [];
       console.log("[search] serper organic count:", rowsRaw.length);
       
-      // Per-domain debug
-      const byDomain = rowsRaw.reduce((m:any, v:any) => {
+      // Per-domain debug (before filtering)
+      const byDomainRaw = rowsRaw.reduce((m:any, v:any) => {
         try { const d = new URL(v.link).hostname.replace(/^www\./,""); m[d]=(m[d]||0)+1; } catch {}
         return m;
       }, {});
-      console.log("[search] per-domain counts:", byDomain);
+      console.log("[search] per-domain counts (raw):", byDomainRaw);
 
       // Normalize → rank → dedupe → cap (let agent filter by detail URL)
       let rows: SearchRow[] = (j.organic ?? []).map((v: any) => ({
@@ -106,6 +106,24 @@ export const webSearch = new DynamicTool({
         url: v?.link ?? "",
         snippet: v?.snippet ?? "",
       })).filter((x: SearchRow) => x.url);
+
+      // Drop PDFs and known CDN hosts
+      rows = rows.filter(r => {
+        try {
+          const u = new URL(r.url);
+          if (/\.(pdf|doc|docx)$/i.test(u.pathname)) return false;
+          if (/^images\.loopnet\.com$/i.test(u.hostname)) return false;
+          if (/^images[0-9]\.loopnet\.com$/i.test(u.hostname)) return false;
+          return true;
+        } catch { return false; }
+      });
+
+      // Log per-domain to verify diversity (after filtering)
+      const byDomain = rows.reduce((m:any,x:any)=>{
+        try{const d=new URL(x.url).hostname.replace(/^www\./,""); m[d]=(m[d]||0)+1;}catch{} 
+        return m;
+      }, {});
+      console.log("[search] per-domain counts (after PDF filter):", byDomain);
 
       // Domain-agnostic ranking (removed CREXi bias)
       // rows are already in relevance order from SERPER

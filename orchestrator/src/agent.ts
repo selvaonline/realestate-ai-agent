@@ -122,9 +122,9 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Simple plan - no LLM needed, we know what to search
   const plan = `Searching multiple CRE sources for: ${q}`;
   
-  // Multi-domain constants
+  // Multi-domain constants (exclude PDFs and CDN hosts)
   const DOMAINS = ["crexi.com","loopnet.com","brevitas.com","commercialexchange.com","biproxi.com"];
-  const MD_QUERY = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) "for sale"`;
+  const MD_QUERY = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) "for sale" -filetype:pdf -site:images.loopnet.com`;
 
   emit(ctx, "thinking", { text: "🏢 Searching commercial real estate listings..." });
   
@@ -290,7 +290,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 2: Broader multi-domain search (only if not enough high-scoring candidates)
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Expanding search criteria..." });
-    const broaderQuery = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) commercial property for sale`;
+    const broaderQuery = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) commercial property for sale -filetype:pdf -site:images.loopnet.com`;
     console.log("[agent] 🔍 Search strategy 2 (broader multi-domain):", broaderQuery);
     const broader = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: broaderQuery, preferCrexi: false, maxResults: 20, timeoutMs: 10000
@@ -316,7 +316,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Strategy 3: Very broad multi-domain search
   if (candidates.length < 2) {
     emit(ctx, "thinking", { text: "Trying broader search..." });
-    const generalQuery = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")})`;
+    const generalQuery = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) -filetype:pdf -site:images.loopnet.com`;
     console.log("[agent] 🔍 Search strategy 3 (broadest multi-domain):", generalQuery);
     const general = (JSON.parse(String(await webSearch.invoke(JSON.stringify({
       query: generalQuery, preferCrexi: false, maxResults: 20, timeoutMs: 10000
@@ -354,7 +354,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // Fix 1: Relax to list/brokerage pages when 0 detail URLs (let Playwright auto-drill) - MULTI-DOMAIN
   if (candidates.length === 0) {
     emit(ctx, "thinking", { text: "No detail pages found; trying list pages for drill-in…" });
-    const relaxedQuery = `${q} "for sale" (${DOMAINS.map(d=>` site:${d}`).join(" OR ")})`;
+    const relaxedQuery = `${q} "for sale" (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) -filetype:pdf -site:images.loopnet.com`;
     console.log("[agent] 🔎 Last-resort query (multi-domain list pages):", relaxedQuery);
 
     const relaxed = (JSON.parse(String(await webSearch.invoke(JSON.stringify({

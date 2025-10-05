@@ -494,8 +494,11 @@ export class ChatPanelComponent {
       // Get fresh context from parent component
       const currentContext = this.getContext ? this.getContext() : {};
       
-      const response = await this.http.post<any>(`${environment.apiUrl}/chat`, {
-        messages: this.messages().map(m => ({ role: m.role, content: m.content })),
+      console.log('[chat] Sending context:', currentContext);
+      
+      const response = await this.http.post<any>(`${environment.apiUrl}/chat/enhanced`, {
+        sessionId: this.sessionId,
+        user: text,
         context: currentContext
       }).toPromise();
 

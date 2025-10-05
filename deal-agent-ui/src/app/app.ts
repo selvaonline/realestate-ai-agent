@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { AgentService, AgentEvent } from './agent.service';
 import { Chart, registerables } from 'chart.js';
 import { ChangeDetectionStrategy } from '@angular/core';
+import { ChatPanelComponent } from './chat-panel.component';
 // Register Chart.js components
 Chart.register(...registerables);
 
@@ -46,7 +47,7 @@ export class SafeHtmlPipe implements PipeTransform {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, SafeHtmlPipe],
+  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent],
   template: `
   <div class="shell">
     <div class="header">RealEstate Deal Agent</div>
@@ -489,6 +490,9 @@ export class SafeHtmlPipe implements PipeTransform {
         </div>
       </div>
     </div>
+
+    <!-- Chat Panel -->
+    <app-chat-panel [seedContext]="getChatContext()"></app-chat-panel>
   `,
   styles: [`
     :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }
@@ -1805,6 +1809,57 @@ export class App implements AfterViewChecked {
       const input = document.querySelector('input') as HTMLInputElement;
       if (input) input.focus();
     }, 100);
+  }
+
+  getChatContext() {
+    // Provide current run context to the chat panel
+    const scored = this.deals().slice(0, 10); // Top 10 deals
+    const portfolioData = this.computePortfolioData();
+    
+    return {
+      scored,
+      portfolioData,
+      query: this.q(),
+      sources: this.sources(),
+      answer: this.answer(),
+      riskNote: portfolioData?.marketRisk?.note || ''
+    };
+  }
+
+  private computePortfolioData() {
+    const deals = this.deals();
+    if (!deals.length) return null;
+
+    // Calculate portfolio statistics
+    const totalDeals = deals.length;
+    const avgPE = deals.reduce((sum, d) => sum + (d.peScore || 0), 0) / totalDeals;
+    const avgRisk = deals.reduce((sum, d) => sum + (d.riskScore || 0), 0) / totalDeals;
+    
+    // Tier distribution
+    const tierCounts: Record<string, number> = {};
+    deals.forEach(d => {
+      const tier = d.peTier || 'Unknown';
+      tierCounts[tier] = (tierCounts[tier] || 0) + 1;
+    });
+
+    // Geographic distribution
+    const geoCounts: Record<string, number> = {};
+    deals.forEach(d => {
+      const location = d.location || 'Unknown';
+      geoCounts[location] = (geoCounts[location] || 0) + 1;
+    });
+
+    return {
+      totalDeals,
+      avgPE: Math.round(avgPE),
+      avgRisk: Math.round(avgRisk),
+      tierDistribution: tierCounts,
+      geoDistribution: geoCounts,
+      marketRisk: {
+        score: Math.round(avgRisk),
+        note: `Average market risk across ${totalDeals} properties`
+      }
+    };
   }
 
   async run() {

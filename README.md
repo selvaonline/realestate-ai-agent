@@ -18,6 +18,17 @@ Find medical office buildings or urgent care facilities, cap rate 7%+
 - **Streaming Answers** - Progressive text generation with inline citations
 - **Multi-Source Search** - Aggregates from LoopNet, Crexi, and broker sites
 
+### 💬 AI Chatbot (NEW!)
+
+- **Conversational Interface** - Ask questions about deals, scores, and analytics
+- **Explainability** - "Why is the Risk Score 56?" - Get detailed breakdowns
+- **Artifact Generation** - "Create an IC memo for deal #1" - Instant reports
+- **Portfolio Q&A** - "How many Tier A deals?" - Query your results
+- **Quick Actions** - Pre-configured prompts for common tasks
+- **Context-Aware** - Knows about your current search results
+
+👉 **See [CHATBOT_QUICK_START.md](./CHATBOT_QUICK_START.md) to get started!**
+
 ### 📊 Property Analysis
 
 - **Automated Extraction** - Property details, pricing, NOI, cap rate

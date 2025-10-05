@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import crypto from "crypto";
 import { runAgent } from "./agent.js";
+import { chatRouter } from "./routes/chat.js";
 
 // ───────────────────────────────────────────────────────────────────────────────
 // In-process SSE bus + result cache
@@ -47,6 +48,9 @@ const corsOptions: any = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "4mb" }));
+
+// Mount chat routes
+app.use(chatRouter);
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 

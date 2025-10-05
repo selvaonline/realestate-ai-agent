@@ -1885,6 +1885,41 @@ export class App implements AfterViewChecked {
     console.log('✅ Initializing portfolio charts with data:', portfolioData);
     this.portfolioChartsInitialized = true;
 
+    // Define center label plugin
+    const doughnutCenterPlugin = {
+      id: "doughnutCenter",
+      afterDraw(chart: any, args: any, opts: any) {
+        const { ctx } = chart;
+        ctx.save();
+        const centerX = chart.getDatasetMeta(0).data[0]?.x;
+        const centerY = chart.getDatasetMeta(0).data[0]?.y;
+        if (!centerX || !centerY) return;
+
+        // Title line
+        ctx.fillStyle = opts.titleColor || "#6B7280";
+        ctx.font = `600 ${opts.titleSize || 12}px Inter, system-ui, -apple-system`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(opts.title || "", centerX, centerY - 8);
+
+        // Value line
+        ctx.fillStyle = opts.valueColor || "#111827";
+        ctx.font = `700 ${opts.valueSize || 20}px Inter, system-ui, -apple-system`;
+        ctx.fillText(opts.value || "", centerX, centerY + 12);
+        ctx.restore();
+      }
+    };
+
+    // Dynamic colors based on score tiers
+    const SCORE_COLORS = {
+      premium: { bg: "#E5F5EC", fg: "#2F8F5B" },        // >=80 (green)
+      investment: { bg: "#FFF1E3", fg: "#F28B30" },    // 70–79 (amber)
+      below: { bg: "#FDECEA", fg: "#D9534F" }          // <70 (red)
+    };
+
+    const total = portfolioData.sources || 0;
+    const avgScore = portfolioData.avgScore ?? 0;
+
     // Score Distribution Doughnut Chart
     const scoreCtx = scoreCanvas.getContext('2d');
     if (scoreCtx) {
@@ -1900,25 +1935,45 @@ export class App implements AfterViewChecked {
               portfolioData.scoreDistribution.investmentGrade,
               portfolioData.scoreDistribution.belowThreshold
             ],
-            backgroundColor: ['#5fc88f', '#6b9aeb', '#8b9db5'],
-            borderColor: ['#5fc88f', '#6b9aeb', '#8b9db5'],
-            borderWidth: 2
+            backgroundColor: [SCORE_COLORS.premium.bg, SCORE_COLORS.investment.bg, SCORE_COLORS.below.bg],
+            borderColor: [SCORE_COLORS.premium.fg, SCORE_COLORS.investment.fg, SCORE_COLORS.below.fg],
+            borderWidth: 1.5,
+            hoverOffset: 6
           }]
         },
+        plugins: [doughnutCenterPlugin],
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          cutout: "68%",
           plugins: {
             legend: {
               display: true,
               position: 'bottom',
               labels: {
+                usePointStyle: true,
+                boxWidth: 8,
                 color: '#1a2332',
                 font: { size: 11 },
                 padding: 10
               }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx: any) => {
+                  const val = ctx.parsed;
+                  const pct = total ? ` (${Math.round(val/total*100)}%)` : "";
+                  return ` ${ctx.label}: ${val}${pct}`;
+                }
+              }
+            },
+            doughnutCenter: {
+              title: "Avg Score",
+              value: String(avgScore),
+              titleSize: 12,
+              valueSize: 20
             }
-          }
+          } as any
         }
       });
       console.log('Score distribution chart created successfully');
@@ -1927,40 +1982,67 @@ export class App implements AfterViewChecked {
       }
     }
 
-    // Geographic Distribution Pie Chart
+    // Geographic Distribution Doughnut Chart
     const geoCtx = geoCanvas.getContext('2d');
     if (geoCtx) {
       try {
         console.log('Creating geographic distribution chart...');
       const geoLabels = Object.keys(portfolioData.geoDistribution);
-      const geoData = Object.values(portfolioData.geoDistribution);
-      const geoColors = ['#5fc88f', '#6b9aeb', '#8b7ceb', '#eb8b5f', '#ebcf5f', '#8b9db5'];
+      const geoData = Object.values(portfolioData.geoDistribution) as number[];
+      
+      // Distinct color palette for geography
+      const GEO_PALETTE = [
+        "#3B82F6","#10B981","#F59E0B","#EF4444","#8B5CF6",
+        "#14B8A6","#84CC16","#EC4899","#22C55E","#F97316"
+      ];
+      const geoColors = geoLabels.map((_,i)=>GEO_PALETTE[i % GEO_PALETTE.length]);
+      const sumGeo = geoData.reduce((a,b)=>a+b,0);
 
       const geoChart = new Chart(geoCtx, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
           labels: geoLabels,
           datasets: [{
-            data: geoData as number[],
-            backgroundColor: geoColors.slice(0, geoLabels.length),
-            borderColor: geoColors.slice(0, geoLabels.length),
-            borderWidth: 2
+            data: geoData,
+            backgroundColor: geoColors,
+            borderColor: geoColors,
+            borderWidth: 1.5,
+            hoverOffset: 6
           }]
         },
+        plugins: [doughnutCenterPlugin],
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          cutout: "68%",
           plugins: {
             legend: {
               display: true,
               position: 'bottom',
               labels: {
+                usePointStyle: true,
+                boxWidth: 8,
                 color: '#1a2332',
                 font: { size: 11 },
                 padding: 10
               }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx: any) => {
+                  const val = ctx.parsed;
+                  const pct = sumGeo ? ` (${Math.round(val/sumGeo*100)}%)` : "";
+                  return ` ${ctx.label}: ${val}${pct}`;
+                }
+              }
+            },
+            doughnutCenter: {
+              title: "Total",
+              value: String(sumGeo),
+              titleSize: 12,
+              valueSize: 20
             }
-          }
+          } as any
         }
       });
       console.log('Geographic distribution chart created successfully');

@@ -430,7 +430,7 @@ interface QuickAction {
   `]
 })
 export class ChatPanelComponent {
-  @Input() seedContext?: any;
+  @Input() getContext?: () => any;
   @ViewChild('messagesContainer') messagesContainer?: ElementRef;
   @ViewChild('inputField') inputField?: ElementRef;
 
@@ -486,9 +486,12 @@ export class ChatPanelComponent {
     // Send to backend
     this.isLoading.set(true);
     try {
+      // Get fresh context from parent component
+      const currentContext = this.getContext ? this.getContext() : {};
+      
       const response = await this.http.post<any>(`${environment.apiUrl}/chat`, {
         messages: this.messages().map(m => ({ role: m.role, content: m.content })),
-        context: this.seedContext
+        context: currentContext
       }).toPromise();
 
       const assistantMessage: ChatMessage = {

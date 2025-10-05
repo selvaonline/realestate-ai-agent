@@ -492,7 +492,7 @@ export class SafeHtmlPipe implements PipeTransform {
     </div>
 
     <!-- Chat Panel -->
-    <app-chat-panel [seedContext]="getChatContext()"></app-chat-panel>
+    <app-chat-panel [getContext]="getChatContext.bind(this)"></app-chat-panel>
   `,
   styles: [`
     :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }

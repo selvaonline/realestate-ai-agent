@@ -255,10 +255,37 @@ curl -X POST https://realestate-ai-agent.onrender.com/run_sync \
 
 ## CORS Configuration
 
-Your backend already has CORS enabled (index.ts):
-```typescript
-app.use(cors()); // Allows all origins
+### ⚠️ IMPORTANT: Production CORS Setup
+
+Your backend has configurable CORS that **must be set** for production:
+
+**In Render Backend Environment Variables, add:**
 ```
+CORS_ORIGINS=https://deal-agent-ui.onrender.com,http://localhost:4200
+```
+
+**Why this is required:**
+- Allows your frontend domain to access the backend API
+- Prevents "blocked by CORS policy" errors
+- Supports both production and local development
+
+**Backend code (already implemented in `index.ts`):**
+```typescript
+const rawOrigins = process.env.CORS_ORIGINS || "*";
+const allowedOrigins = rawOrigins.split(",").map((s) => s.trim()).filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || rawOrigins === "*" || allowedOrigins.includes(origin)) {
+      return cb(null, true);
+    }
+    return cb(new Error("Not allowed by CORS"));
+  },
+  credentials: true
+}));
+```
+
+**📖 See [RENDER_DEPLOYMENT_FIX.md](./RENDER_DEPLOYMENT_FIX.md) for detailed CORS troubleshooting.**
 
 **For Production**, restrict to your frontend domain:
 ```typescript

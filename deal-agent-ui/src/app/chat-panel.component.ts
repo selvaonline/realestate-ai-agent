@@ -433,6 +433,7 @@ interface QuickAction {
 })
 export class ChatPanelComponent {
   @Input() getContext?: () => any;
+  @Input() contextData?: any; // Alternative: direct context input
   @ViewChild('messagesContainer') messagesContainer?: ElementRef;
   @ViewChild('inputField') inputField?: ElementRef;
 
@@ -491,10 +492,18 @@ export class ChatPanelComponent {
     // Send to backend
     this.isLoading.set(true);
     try {
-      // Get fresh context from parent component
-      const currentContext = this.getContext ? this.getContext() : {};
+      // Get fresh context from parent component (try both methods)
+      let currentContext = this.contextData || {};
+      if (this.getContext) {
+        try {
+          currentContext = this.getContext();
+        } catch (error) {
+          console.error('[chat] Error calling getContext:', error);
+        }
+      }
       
       console.log('[chat] Sending context:', currentContext);
+      console.log('[chat] Context has scored:', currentContext?.scored?.length || 0);
       
       const response = await this.http.post<any>(`${environment.apiUrl}/chat/enhanced`, {
         sessionId: this.sessionId,

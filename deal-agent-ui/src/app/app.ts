@@ -6,6 +6,7 @@ import { Chart, registerables } from 'chart.js';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { ChatPanelComponent } from './chat-panel.component';
 import { ChatUIActionsComponent } from './chat-ui-actions.component';
+import { KeyboardShortcutsComponent } from './keyboard-shortcuts.component';
 // Register Chart.js components
 Chart.register(...registerables);
 
@@ -48,7 +49,7 @@ export class SafeHtmlPipe implements PipeTransform {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent],
+  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent],
   template: `
   <div class="shell">
     <div class="header">RealEstate Deal Agent</div>
@@ -150,6 +151,30 @@ export class SafeHtmlPipe implements PipeTransform {
         <div class="answer-text" [innerHTML]="answer() | safeHtml"></div>
         <div class="typing-indicator" *ngIf="!answerComplete()">
           <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <!-- Macro Ticker (after answer) -->
+      <div class="macro-ticker" *ngIf="sources().length && answerComplete()">
+        <div class="ticker-item">
+          <span class="ticker-label">📊 10Y Treasury</span>
+          <span class="ticker-value">{{ getTreasuryRate() }}%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">📈 S&P 500</span>
+          <span class="ticker-value">{{ getSP500() }}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">🏢 Properties</span>
+          <span class="ticker-value">{{ sources().length }}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">⭐ Avg PE</span>
+          <span class="ticker-value">{{ getAvgPE() }}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">⚠️ Avg Risk</span>
+          <span class="ticker-value">{{ getAvgRisk() }}</span>
         </div>
       </div>
 
@@ -450,12 +475,37 @@ export class SafeHtmlPipe implements PipeTransform {
       </div>
     </details>
 
-    <div class="deals" *ngIf="deals().length">
+    <div class="deals" *ngIf="sources().length || deals().length">
+      <!-- Macro Ticker - Inside deals section -->
+      <div class="macro-ticker">
+        <div class="ticker-item">
+          <span class="ticker-label">📊 10Y Treasury</span>
+          <span class="ticker-value">{{ getTreasuryRate() }}%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">📈 S&P 500</span>
+          <span class="ticker-value">{{ getSP500() }}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">🏢 Properties</span>
+          <span class="ticker-value">{{ sources().length || deals().length || 0 }}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">⭐ Avg PE</span>
+          <span class="ticker-value">{{ getAvgPE() }}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-label">⚠️ Avg Risk</span>
+          <span class="ticker-value">{{ getAvgRisk() }}</span>
+        </div>
+      </div>
+
       <div class="deals-grid">
         <div class="deal-card" *ngFor="let d of deals(); let i = index">
           <div class="deal-image" *ngIf="d.screenshotBase64">
             <img [src]="'data:image/png;base64,'+d.screenshotBase64" alt="Property image" />
             <div class="deal-badge">{{ i + 1 }}</div>
+            <div class="source-badge">{{ getSourceBadge(d.source || d.url) }}</div>
           </div>
           <div class="deal-content">
             <h4 class="deal-title">{{ d.title || 'Investment Property' }}</h4>
@@ -493,7 +543,9 @@ export class SafeHtmlPipe implements PipeTransform {
     </div>
 
     <!-- Chat Panel -->
-    <app-chat-panel [getContext]="getChatContext.bind(this)"></app-chat-panel>
+    <app-chat-panel 
+      [getContext]="getChatContext">
+    </app-chat-panel>
     
     <!-- UI Actions Listener -->
     <app-chat-ui-actions
@@ -504,6 +556,14 @@ export class SafeHtmlPipe implements PipeTransform {
       (filterDeals)="handleFilterDeals($event)"
       (compareDeals)="handleCompareDeals($event)">
     </app-chat-ui-actions>
+
+    <!-- Keyboard Shortcuts -->
+    <app-keyboard-shortcuts
+      (openSearch)="handleOpenSearch()"
+      (openHelp)="handleOpenHelp()"
+      (closeModal)="handleCloseModal()"
+      (openChat)="handleOpenChat()">
+    </app-keyboard-shortcuts>
   `,
   styles: [`
     :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }
@@ -989,6 +1049,39 @@ export class SafeHtmlPipe implements PipeTransform {
     .frame img { width:100%; display:block; }
     .caption { font-size:12px; color:#9fb0c0; margin-top:6px; }
     
+    /* Macro Ticker */
+    .macro-ticker {
+      display: flex;
+      gap: 24px;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #1a2332 0%, #0f1419 100%);
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+    
+    .ticker-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 120px;
+    }
+    
+    .ticker-label {
+      font-size: 11px;
+      color: #8b9db5;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .ticker-value {
+      font-size: 18px;
+      color: #e9eef5;
+      font-weight: 700;
+    }
+    
     /* Deals Section */
     .deals { 
       margin-top: 32px; 
@@ -1067,6 +1160,21 @@ export class SafeHtmlPipe implements PipeTransform {
       justify-content: center;
       font-weight: 700;
       font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .source-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.5px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
     
@@ -1830,10 +1938,15 @@ export class App implements AfterViewChecked {
     }, 100);
   }
 
-  getChatContext() {
+  getChatContext = () => {
     // Provide current run context to the chat panel
-    const scored = this.deals().slice(0, 10); // Top 10 deals
+    const allDeals = this.deals();
+    const scored = allDeals.slice(0, 10); // Top 10 deals
     const portfolioData = this.computePortfolioData();
+    
+    console.log('[getChatContext] Total deals:', allDeals.length);
+    console.log('[getChatContext] Scored deals:', scored.length);
+    console.log('[getChatContext] Portfolio data:', portfolioData);
     
     return {
       scored,
@@ -2420,6 +2533,97 @@ export class App implements AfterViewChecked {
         dealsToCompare.map(d => d.title));
     } else {
       console.warn('No valid deals found for comparison:', data.ids);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Helper Methods
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  getSourceBadge(sourceOrUrl: string): string {
+    if (!sourceOrUrl) return 'WEB';
+    const s = sourceOrUrl.toLowerCase();
+    if (s.includes('crexi')) return 'CREXI';
+    if (s.includes('loopnet')) return 'LOOPNET';
+    if (s.includes('brevitas')) return 'BREVITAS';
+    if (s.includes('commercialexchange')) return 'COMEX';
+    if (s.includes('biproxi')) return 'BIPROXI';
+    return 'WEB';
+  }
+
+  getTreasuryRate(): string {
+    // Get from portfolio data or default
+    const portfolioData = this.computePortfolioData();
+    return '4.52'; // TODO: Get from actual market data
+  }
+
+  getSP500(): string {
+    return '5,815'; // TODO: Get from actual market data
+  }
+
+  getAvgPE(): string {
+    const sources = this.sources();
+    if (!sources.length) return '-';
+    const avg = sources.reduce((sum, s) => sum + (s.score || 0), 0) / sources.length;
+    return Math.round(avg).toString();
+  }
+
+  getAvgRisk(): string {
+    const sources = this.sources();
+    if (!sources.length) return '-';
+    const avg = sources.reduce((sum, s) => sum + (s.riskScore || 0), 0) / sources.length;
+    return Math.round(avg).toString();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Keyboard Shortcut Handlers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  handleOpenSearch() {
+    // Focus on the search input
+    const input = document.querySelector('input') as HTMLInputElement;
+    if (input) {
+      input.focus();
+      input.select();
+      console.log('⌨️ Cmd+K: Focused search input');
+    }
+  }
+
+  handleOpenHelp() {
+    // Show help modal or tooltip
+    alert(`Keyboard Shortcuts:
+    
+⌨️ Cmd+K (Ctrl+K) - Focus search
+💬 Cmd+/ (Ctrl+/) - Open chat
+❓ Shift+? - Show this help
+❌ Esc - Close modals
+
+Chat Commands:
+• "Show me premium opportunities"
+• "Why is the risk score X?"
+• "Go to property #2"
+• "Compare deal #1 and #3"
+• "Create a memo for deal #1"`);
+    console.log('⌨️ ?: Opened help');
+  }
+
+  handleCloseModal() {
+    // Close any open modals
+    this.showMemo.set(false);
+    this.showPeModelInfo.set(false);
+    this.showMarketRiskInfo.set(false);
+    this.showDealModal.set(false);
+    this.showChartsModal.set(false);
+    this.showComparisonModal.set(false);
+    console.log('⌨️ Esc: Closed modals');
+  }
+
+  handleOpenChat() {
+    // Open the chat panel (assuming it has a toggle method)
+    const chatButton = document.querySelector('.chat-toggle') as HTMLButtonElement;
+    if (chatButton) {
+      chatButton.click();
+      console.log('⌨️ Cmd+/: Opened chat');
     }
   }
 }

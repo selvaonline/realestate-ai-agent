@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../environments/environment';
+import { VoiceInputComponent } from './voice-input.component';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -21,7 +22,7 @@ interface QuickAction {
 @Component({
   selector: 'app-chat-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, VoiceInputComponent],
   template: `
     <div class="chat-panel" [class.expanded]="isExpanded()">
       <!-- Chat Toggle Button -->
@@ -96,6 +97,7 @@ interface QuickAction {
 
         <!-- Input Area -->
         <div class="chat-input-area">
+          <app-voice-input (result)="onVoiceResult($event)"></app-voice-input>
           <textarea #inputField
                     [(ngModel)]="inputText"
                     (keydown)="onEnterKey($event)"
@@ -441,6 +443,9 @@ export class ChatPanelComponent {
   hasUnread = signal(false);
   unreadCount = signal(0);
   showQuickActions = signal(true);
+  
+  // Session ID for multi-turn memory
+  private sessionId = crypto.randomUUID();
 
   quickActions: QuickAction[] = [
     { label: 'Explain Market Risk', prompt: 'Why is the Market Risk score what it is? Explain the factors.', icon: '📊' },
@@ -526,6 +531,12 @@ export class ChatPanelComponent {
   sendQuickAction(action: QuickAction) {
     this.inputText = action.prompt;
     this.sendMessage();
+  }
+
+  onVoiceResult(text: string) {
+    this.inputText = text;
+    // Optionally auto-send after voice input
+    // this.sendMessage();
   }
 
   onEnterKey(event: KeyboardEvent) {

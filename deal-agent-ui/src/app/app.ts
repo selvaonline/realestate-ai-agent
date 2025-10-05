@@ -5,6 +5,7 @@ import { AgentService, AgentEvent } from './agent.service';
 import { Chart, registerables } from 'chart.js';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { ChatPanelComponent } from './chat-panel.component';
+import { ChatUIActionsComponent } from './chat-ui-actions.component';
 // Register Chart.js components
 Chart.register(...registerables);
 
@@ -47,7 +48,7 @@ export class SafeHtmlPipe implements PipeTransform {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent],
+  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent],
   template: `
   <div class="shell">
     <div class="header">RealEstate Deal Agent</div>
@@ -493,6 +494,16 @@ export class SafeHtmlPipe implements PipeTransform {
 
     <!-- Chat Panel -->
     <app-chat-panel [getContext]="getChatContext.bind(this)"></app-chat-panel>
+    
+    <!-- UI Actions Listener -->
+    <app-chat-ui-actions
+      (openCard)="handleOpenCard($event)"
+      (renderCharts)="handleRenderCharts($event)"
+      (exportMemo)="handleExportMemo($event)"
+      (scrollToDeal)="handleScrollToDeal($event)"
+      (filterDeals)="handleFilterDeals($event)"
+      (compareDeals)="handleCompareDeals($event)">
+    </app-chat-ui-actions>
   `,
   styles: [`
     :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }
@@ -1236,6 +1247,14 @@ export class App implements AfterViewChecked {
   showMarketRiskInfo = signal(false);
   showMemo = signal(false);
   memoText = signal('');
+  selectedDealForModal = signal<any | null>(null);
+  showDealModal = signal(false);
+  showChartsModal = signal(false);
+  chartsScope = signal<'deal' | 'portfolio'>('portfolio');
+  selectedDealForCharts = signal<any | null>(null);
+  showComparisonModal = signal(false);
+  dealsToCompare = signal<any[]>([]);
+  activeFilters = signal<any>({});
   private typingInterval: any = null;
   private isTypingActive = true;
   private currentExampleIndex = 0;
@@ -2213,6 +2232,194 @@ export class App implements AfterViewChecked {
       case 'extracted':push({ kind:'extracted', summary: ev['summary'], t:ev.t }); break;
       case 'run_started':  push({ kind:'started', label:'🚀 Initializing search', t:ev.t }); break;
       case 'run_finished': push({ kind:'finished', label:'Done', t:ev.t }); break;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // UI Action Handlers (triggered by chat)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  handleOpenCard(data: { id?: number; url?: string }) {
+    console.log('[ui-action] Open card:', data);
+    
+    let deal = null;
+    
+    if (data.id) {
+      deal = this.deals()[data.id - 1]; // Convert to 0-based
+    } else if (data.url) {
+      deal = this.deals().find(d => d.url === data.url);
+    }
+    
+    if (deal) {
+      this.selectedDealForModal.set(deal);
+      this.showDealModal.set(true);
+      console.log('✅ Opened card for:', deal.title);
+      
+      // Scroll to the deal in the list
+      setTimeout(() => {
+        const dealIndex = this.deals().indexOf(deal);
+        const dealElement = document.querySelector(`.deal-card:nth-of-type(${dealIndex + 1})`);
+        if (dealElement) {
+          dealElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    } else {
+      console.warn('Deal not found:', data);
+    }
+  }
+
+  handleRenderCharts(data: { scope: string; id?: number }) {
+    console.log('[ui-action] Render charts:', data);
+    
+    this.chartsScope.set(data.scope as 'deal' | 'portfolio');
+    
+    if (data.scope === 'portfolio') {
+      // Show portfolio-level charts
+      this.showChartsModal.set(true);
+      this.selectedDealForCharts.set(null);
+      console.log('✅ Rendering portfolio charts');
+      
+      // Initialize charts after modal opens
+      setTimeout(() => this.initializePortfolioCharts(), 200);
+      
+    } else if (data.scope === 'deal' && data.id) {
+      // Show deal-specific factor breakdown
+      const deal = this.deals()[data.id - 1];
+      if (deal) {
+        this.selectedDealForCharts.set(deal);
+        this.showChartsModal.set(true);
+        console.log('✅ Rendering charts for:', deal.title);
+        
+        // Initialize deal-specific charts after modal opens
+        setTimeout(() => this.initializePortfolioCharts(), 200);
+      }
+    }
+  }
+
+  handleExportMemo(data: { id?: number; url?: string; format: string }) {
+    console.log('[ui-action] Export memo:', data);
+    
+    let deal = null;
+    
+    if (data.id) {
+      deal = this.deals()[data.id - 1];
+    } else if (data.url) {
+      deal = this.deals().find(d => d.url === data.url);
+    }
+    
+    if (deal) {
+      console.log(`✅ Exporting ${data.format} memo for:`, deal.title);
+      
+      // Generate memo content
+      const memoContent = this.generateICMemoText();
+      
+      // Create and download file
+      const blob = new Blob([memoContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `IC_Memo_${deal.title.replace(/[^a-z0-9]/gi, '_')}.${data.format === 'txt' ? 'txt' : 'md'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      // Also show in modal
+      this.memoText.set(memoContent);
+      this.showMemo.set(true);
+    } else {
+      console.warn('Deal not found for memo export:', data);
+    }
+  }
+
+  handleScrollToDeal(data: { id: number }) {
+    console.log('[ui-action] Scroll to deal:', data.id);
+    
+    const dealIndex = data.id - 1; // Convert to 0-based
+    const deal = this.deals()[dealIndex];
+    
+    if (deal) {
+      // Try multiple selectors to find the deal card
+      const selectors = [
+        `.deal-card:nth-of-type(${data.id})`,
+        `[data-deal-index="${dealIndex}"]`,
+        `.deal-${dealIndex}`
+      ];
+      
+      let dealElement = null;
+      for (const selector of selectors) {
+        dealElement = document.querySelector(selector);
+        if (dealElement) break;
+      }
+      
+      if (dealElement) {
+        dealElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Highlight the card briefly
+        dealElement.classList.add('highlight-flash');
+        setTimeout(() => dealElement?.classList.remove('highlight-flash'), 2000);
+        console.log('✅ Scrolled to deal:', deal.title);
+      } else {
+        console.warn('Deal element not found in DOM');
+      }
+    } else {
+      console.warn('Deal not found at index:', dealIndex);
+    }
+  }
+
+  handleFilterDeals(data: any) {
+    console.log('[ui-action] Filter deals:', data);
+    
+    // Store active filters
+    this.activeFilters.set(data);
+    
+    // Apply filters to deals
+    let filteredDeals = this.deals();
+    
+    if (data.tier) {
+      filteredDeals = filteredDeals.filter(d => d.peTier === data.tier);
+      console.log(`✅ Filtered by tier: ${data.tier}`);
+    }
+    
+    if (data.location) {
+      filteredDeals = filteredDeals.filter(d => 
+        d.location?.toLowerCase().includes(data.location.toLowerCase())
+      );
+      console.log(`✅ Filtered by location: ${data.location}`);
+    }
+    
+    if (data.minPE !== undefined) {
+      filteredDeals = filteredDeals.filter(d => (d.peScore || 0) >= data.minPE);
+      console.log(`✅ Filtered by min PE: ${data.minPE}`);
+    }
+    
+    if (data.maxRisk !== undefined) {
+      filteredDeals = filteredDeals.filter(d => (d.riskScore || 100) <= data.maxRisk);
+      console.log(`✅ Filtered by max risk: ${data.maxRisk}`);
+    }
+    
+    console.log(`Filtered ${this.deals().length} → ${filteredDeals.length} deals`);
+    
+    // Scroll to results
+    const resultsElement = document.querySelector('.results-section');
+    if (resultsElement) {
+      resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  handleCompareDeals(data: { ids: number[] }) {
+    console.log('[ui-action] Compare deals:', data.ids);
+    
+    const dealsToCompare = data.ids
+      .map(id => this.deals()[id - 1])
+      .filter(Boolean);
+    
+    if (dealsToCompare.length > 0) {
+      this.dealsToCompare.set(dealsToCompare);
+      this.showComparisonModal.set(true);
+      console.log(`✅ Comparing ${dealsToCompare.length} deals:`, 
+        dealsToCompare.map(d => d.title));
+    } else {
+      console.warn('No valid deals found for comparison:', data.ids);
     }
   }
 }

@@ -5,6 +5,8 @@ import cors from "cors";
 import crypto from "crypto";
 import { runAgent } from "./agent.js";
 import { chatRouter } from "./routes/chat.js";
+import { chatEnhancedRouter } from "./routes/chatEnhanced.js";
+import { uiEventsRouter } from "./routes/uiEvents.js";
 
 // ───────────────────────────────────────────────────────────────────────────────
 // In-process SSE bus + result cache
@@ -51,6 +53,8 @@ app.use(express.json({ limit: "4mb" }));
 
 // Mount chat routes
 app.use(chatRouter);
+app.use(chatEnhancedRouter);
+app.use(uiEventsRouter);
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 

@@ -4,7 +4,7 @@ import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
 import { peScorePro } from "./tools/peScorePro.js"; // DealSense PE: Professional scorer
 import { riskBlender } from "./tools/riskBlender.js";
-import { fred10Y, blsMetroUnemp, inferMetroSeriesIdFromText } from "./infra/market.js";
+import { fred10Y, fred10YMoM, fred2s10, fredCpiYoY, fredUnrate, blsMetroUnemp, inferMetroSeriesIdFromText } from "./infra/market.js";
 import type { Deal } from "./lib/types.js";
 
 // ---- Multi-source URL patterns ----
@@ -178,18 +178,25 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     metroSeries = inferMetroSeriesIdFromText(probe);
   }
   
-  // Fetch macro data (cached 12-24h)
-  const tenY = await fred10Y(fredKey); // 10Y Treasury
+  // Fetch macro data (cached 12-24h) - Multi-factor model
+  const tenYData = await fred10YMoM(fredKey); // 10Y with MoM delta
+  const curve2s10 = await fred2s10(fredKey); // 2s10s spread
+  const cpiYoY = await fredCpiYoY(fredKey); // CPI YoY
+  const nationalUnemp = await fredUnrate(fredKey); // National unemployment fallback
   const bls = metroSeries ? await blsMetroUnemp(metroSeries, blsKey) : { latestRate: null, yoyDelta: null, period: null, seriesId: null };
   
-  console.log(`[agent] 📈 Market Data: 10Y=${tenY.value ? (tenY.value*100).toFixed(2)+'%' : 'N/A'}, Metro=${metroSeries || 'N/A'}, U/E=${bls.latestRate ? bls.latestRate.toFixed(1)+'%' : 'N/A'}`);
+  console.log(`[agent] 📈 Market Data: 10Y=${tenYData.value ? (tenYData.value*100).toFixed(2)+'%' : 'N/A'} (${tenYData.deltaBps ? (tenYData.deltaBps > 0 ? '+' : '') + tenYData.deltaBps + 'bps MoM' : 'no Δ'}), 2s10=${curve2s10 ? (curve2s10*100).toFixed(1)+'%' : 'N/A'}, CPI=${cpiYoY ? (cpiYoY*100).toFixed(1)+'%' : 'N/A'}, U/E=${bls.latestRate ? bls.latestRate.toFixed(1)+'%' : nationalUnemp ? (nationalUnemp*100).toFixed(1)+'% (US)' : 'N/A'}`);
   
   // Compute Risk Score for this market context
   const riskBase = JSON.parse(String(await riskBlender.invoke(JSON.stringify({
     query: q,
     data: { 
-      treasury10yBps: tenY.value != null ? Math.round(tenY.value * 10000) : null, 
-      bls 
+      treasury10yBps: tenYData.value != null ? Math.round(tenYData.value * 10000) : null,
+      treasury10yDeltaBps: tenYData.deltaBps,
+      curve2s10,
+      cpiYoY,
+      bls,
+      nationalUnemp
     }
   }))));
   

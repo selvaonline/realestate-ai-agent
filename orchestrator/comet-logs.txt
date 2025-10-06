@@ -1,0 +1,836 @@
+
+> realestate-orchestrator@1.0.0 dev
+> tsx watch src/index.ts
+
+[browser] build tag: crexi-fix-v3-lease-extraction 2025-10-05T23:58:46.657Z
+[DealSense PE] Loaded config mode=institutional from pe-config-institutional.json
+[orchestrator] Starting Comet Browser Agent...
+[comet-worker] Starting worker...
+[comet-worker] ✅ Worker ready
+[comet-scheduler] Starting scheduler for 3 watchlists
+[comet-scheduler] ✅ Scheduled mob-florida: "*/30 * * * *" (MOB w/ hospital affiliation (FL, 6-8% cap))
+[comet-scheduler] ✅ Scheduled nnn-walgreens: "0 * * * *" (Walgreens NNN Investment Grade)
+[comet-scheduler] Skipping disabled watchlist: industrial-southeast
+[comet-scheduler] Triggering initial run for all watchlists...
+[comet-queue] Enqueued job for watch mob-florida
+[comet-queue] Processing job for watch mob-florida
+[comet-worker] Processing job for watchlist: mob-florida
+[comet-worker] Running: MOB w/ hospital affiliation (FL, 6-8% cap)
+[comet-worker] Search query: ("medical office" OR MOB) (hospital OR "health system" OR affiliated) Florida "for sale" cap rate 6..8% ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[comet-queue] Enqueued job for watch nnn-walgreens
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[orchestrator] listening on :3001
+[orchestrator] Comet Agent: monitoring ENABLED
+[ui-events] Client connected. Active connections: 1
+[ui-events] Client connected. Active connections: 2
+[search] serper organic count: 3
+[search] per-domain counts (raw): { 'brevitas.com': 2, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'brevitas.com': 2, 'loopnet.com': 1 }
+[comet-worker] Found 3 search results
+[DealSense PE] Scoring 3 opportunities...
+[DealSense PE] Top 3 scores: 30 (891 Outer Rd, Orlando, FL 32814), 20 (Georgia Real Estate Market Outlook – Com), 18 (Medical Office Investment Opportunity - )
+[comet-worker] Scored 3 results
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 1 items pass thresholds (PE ≥ 25, Risk ≤ 70)
+[comet-store] Loaded snapshot for mob-florida: 0 items from 2025-10-05T23:57:45.580Z
+[comet-store] Diff: 1 new, 0 changed, 0 removed
+[comet-store] Saved snapshot for mob-florida: 1 items
+[comet-worker] 🔔 ALERT: MOB w/ hospital affiliation (FL, 6-8% cap)
+[comet-worker] 📊 Summary: 1 new, 0 changed
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] 🆕 NEW LISTINGS:
+[comet-worker]   1. 891 Outer Rd, Orlando, FL 32814
+[comet-worker]      PE: 30 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/891-Outer-Rd-Orlando-FL/24053150/
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] ✅ Completed mob-florida in 2268ms
+[comet-queue] Processing job for watch nnn-walgreens
+[comet-worker] Processing job for watchlist: nnn-walgreens
+[comet-worker] Running: Walgreens NNN Investment Grade
+[comet-worker] Search query: Walgreens NNN lease "investment grade" "for sale" ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 7, 'crexi.com': 3 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 7, 'crexi.com': 3 }
+[comet-worker] Found 10 search results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 43 (Walgreens 3320 Chino Hills Pky Chino Hil), 43 (9830 N Long Beach Blvd, South Gate, CA 9), 43 (2875 Main St, Susanville, CA 96130 - Wal)
+[comet-worker] Scored 10 results
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 5 items pass thresholds (PE ≥ 40, Risk ≤ 70)
+[comet-store] Loaded snapshot for nnn-walgreens: 0 items from 2025-10-05T23:57:46.739Z
+[comet-store] Diff: 5 new, 0 changed, 0 removed
+[comet-store] Saved snapshot for nnn-walgreens: 5 items
+[comet-worker] 🔔 ALERT: Walgreens NNN Investment Grade
+[comet-worker] 📊 Summary: 5 new, 0 changed
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] 🆕 NEW LISTINGS:
+[comet-worker]   1. Walgreens 3320 Chino Hills Pky Chino Hills, CA 91709
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/3320-Chino-Hills-Pky-Chino-Hills-CA/31180039/
+[comet-worker]   2. 9830 N Long Beach Blvd, South Gate, CA 90280
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/9830-N-Long-Beach-Blvd-South-Gate-CA/23806985/
+[comet-worker]   3. 2875 Main St, Susanville, CA 96130 - Walgreens
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/2875-Main-St-Susanville-CA/36631190/
+[comet-worker]   4. Walgreens, Louisville, KY 40258 - 2 Asset Portfolio- NNN
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/Walgreens-Louisville-KY/26099142/
+[comet-worker]   5. Hometown NNN Properties For Sale
+[comet-worker]      PE: 41 | Risk: 52
+[comet-worker]      https://www.loopnet.com/search/listings/nnn-properties/hometown-il/for-sale/
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] ✅ Completed nnn-walgreens in 919ms
+[ui-events] Client disconnected. Active connections: 1
+[ui-events] Client connected. Active connections: 2
+[orchestrator] /run query: Retail pad sites for ground lease development, major intersections
+[agent] 🔍 Search strategy 1 (multi-domain): Retail pad sites for ground lease development, major intersections ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[comet-scheduler] Triggering watchlist: mob-florida (MOB w/ hospital affiliation (FL, 6-8% cap))
+[comet-queue] Enqueued job for watch mob-florida
+[comet-queue] Processing job for watch mob-florida
+[comet-worker] Processing job for watchlist: mob-florida
+[comet-worker] Running: MOB w/ hospital affiliation (FL, 6-8% cap)
+[comet-worker] Search query: ("medical office" OR MOB) (hospital OR "health system" OR affiliated) Florida "for sale" cap rate 6..8% ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[comet-scheduler] Triggering watchlist: nnn-walgreens (Walgreens NNN Investment Grade)
+[comet-queue] Enqueued job for watch nnn-walgreens
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 6, 'brevitas.com': 2, 'loopnet.com': 2 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 6, 'brevitas.com': 2, 'loopnet.com': 2 }
+[agent] ✅ Strategy 1 returned 10 raw results
+[agent] Strategy 1 per-domain: { 'crexi.com': 6, 'brevitas.com': 2, 'loopnet.com': 2 }
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 28 (TD Bank Commercial Properties for Sale), 28 (Rite Aid Commercial Properties for Sale), 23 (Search Properties | Commercial Real Esta)
+[agent] 📊 PE Scored 10 results. Top 3:
+[agent]   1. [28] Retail · A - TD Bank Commercial Properties for Sale
+[agent]   2. [28] Retail · RITE AID - Rite Aid Commercial Properties for Sale
+[agent]   3. [23] Industrial - Search Properties | Commercial Real Estate for Sale
+[search] serper organic count: 3
+[search] per-domain counts (raw): { 'loopnet.com': 1, 'brevitas.com': 2 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 1, 'brevitas.com': 2 }
+[comet-worker] Found 3 search results
+[DealSense PE] Scoring 3 opportunities...
+[DealSense PE] Top 3 scores: 28 (891 Outer Rd, Orlando, FL 32814), 20 (Georgia Real Estate Market Outlook – Com), 18 (Medical Office Investment Opportunity - )
+[comet-worker] Scored 3 results
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 1 items pass thresholds (PE ≥ 25, Risk ≤ 70)
+[comet-store] Loaded snapshot for mob-florida: 1 items from 2025-10-05T23:58:48.969Z
+[comet-store] Diff: 0 new, 1 changed, 0 removed
+[comet-store] Saved snapshot for mob-florida: 1 items
+[comet-worker] 🔔 ALERT: MOB w/ hospital affiliation (FL, 6-8% cap)
+[comet-worker] 📊 Summary: 0 new, 1 changed
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] 📝 CHANGED LISTINGS:
+[comet-worker]   1. 891 Outer Rd, Orlando, FL 32814
+[comet-worker]      PE: 28 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/891-Outer-Rd-Orlando-FL/24053150/
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] ✅ Completed mob-florida in 1237ms
+[comet-queue] Processing job for watch nnn-walgreens
+[comet-worker] Processing job for watchlist: nnn-walgreens
+[comet-worker] Running: Walgreens NNN Investment Grade
+[comet-worker] Search query: Walgreens NNN lease "investment grade" "for sale" ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [28] ✗ https://www.crexi.com/properties/tenants/TD_Bank
+[agent]      ↳ Rejected: tenant page
+[agent]   2. [28] ✗ https://www.crexi.com/properties/tenants/Rite_Aid
+[agent]      ↳ Rejected: tenant page
+[agent]   3. [23] ✗ https://www.crexi.com/properties?tenants%5B%5D=Take%205%20Oil%20Change&page=1
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   4. [23] ✗ https://www.crexi.com/properties
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   5. [23] ✗ https://brevitas.com/p/6gdOZQj/4-pad-retail-development-ground-lease-or-bts
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   6. [20] ✓ https://www.loopnet.com/Listing/16255-Silver-Pky-Fenton-MI/3815902/
+[agent]   7. [20] ✓ https://www.loopnet.com/Listing/10100-Highway-242-Conroe-TX/37691997/
+[agent]   8. [18] ✗ https://www.crexi.com/properties/1185824/arizona-retail-pad-for-ground-lease-or-built-to-suit
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   9. [18] ✗ https://brevitas.com/p/Pyc2wAOB/0-97-acre-pad-site-for-sale-within-retail-dense-sw-railroad-corridor
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   10. [18] ✗ https://www.crexi.com/properties/tenants/Circle_K?page=2
+[agent]      ↳ Rejected: tenant page
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Retail pad sites for ground lease development, major intersections ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 7, 'crexi.com': 3 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 7, 'crexi.com': 3 }
+[comet-worker] Found 10 search results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 45 (Walgreens 10600 Montana Ave El Paso, TX ), 43 (2875 Main St, Susanville, CA 96130 - Wal), 43 (Walgreens, Louisville, KY 40258 - 2 Asse)
+[comet-worker] Scored 10 results
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 6 items pass thresholds (PE ≥ 40, Risk ≤ 70)
+[comet-store] Loaded snapshot for nnn-walgreens: 5 items from 2025-10-05T23:58:49.887Z
+[comet-store] Diff: 2 new, 0 changed, 1 removed
+[comet-store] Saved snapshot for nnn-walgreens: 6 items
+[comet-worker] 🔔 ALERT: Walgreens NNN Investment Grade
+[comet-worker] 📊 Summary: 2 new, 0 changed
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] 🆕 NEW LISTINGS:
+[comet-worker]   1. Walgreens 10600 Montana Ave El Paso, TX 79935
+[comet-worker]      PE: 45 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/10600-Montana-Ave-El-Paso-TX/36800917/
+[comet-worker]   2. Walgreens, Gilbert, AZ 85295
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/Walgreens-Gilbert-AZ/17254445/
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] ✅ Completed nnn-walgreens in 984ms
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 5, 'crexi.com': 5 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 5, 'crexi.com': 5 }
+[agent] Strategy 2 returned 10 results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 36 (2 Retail Lots / Buildings On I-80 Near C), 34 (Chipotle Commercial Properties for Sale), 23 (Commercial Property For Sale)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Retail pad sites for ground lease development, major intersections ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 5, 'crexi.com': 4, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 5, 'crexi.com': 4, 'brevitas.com': 1 }
+[agent] Strategy 3 returned 10 results
+[agent] Strategy 3 detail/list URLs: 7
+[agent] Total candidates after all searches: 7
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=10, candidates.length=7
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 10 scored sources
+[agent] ✅ Analytics generated. Final sources: 10
+7:01:15 PM [tsx] change in ./src/comet/worker.ts Restarting...
+c[browser] build tag: crexi-fix-v3-lease-extraction 2025-10-06T00:01:16.493Z
+[DealSense PE] Loaded config mode=institutional from pe-config-institutional.json
+[orchestrator] Starting Comet Browser Agent...
+[comet-worker] Starting worker...
+[comet-worker] ✅ Worker ready
+[comet-scheduler] Starting scheduler for 3 watchlists
+[comet-scheduler] ✅ Scheduled mob-florida: "*/30 * * * *" (MOB w/ hospital affiliation (FL, 6-8% cap))
+[comet-scheduler] ✅ Scheduled nnn-walgreens: "0 * * * *" (Walgreens NNN Investment Grade)
+[comet-scheduler] Skipping disabled watchlist: industrial-southeast
+[comet-scheduler] Triggering initial run for all watchlists...
+[comet-queue] Enqueued job for watch mob-florida
+[comet-queue] Processing job for watch mob-florida
+[comet-worker] Processing job for watchlist: mob-florida
+[comet-worker] Running: MOB w/ hospital affiliation (FL, 6-8% cap)
+[comet-worker] Search query: ("medical office" OR MOB) (hospital OR "health system" OR affiliated) Florida "for sale" cap rate 6..8% ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[comet-queue] Enqueued job for watch nnn-walgreens
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[orchestrator] listening on :3001
+[orchestrator] Comet Agent: monitoring ENABLED
+[search] serper organic count: 3
+[search] per-domain counts (raw): { 'brevitas.com': 2, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'brevitas.com': 2, 'loopnet.com': 1 }
+[comet-worker] Found 3 search results
+[DealSense PE] Scoring 3 opportunities...
+[DealSense PE] Top 3 scores: 28 (891 Outer Rd, Orlando, FL 32814), 20 (Georgia Real Estate Market Outlook – Com), 18 (Medical Office Investment Opportunity - )
+[comet-worker] Scored 3 results
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 1 items pass thresholds (PE ≥ 25, Risk ≤ 70)
+[comet-store] Loaded snapshot for mob-florida: 1 items from 2025-10-06T00:00:01.248Z
+[comet-store] Diff: 0 new, 0 changed, 0 removed
+[comet-store] Saved snapshot for mob-florida: 1 items
+[comet-worker] ✅ No changes detected for mob-florida
+[comet-worker] ✅ Completed mob-florida in 1495ms
+[comet-queue] Processing job for watch nnn-walgreens
+[comet-worker] Processing job for watchlist: nnn-walgreens
+[comet-worker] Running: Walgreens NNN Investment Grade
+[comet-worker] Search query: Walgreens NNN lease "investment grade" "for sale" ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[ui-events] Client connected. Active connections: 1
+[ui-events] Client connected. Active connections: 2
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 6, 'crexi.com': 4 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 6, 'crexi.com': 4 }
+[comet-worker] Found 10 search results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 45 (Walgreens 10600 Montana Ave El Paso, TX ), 45 (2050 Long Prairie Rd, Flower Mound, TX 7), 43 (1701 W Southlake Blvd, Southlake, TX 760)
+[comet-worker] Scored 10 results
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 7 items pass thresholds (PE ≥ 40, Risk ≤ 70)
+[comet-store] Loaded snapshot for nnn-walgreens: 6 items from 2025-10-06T00:00:02.232Z
+[comet-store] Diff: 4 new, 0 changed, 3 removed
+[comet-store] Saved snapshot for nnn-walgreens: 7 items
+[comet-worker] 🔔 ALERT: Walgreens NNN Investment Grade
+[comet-worker] 📊 Summary: 4 new, 0 changed
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] 🆕 NEW LISTINGS:
+[comet-worker]   1. 2050 Long Prairie Rd, Flower Mound, TX 75022
+[comet-worker]      PE: 45 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/2050-Long-Prairie-Rd-Flower-Mound-TX/26115959/
+[comet-worker]   2. 1701 W Southlake Blvd, Southlake, TX 76092
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/1701-W-Southlake-Blvd-Southlake-TX/23224047/
+[comet-worker]   3. Walgreens Core NNN Portfolio 15 YR Lease
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.crexi.com/properties/267821/texas-walgreens-core-nnn-portfolio-15-yr-lease
+[comet-worker]   4. 9200 Cullen Blvd, Houston, TX 77051
+[comet-worker]      PE: 40 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/9200-Cullen-Blvd-Houston-TX/25141395/
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] ✅ Completed nnn-walgreens in 1173ms
+7:01:29 PM [tsx] change in ./src/comet/worker.ts Restarting...
+c[browser] build tag: crexi-fix-v3-lease-extraction 2025-10-06T00:01:30.403Z
+[DealSense PE] Loaded config mode=institutional from pe-config-institutional.json
+[orchestrator] Starting Comet Browser Agent...
+[comet-worker] Starting worker...
+[comet-worker] ✅ Worker ready
+[comet-scheduler] Starting scheduler for 3 watchlists
+[comet-scheduler] ✅ Scheduled mob-florida: "*/30 * * * *" (MOB w/ hospital affiliation (FL, 6-8% cap))
+[comet-scheduler] ✅ Scheduled nnn-walgreens: "0 * * * *" (Walgreens NNN Investment Grade)
+[comet-scheduler] Skipping disabled watchlist: industrial-southeast
+[comet-scheduler] Triggering initial run for all watchlists...
+[comet-queue] Enqueued job for watch mob-florida
+[comet-queue] Processing job for watch mob-florida
+[comet-worker] Processing job for watchlist: mob-florida
+[comet-worker] Running: MOB w/ hospital affiliation (FL, 6-8% cap)
+[comet-worker] Search query: ("medical office" OR MOB) (hospital OR "health system" OR affiliated) Florida "for sale" cap rate 6..8% ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[comet-queue] Enqueued job for watch nnn-walgreens
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[orchestrator] listening on :3001
+[orchestrator] Comet Agent: monitoring ENABLED
+[search] serper organic count: 3
+[search] per-domain counts (raw): { 'brevitas.com': 2, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'brevitas.com': 2, 'loopnet.com': 1 }
+[comet-worker] Found 3 search results
+[DealSense PE] Scoring 3 opportunities...
+[DealSense PE] Top 3 scores: 28 (891 Outer Rd, Orlando, FL 32814), 20 (Georgia Real Estate Market Outlook – Com), 18 (Medical Office Investment Opportunity - )
+[comet-worker] Scored 3 results
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 1 items pass thresholds (PE ≥ 25, Risk ≤ 70)
+[comet-store] Loaded snapshot for mob-florida: 1 items from 2025-10-06T00:01:18.220Z
+[comet-store] Diff: 0 new, 0 changed, 0 removed
+[comet-store] Saved snapshot for mob-florida: 1 items
+[comet-worker] ✅ No changes detected for mob-florida
+[comet-worker] ✅ Completed mob-florida in 1442ms
+[comet-queue] Processing job for watch nnn-walgreens
+[comet-worker] Processing job for watchlist: nnn-walgreens
+[comet-worker] Running: Walgreens NNN Investment Grade
+[comet-worker] Search query: Walgreens NNN lease "investment grade" "for sale" ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 7, 'crexi.com': 3 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 7, 'crexi.com': 3 }
+[comet-worker] Found 10 search results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 45 (Walgreens 10600 Montana Ave El Paso, TX ), 43 (2875 Main St, Susanville, CA 96130 - Wal), 43 (Walgreens, Louisville, KY 40258 - 2 Asse)
+[comet-worker] Scored 10 results
+[ui-events] Client connected. Active connections: 1
+[ui-events] Client connected. Active connections: 2
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[comet-worker] Risk Score: 52/100
+[comet-worker] 6 items pass thresholds (PE ≥ 40, Risk ≤ 70)
+[comet-store] Loaded snapshot for nnn-walgreens: 7 items from 2025-10-06T00:01:19.392Z
+[comet-store] Diff: 3 new, 0 changed, 4 removed
+[comet-store] Saved snapshot for nnn-walgreens: 6 items
+[comet-worker] 🔔 ALERT: Walgreens NNN Investment Grade
+[comet-worker] 📊 Summary: 3 new, 0 changed
+[comet-worker] ─────────────────────────────────────────────────────
+[comet-worker] 🆕 NEW LISTINGS:
+[comet-worker]   1. 2875 Main St, Susanville, CA 96130 - Walgreens
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/2875-Main-St-Susanville-CA/36631190/
+[comet-worker]   2. Walgreens, Gilbert, AZ 85295
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/Walgreens-Gilbert-AZ/17254445/
+[comet-worker]   3. 9830 N Long Beach Blvd, South Gate, CA 90280
+[comet-worker]      PE: 43 | Risk: 52
+[comet-worker]      https://www.loopnet.com/Listing/9830-N-Long-Beach-Blvd-South-Gate-CA/23806985/
+[comet-worker] ─────────────────────────────────────────────────────
+[ui-events] Emitting comet-alert to 2 clients: {
+  watchId: 'nnn-walgreens',
+  watchLabel: 'Walgreens NNN Investment Grade',
+  newCount: 3,
+  changedCount: 0,
+  items: [
+    {
+      url: 'https://www.loopnet.com/Listing/2875-Main-St-Susanville-CA/36631190/',
+      score: 43,
+      risk: 52,
+      title: '2875 Main St, Susanville, CA 96130 - Walgreens',
+      address: 'Walgreens | 7.50% CAP | Absolute NNN · Retail Property For Sale. Share. 1/6 ... investment grade ten',
+      price: undefined,
+      capRate: undefined
+    },
+    {
+      url: 'https://www.loopnet.com/Listing/Walgreens-Gilbert-AZ/17254445/',
+      score: 43,
+      risk: 52,
+      title: 'Walgreens, Gilbert, AZ 85295',
+      address: 'NNN- Strong Sales Trend- Growing Suburb · Retail Property For Sale. Walgreens, Gilbert, AZ for sale ',
+      price: undefined,
+      capRate: undefined
+    },
+    {
+      url: 'https://www.loopnet.com/Listing/9830-N-Long-Beach-Blvd-South-Gate-CA/23806985/',
+      score: 43,
+      risk: 52,
+      title: '9830 N Long Beach Blvd, South Gate, CA 90280',
+      address: '9830 N Long Beach Blvd South Gate, CA 90280 SoCal Walgreens $11.8M NNN 10 Yr Lease · Retail Property',
+      price: undefined,
+      capRate: undefined
+    }
+  ],
+  timestamp: 1759708893072
+}
+[comet-worker] ✅ Completed nnn-walgreens in 1047ms
+[ui-events] Client disconnected. Active connections: 1
+[ui-events] Client connected. Active connections: 2
+[orchestrator] /run query: Charlotte South End mixed-use along light rail corridor
+[agent] 🔍 Search strategy 1 (multi-domain): Charlotte South End mixed-use along light rail corridor ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 9, 'crexi.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 9, 'crexi.com': 1 }
+[agent] ✅ Strategy 1 returned 10 raw results
+[agent] Strategy 1 per-domain: { 'loopnet.com': 9, 'crexi.com': 1 }
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 33 (1422 S Tryon St, Charlotte, NC 28203 - R), 30 (2441 Wilkinson Blvd, Charlotte, NC 28208), 30 (4200 South Blvd, Charlotte, NC 28209 - S)
+[agent] 📊 PE Scored 10 results. Top 3:
+[agent]   1. [33] Industrial · A - 1422 S Tryon St, Charlotte, NC 28203 - RailYard South ...
+[agent]   2. [30] Retail · A - 2441 Wilkinson Blvd, Charlotte, NC 28208
+[agent]   3. [30] Retail · A - 4200 South Blvd, Charlotte, NC 28209 - Scaleybark at South
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [33] ✓ https://www.loopnet.com/Listing/1422-S-Tryon-St-Charlotte-NC/35917363/
+[agent]   2. [30] ✓ https://www.loopnet.com/Listing/2441-Wilkinson-Blvd-Charlotte-NC/3848749/
+[agent]   3. [30] ✓ https://www.loopnet.com/Listing/4200-South-Blvd-Charlotte-NC/26157768/
+[agent]   4. [30] ✓ https://www.loopnet.com/Listing/8801-JM-Keynes-Dr-Charlotte-NC/36786919/
+[agent]   5. [30] ✓ https://www.loopnet.com/Listing/225-Fairwood-Ave-Charlotte-NC/34935176/
+[agent]   6. [30] ✓ https://www.loopnet.com/Listing/228-W-Tremont-Ave-Charlotte-NC/13815613/
+[agent]   7. [30] ✓ https://www.loopnet.com/Listing/3138-S-Tryon-St-Charlotte-NC/25420749/
+[agent]   8. [30] ✓ https://www.loopnet.com/Listing/301-East-Blvd-Charlotte-NC/32393210/
+[agent]   9. [30] ✓ https://www.loopnet.com/Listing/2441-Wilkinson-Blvd-Charlotte-NC/4375440/
+[agent]   10. [26] ✗ https://www.crexi.com/properties/NC/Charlotte/Mixed-Use
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Charlotte South End mixed-use along light rail corridor ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 10 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 10 }
+[agent] Strategy 2 returned 10 results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 33 (1422 S Tryon St, Charlotte, NC 28203 - R), 30 (300-314 N College St, Charlotte, NC 2820), 30 (4000 Raleigh St, Charlotte, NC 28206)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Charlotte South End mixed-use along light rail corridor ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'loopnet.com': 10 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 10 }
+[agent] Strategy 3 returned 10 results
+[agent] Strategy 3 detail/list URLs: 10
+[agent] Total candidates after all searches: 10
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=7, candidates.length=10
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 7 scored sources
+[agent] ✅ Analytics generated. Final sources: 7
+[ui-events] Client disconnected. Active connections: 1
+[ui-events] Client connected. Active connections: 2
+[ui-events] Client connected. Active connections: 3
+[ui-events] Client connected. Active connections: 4
+[ui-events] Client connected. Active connections: 5
+[orchestrator] /run query: Dialysis centers freestanding, DaVita or Fresenius tenants
+[agent] 🔍 Search strategy 1 (multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 7, 'brevitas.com': 1, 'loopnet.com': 2 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 7, 'brevitas.com': 1, 'loopnet.com': 2 }
+[agent] ✅ Strategy 1 returned 10 raw results
+[agent] Strategy 1 per-domain: { 'crexi.com': 7, 'brevitas.com': 1, 'loopnet.com': 2 }
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 30 (Commercial Property For Sale), 25 (The Big List of NNN Franchises by Sector), 20 (4495 Mack Rd, Sacramento, CA 95823)
+[agent] 📊 PE Scored 10 results. Top 3:
+[agent]   1. [30] Retail · A - Commercial Property For Sale
+[agent]   2. [25] Retail · NNN - The Big List of NNN Franchises by Sector and Investment ...
+[agent]   3. [20] Retail - 4495 Mack Rd, Sacramento, CA 95823
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [30] ✗ https://www.crexi.com/properties?sort=Relevance&term=dialysis&page=1
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   2. [25] ✗ https://brevitas.com/blog/the-big-list-of-nnn-franchises-by-sector-and-investment-tier
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   3. [20] ✓ https://www.loopnet.com/Listing/4495-Mack-Rd-Sacramento-CA/17002373/
+[agent]   4. [20] ✗ https://www.loopnet.com/commercial-real-estate-brokers/profile/nathan-huffman/bsc261bb
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   5. [18] ✗ https://www.crexi.com/properties/tenants/DaVita
+[agent]      ↳ Rejected: tenant page
+[agent]   6. [18] ✗ https://www.crexi.com/properties/tenants/Fresenius_Kidney_Care
+[agent]      ↳ Rejected: tenant page
+[agent]   7. [18] ✗ https://www.crexi.com/properties/tenants/Five_Guys
+[agent]      ↳ Rejected: tenant page
+[agent]   8. [18] ✗ https://www.crexi.com/properties/tenants/Bank_of_America
+[agent]      ↳ Rejected: tenant page
+[agent]   9. [16] ✗ https://www.crexi.com/properties/2187203/georgia-davita-macon-ga-665-cap-recently-extended-lease
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   10. [16] ✗ https://www.crexi.com/properties/IN/Shelby_County/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[orchestrator] /run query: Dialysis centers freestanding, DaVita or Fresenius tenants
+[agent] 🔍 Search strategy 1 (multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 9, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 9, 'brevitas.com': 1 }
+[agent] Strategy 2 returned 10 results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 30 (Commercial Property For Sale), 26 (Medical Offices for Sale in Nashville, T), 25 (The Big List of NNN Franchises by Sector)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 9, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 9, 'loopnet.com': 1 }
+[agent] ✅ Strategy 1 returned 10 raw results
+[agent] Strategy 1 per-domain: { 'crexi.com': 9, 'loopnet.com': 1 }
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 30 (Commercial Property For Sale), 23 (DaVita Commercial Properties for Sale), 20 (4495 Mack Rd, Sacramento, CA 95823)
+[agent] 📊 PE Scored 10 results. Top 3:
+[agent]   1. [30] Retail · A - Commercial Property For Sale
+[agent]   2. [23] Retail · B - DaVita Commercial Properties for Sale
+[agent]   3. [20] Retail - 4495 Mack Rd, Sacramento, CA 95823
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [30] ✗ https://www.crexi.com/properties?sort=Relevance&term=dialysis&page=1
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   2. [23] ✗ https://www.crexi.com/properties/tenants/DaVita
+[agent]      ↳ Rejected: tenant page
+[agent]   3. [20] ✓ https://www.loopnet.com/Listing/4495-Mack-Rd-Sacramento-CA/17002373/
+[agent]   4. [18] ✗ https://www.crexi.com/properties/tenants/Fresenius_Kidney_Care
+[agent]      ↳ Rejected: tenant page
+[agent]   5. [18] ✗ https://www.crexi.com/properties/2180413/oklahoma-access-medical-center-i-137504-residents-i-oklahoma-city
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   6. [18] ✗ https://www.crexi.com/properties/1459664/south-carolina-fresenius-medical-care-dark
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   7. [16] ✗ https://www.crexi.com/properties/2187203/georgia-davita-macon-ga-665-cap-recently-extended-lease
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   8. [16] ✗ https://www.crexi.com/properties/IN/Shelby_County/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   9. [16] ✗ https://www.crexi.com/properties/VT/Chittenden_County/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   10. [16] ✗ https://www.crexi.com/properties/OH/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[agent] Strategy 3 returned 10 results
+[agent] Strategy 3 detail/list URLs: 7
+[agent] Total candidates after all searches: 7
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=9, candidates.length=7
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 9 scored sources
+[agent] ✅ Analytics generated. Final sources: 9
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 9, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 9, 'brevitas.com': 1 }
+[agent] Strategy 2 returned 10 results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 30 (Commercial Property For Sale), 25 (The Big List of NNN Franchises by Sector), 23 (DaVita Commercial Properties for Sale)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[orchestrator] /run query: Dialysis centers freestanding, DaVita or Fresenius tenants
+[agent] 🔍 Search strategy 1 (multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[agent] Strategy 3 returned 10 results
+[agent] Strategy 3 detail/list URLs: 6
+[agent] Total candidates after all searches: 6
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=7, candidates.length=6
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 7 scored sources
+[agent] ✅ Analytics generated. Final sources: 7
+[orchestrator] /run query: Dialysis centers freestanding, DaVita or Fresenius tenants
+[agent] 🔍 Search strategy 1 (multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 10 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 10 }
+[agent] ✅ Strategy 1 returned 10 raw results
+[agent] Strategy 1 per-domain: { 'crexi.com': 10 }
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 30 (Commercial Property For Sale), 26 (Medical Offices for Sale in Nashville, T), 23 (DaVita Commercial Properties for Sale)
+[agent] 📊 PE Scored 10 results. Top 3:
+[agent]   1. [30] Retail · A - Commercial Property For Sale
+[agent]   2. [26] Retail · A - Medical Offices for Sale in Nashville, TN
+[agent]   3. [23] Retail · B - DaVita Commercial Properties for Sale
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [30] ✗ https://www.crexi.com/properties?sort=Relevance&term=dialysis&page=1
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   2. [26] ✗ https://www.crexi.com/properties/TN/Nashville/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   3. [23] ✗ https://www.crexi.com/properties/tenants/DaVita
+[agent]      ↳ Rejected: tenant page
+[agent]   4. [18] ✗ https://www.crexi.com/properties/tenants/Fresenius_Kidney_Care
+[agent]      ↳ Rejected: tenant page
+[agent]   5. [18] ✗ https://www.crexi.com/properties/2180413/oklahoma-access-medical-center-i-137504-residents-i-oklahoma-city
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   6. [18] ✗ https://www.crexi.com/properties/1459664/south-carolina-fresenius-medical-care-dark
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   7. [18] ✗ https://www.crexi.com/properties/NE/Omaha/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   8. [16] ✗ https://www.crexi.com/properties/2187203/georgia-davita-macon-ga-665-cap-recently-extended-lease
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   9. [16] ✗ https://www.crexi.com/properties/IN/Shelby_County/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   10. [16] ✗ https://www.crexi.com/properties/OH/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[agent] ✅ Strategy 1 returned 10 raw results
+[agent] Strategy 1 per-domain: { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 30 (Commercial Property For Sale), 25 (The Big List of NNN Franchises by Sector), 20 (Nathan Huffman)
+[agent] 📊 PE Scored 10 results. Top 3:
+[agent]   1. [30] Retail · A - Commercial Property For Sale
+[agent]   2. [25] Retail · NNN - The Big List of NNN Franchises by Sector and Investment ...
+[agent]   3. [20] Retail - Nathan Huffman
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [30] ✗ https://www.crexi.com/properties?sort=Relevance&term=dialysis&page=1
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   2. [25] ✗ https://brevitas.com/blog/the-big-list-of-nnn-franchises-by-sector-and-investment-tier
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   3. [20] ✗ https://www.loopnet.com/commercial-real-estate-brokers/profile/nathan-huffman/bsc261bb
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   4. [18] ✗ https://www.crexi.com/properties/tenants/DaVita
+[agent]      ↳ Rejected: tenant page
+[agent]   5. [18] ✗ https://www.crexi.com/properties/tenants/Fresenius_Kidney_Care
+[agent]      ↳ Rejected: tenant page
+[agent]   6. [18] ✗ https://www.crexi.com/properties/IL/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   7. [18] ✗ https://www.crexi.com/properties/2180413/oklahoma-access-medical-center-i-137504-residents-i-oklahoma-city
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   8. [18] ✗ https://www.crexi.com/properties/1459664/south-carolina-fresenius-medical-care-dark
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   9. [16] ✗ https://www.crexi.com/properties/2187203/georgia-davita-macon-ga-665-cap-recently-extended-lease
+[agent]      ↳ Rejected: pattern mismatch
+[agent]   10. [16] ✗ https://www.crexi.com/properties/IN/Shelby_County/Medical-Offices
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 9, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 9, 'brevitas.com': 1 }
+[agent] Strategy 2 returned 10 results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 30 (Commercial Property For Sale), 25 (The Big List of NNN Franchises by Sector), 23 (DaVita Commercial Properties for Sale)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 9, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 9, 'brevitas.com': 1 }
+[agent] Strategy 2 returned 10 results
+[DealSense PE] Scoring 10 opportunities...
+[DealSense PE] Top 3 scores: 25 (The Big List of NNN Franchises by Sector), 23 (DaVita Commercial Properties for Sale), 23 (Commercial Property For Sale)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Dialysis centers freestanding, DaVita or Fresenius tenants ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 8, 'brevitas.com': 1, 'loopnet.com': 1 }
+[agent] Strategy 3 returned 10 results
+[agent] Strategy 3 detail/list URLs: 7
+[agent] Total candidates after all searches: 7
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=7, candidates.length=7
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 7 scored sources
+[agent] ✅ Analytics generated. Final sources: 7
+[search] serper organic count: 10
+[search] per-domain counts (raw): { 'crexi.com': 7, 'brevitas.com': 1, 'loopnet.com': 2 }
+[search] per-domain counts (after PDF filter): { 'crexi.com': 7, 'brevitas.com': 1, 'loopnet.com': 2 }
+[agent] Strategy 3 returned 10 results
+[agent] Strategy 3 detail/list URLs: 6
+[agent] Total candidates after all searches: 6
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=8, candidates.length=6
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 8 scored sources
+[agent] ✅ Analytics generated. Final sources: 8
+[ui-events] Client disconnected. Active connections: 4
+[ui-events] Client disconnected. Active connections: 3
+[ui-events] Client connected. Active connections: 4
+[ui-events] Client connected. Active connections: 5
+[orchestrator] /run query: Lease-up deals 50-70% occupied, stabilization upside
+[agent] 🔍 Search strategy 1 (multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 2
+[search] per-domain counts (raw): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[agent] ✅ Strategy 1 returned 2 raw results
+[agent] Strategy 1 per-domain: { 'loopnet.com': 1, 'brevitas.com': 1 }
+[DealSense PE] Scoring 2 opportunities...
+[DealSense PE] Top 3 scores: 20 (851 Irwin St, San Rafael, CA 94901 - Off), 20 (Understanding Panama's Real Estate Marke)
+[agent] 📊 PE Scored 2 results. Top 3:
+[agent]   1. [20] Retail - 851 Irwin St, San Rafael, CA 94901 - Office for Sale
+[agent]   2. [20] Retail - Understanding Panama's Real Estate Market - Blog
+[orchestrator] /run query: Lease-up deals 50-70% occupied, stabilization upside
+[agent] 🔍 Search strategy 1 (multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [20] ✓ https://www.loopnet.com/Listing/851-Irwin-St-San-Rafael-CA/37339421/
+[agent]   2. [20] ✗ https://brevitas.com/blog/understanding-panama-s-real-estate-market
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 2
+[search] per-domain counts (raw): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[agent] ✅ Strategy 1 returned 2 raw results
+[agent] Strategy 1 per-domain: { 'loopnet.com': 1, 'brevitas.com': 1 }
+[DealSense PE] Scoring 2 opportunities...
+[DealSense PE] Top 3 scores: 20 (851 Irwin St, San Rafael, CA 94901 - Off), 20 (Understanding Panama's Real Estate Marke)
+[agent] 📊 PE Scored 2 results. Top 3:
+[agent]   1. [20] Retail - 851 Irwin St, San Rafael, CA 94901 - Office for Sale
+[agent]   2. [20] Retail - Understanding Panama's Real Estate Market - Blog
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [20] ✓ https://www.loopnet.com/Listing/851-Irwin-St-San-Rafael-CA/37339421/
+[agent]   2. [20] ✗ https://brevitas.com/blog/understanding-panama-s-real-estate-market
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 1
+[search] per-domain counts (raw): { 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'brevitas.com': 1 }
+[agent] Strategy 2 returned 1 results
+[DealSense PE] Scoring 1 opportunities...
+[DealSense PE] Top 3 scores: 20 (Understanding Panama's Real Estate Marke)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 1
+[search] per-domain counts (raw): { 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'brevitas.com': 1 }
+[agent] Strategy 2 returned 1 results
+[DealSense PE] Scoring 1 opportunities...
+[DealSense PE] Top 3 scores: 20 (Understanding Panama's Real Estate Marke)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 1
+[search] per-domain counts (raw): { 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'brevitas.com': 1 }
+[agent] Strategy 3 returned 1 results
+[agent] Strategy 3 detail/list URLs: 0
+[agent] Total candidates after all searches: 0
+[agent] 🔎 Last-resort query (multi-domain list pages): Lease-up deals 50-70% occupied, stabilization upside "for sale" ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 2
+[search] per-domain counts (raw): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[agent] Strategy 3 returned 2 results
+[agent] Strategy 3 detail/list URLs: 1
+[agent] Total candidates after all searches: 1
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=2, candidates.length=1
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 2 scored sources
+[agent] ✅ Analytics generated. Final sources: 2
+[search] serper organic count: 2
+[search] per-domain counts (raw): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[agent] ❌ No list pages found (relaxed multi-domain search)
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=2, candidates.length=0
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 2 scored sources
+[agent] ✅ Analytics generated. Final sources: 2
+[orchestrator] /run query: Lease-up deals 50-70% occupied, stabilization upside
+[agent] 🔍 Search strategy 1 (multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) "for sale" -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 2
+[search] per-domain counts (raw): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[agent] ✅ Strategy 1 returned 2 raw results
+[agent] Strategy 1 per-domain: { 'loopnet.com': 1, 'brevitas.com': 1 }
+[DealSense PE] Scoring 2 opportunities...
+[DealSense PE] Top 3 scores: 20 (851 Irwin St, San Rafael, CA 94901 - Off), 20 (Understanding Panama's Real Estate Marke)
+[agent] 📊 PE Scored 2 results. Top 3:
+[agent]   1. [20] Retail - 851 Irwin St, San Rafael, CA 94901 - Office for Sale
+[agent]   2. [20] Retail - Understanding Panama's Real Estate Market - Blog
+[agent] 📈 Market Data: 10Y=4.10% (-2bps MoM), 2s10=0.6%, CPI=2.9%, U/E=4.3% (US)
+[riskBlender] ✅ Final Score: 52/100
+[riskBlender] Factors: {"rate":1,"rateTrend":0,"curve":0,"inflation":1,"labor":0}
+[riskBlender] Note: 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent] ⚠️ Risk Score: 52/100 - 10Y 4.10% · ↓ 2 bps MoM · 2s10 0.6% · CPI YoY 2.9% · U/E (US) 4.3%
+[agent]   1. [20] ✓ https://www.loopnet.com/Listing/851-Irwin-St-San-Rafael-CA/37339421/
+[agent]   2. [20] ✗ https://brevitas.com/blog/understanding-panama-s-real-estate-market
+[agent]      ↳ Rejected: pattern mismatch
+[agent] 📊 Strategy 1 filtered to 0 detail URLs with score >= 70 (0 Crexi, 0 other)
+[agent] 🔍 Search strategy 2 (broader multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) commercial property for sale -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 1
+[search] per-domain counts (raw): { 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'brevitas.com': 1 }
+[agent] Strategy 2 returned 1 results
+[DealSense PE] Scoring 1 opportunities...
+[DealSense PE] Top 3 scores: 20 (Understanding Panama's Real Estate Marke)
+[agent] Strategy 2 detail/list URLs: 0
+[agent] 🔍 Search strategy 3 (broadest multi-domain): Lease-up deals 50-70% occupied, stabilization upside ( site:crexi.com OR  site:loopnet.com OR  site:brevitas.com OR  site:commercialexchange.com OR  site:biproxi.com) -filetype:pdf -site:images.loopnet.com
+[search] SERPER_API_KEY loaded: 2a6c29b76c... (length: 40)
+[search] serper organic count: 2
+[search] per-domain counts (raw): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[search] per-domain counts (after PDF filter): { 'loopnet.com': 1, 'brevitas.com': 1 }
+[agent] Strategy 3 returned 2 results
+[agent] Strategy 3 detail/list URLs: 1
+[agent] Total candidates after all searches: 1
+[agent] 🔧 SKIP_EXTRACTION=true, sources.length=2, candidates.length=1
+[agent] ⚡ SKIP_EXTRACTION=true - skipping extraction, generating analytics from 2 scored sources
+[agent] ✅ Analytics generated. Final sources: 2
+7:09:30 PM [tsx] change in ./src/routes/uiEvents.ts Restarting...
+7:09:35 PM [tsx] Process didn't exit in 5s. Force killing...

@@ -15,20 +15,108 @@ function setCache<T>(key: string, data: T) {
   CACHE[key] = { t: Date.now(), data };
 }
 
-export async function fred10Y(apiKey?: string) {
-  // DGS10 (10-Year Treasury Constant Maturity Rate, percent)
-  if (!apiKey) return { seriesId: "DGS10", date: null, value: null };
-  const k = "fred:DGS10";
+// Generic FRED series fetcher
+export async function fredSeries(seriesId: string, apiKey?: string) {
+  if (!apiKey) return { value: null, lastDate: null };
+  const k = `fred:${seriesId}`;
   const cached = getCache<typeof ret>(k, 12 * 60 * 60 * 1000); // 12h
   if (cached) return cached;
+  
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${apiKey}&file_type=json`;
+  const r = await fetch(url);
+  const j: any = await r.json();
+  const obs = (j?.observations || []).filter((o: any) => o.value && o.value !== '.');
+  if (!obs.length) return { value: null, lastDate: null };
+  const last = obs[obs.length - 1];
+  const ret = { value: Number(last.value), lastDate: last.date };
+  setCache(k, ret);
+  return ret;
+}
+
+export async function fred10Y(apiKey?: string) {
+  // DGS10 (10-Year Treasury Constant Maturity Rate, percent)
+  console.log(`[fred10Y] Called with apiKey: ${apiKey ? 'YES (length=' + apiKey.length + ')' : 'NO'}`);
+  
+  if (!apiKey) {
+    console.log(`[fred10Y] ❌ No API key - returning null`);
+    return { seriesId: "DGS10", date: null, value: null };
+  }
+  
+  const k = "fred:DGS10";
+  const cached = getCache<typeof ret>(k, 12 * 60 * 60 * 1000); // 12h
+  if (cached) {
+    console.log(`[fred10Y] ✅ Using cached value: ${cached.value ? (cached.value * 100).toFixed(2) + '%' : 'null'} from ${cached.date}`);
+    return cached;
+  }
+  
+  console.log(`[fred10Y] 🌐 Fetching from FRED API...`);
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=${apiKey}&file_type=json`;
+  const r = await fetch(url);
+  const j: any = await r.json();
+  
+  if (j.error_message) {
+    console.log(`[fred10Y] ❌ FRED API Error: ${j.error_message}`);
+  }
+  
+  const obs = (j?.observations || []).filter((o: any) => o.value !== "." && o.value != null);
+  console.log(`[fred10Y] Found ${obs.length} valid observations`);
+  
+  const last = obs[obs.length - 1];
+  const ret = { seriesId: "DGS10", date: last?.date ?? null, value: last ? Number(last.value) / 100 : null }; // convert %→decimal
+  
+  console.log(`[fred10Y] ✅ Result: ${ret.value ? (ret.value * 100).toFixed(2) + '%' : 'null'} on ${ret.date}`);
+  
+  setCache(k, ret);
+  return ret;
+}
+
+// 10Y with MoM delta
+export async function fred10YMoM(apiKey?: string) {
+  if (!apiKey) return { value: null, deltaBps: null, date: null };
   const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=${apiKey}&file_type=json`;
   const r = await fetch(url);
   const j: any = await r.json();
   const obs = (j?.observations || []).filter((o: any) => o.value !== "." && o.value != null);
-  const last = obs[obs.length - 1];
-  const ret = { seriesId: "DGS10", date: last?.date ?? null, value: last ? Number(last.value) / 100 : null }; // convert %→decimal
-  setCache(k, ret);
-  return ret;
+  if (obs.length < 2) return { value: null, deltaBps: null, date: null };
+  
+  const last = Number(obs[obs.length - 1].value) / 100; // decimal
+  const prior = Number(obs[obs.length - 2].value) / 100;
+  const deltaBps = Math.round((last - prior) * 10000); // bps
+  
+  return { value: last, deltaBps, date: obs[obs.length - 1].date };
+}
+
+// 2Y UST (percent)
+export async function fred2Y(apiKey?: string) {
+  const { value } = await fredSeries("DGS2", apiKey);
+  return value != null ? value / 100 : null; // decimal
+}
+
+// 2s10s spread from FRED's T10Y2Y (percent)
+export async function fred2s10(apiKey?: string) {
+  const { value } = await fredSeries("T10Y2Y", apiKey);
+  return value != null ? value / 100 : null; // decimal (+ = steep, - = inverted)
+}
+
+// CPI YoY (approx): compute from CPIAUCSL series
+export async function fredCpiYoY(apiKey?: string) {
+  if (!apiKey) return null;
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL&api_key=${apiKey}&file_type=json`;
+  const r = await fetch(url);
+  const j: any = await r.json();
+  const obs = (j?.observations || []).filter((o: any) => o.value && o.value !== '.');
+  if (obs.length < 13) return null;
+  const last = Number(obs[obs.length - 1].value);
+  const prior12 = Number(obs[obs.length - 13].value);
+  if (!isFinite(last) || !isFinite(prior12) || prior12 === 0) return null;
+  const yoy = (last / prior12 - 1); // decimal, e.g., 0.032 for 3.2%
+  return yoy;
+}
+
+// National unemployment (UNRATE, percent)
+export async function fredUnrate(apiKey?: string) {
+  const { value } = await fredSeries("UNRATE", apiKey);
+  return value != null ? value / 100 : null; // decimal
 }
 
 export async function blsMetroUnemp(seriesId: string, apiKey?: string) {

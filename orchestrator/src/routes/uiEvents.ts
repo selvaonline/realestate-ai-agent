@@ -88,3 +88,31 @@ export function closeAllConnections() {
   }
   SUBSCRIBERS.clear();
 }
+
+// Test endpoint to manually trigger a Comet alert
+uiEventsRouter.post("/ui/test-alert", (req, res) => {
+  const testAlert = {
+    watchId: "test",
+    watchLabel: "Test Watchlist",
+    newCount: 2,
+    changedCount: 1,
+    items: [
+      {
+        url: "https://www.crexi.com/properties/test-1",
+        title: "Test Property 1",
+        score: 75,
+        risk: 55
+      },
+      {
+        url: "https://www.loopnet.com/test-2",
+        title: "Test Property 2",
+        score: 72,
+        risk: 58
+      }
+    ],
+    timestamp: Date.now()
+  };
+  
+  emitUI("comet-alert", testAlert);
+  res.json({ success: true, message: "Test alert sent", subscribers: SUBSCRIBERS.size });
+});

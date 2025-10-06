@@ -7,6 +7,8 @@ import { runAgent } from "./agent.js";
 import { chatRouter } from "./routes/chat.js";
 import { chatEnhancedRouter } from "./routes/chatEnhanced.js";
 import { uiEventsRouter } from "./routes/uiEvents.js";
+import { startCometScheduler } from "./comet/scheduler.js";
+import { startCometWorker } from "./comet/worker.js";
 
 // ───────────────────────────────────────────────────────────────────────────────
 // In-process SSE bus + result cache
@@ -14,7 +16,7 @@ import { uiEventsRouter } from "./routes/uiEvents.js";
 type Subscriber = (ev: any) => void;
 
 const channel = new Map<string, Set<Subscriber>>(); // runId -> subs
-const results = new Map<string, any>();             // runId -> final JSON
+const results = new Map<string, any>(); // runId -> final result
 
 function pub(runId: string, ev: any) {
   channel.get(runId)?.forEach((fn) => {
@@ -153,7 +155,15 @@ app.post("/run_sync", async (req, res) => {
   }
 });
 
+// ───────────────────────────────────────────────────────────────────────────────
+// Comet Browser Agent - Always-on monitoring
+// ───────────────────────────────────────────────────────────────────────────────
+console.log("[orchestrator] Starting Comet Browser Agent...");
+startCometWorker();
+startCometScheduler();
+
 const port = Number(process.env.PORT || 3001);
 app.listen(port, () => {
   console.log(`[orchestrator] listening on :${port}`);
+  console.log(`[orchestrator] Comet Agent: monitoring ${process.env.COMET_ENABLED !== 'false' ? 'ENABLED' : 'DISABLED'}`);
 });

@@ -1,4 +1,4 @@
-import { Component, Input, signal, ElementRef, ViewChild } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -39,6 +39,11 @@ interface QuickAction {
           <div class="chat-title">
             <span class="chat-title-icon">🤖</span>
             <span>DealSense Chat</span>
+            <button class="help-btn" 
+                    (click)="showHelp()"
+                    title="Keyboard shortcuts & help">
+              <span style="font-size: 18px;">❓</span>
+            </button>
           </div>
           <div class="chat-subtitle">Ask about deals, scores, or run new searches</div>
         </div>
@@ -195,19 +200,33 @@ interface QuickAction {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
     }
-
     .chat-title {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 700;
-      margin-bottom: 4px;
+      position: relative;
     }
 
-    .chat-subtitle {
-      font-size: 13px;
-      opacity: 0.9;
+    .help-btn {
+      margin-left: auto;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      color: white;
+    }
+
+    .help-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
     }
 
     .chat-messages {
@@ -434,6 +453,7 @@ interface QuickAction {
 export class ChatPanelComponent {
   @Input() getContext?: () => any;
   @Input() contextData?: any; // Alternative: direct context input
+  @Output() helpRequested = new EventEmitter<void>();
   @ViewChild('messagesContainer') messagesContainer?: ElementRef;
   @ViewChild('inputField') inputField?: ElementRef;
 
@@ -587,6 +607,10 @@ export class ChatPanelComponent {
 
   getCurrentTime(): number {
     return Date.now();
+  }
+
+  showHelp() {
+    this.helpRequested.emit();
   }
 
   scrollToBottom() {

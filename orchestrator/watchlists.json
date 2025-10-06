@@ -1,0 +1,32 @@
+[
+  {
+    "id": "mob-florida",
+    "label": "MOB w/ hospital affiliation (FL, 6-8% cap)",
+    "query": "(\"medical office\" OR MOB) (hospital OR \"health system\" OR affiliated) Florida \"for sale\" cap rate 6..8%",
+    "domains": ["crexi.com", "loopnet.com", "brevitas.com", "commercialexchange.com"],
+    "minScore": 25,
+    "riskMax": 70,
+    "schedule": "*/30 * * * *",
+    "enabled": true
+  },
+  {
+    "id": "nnn-walgreens",
+    "label": "Walgreens NNN Investment Grade",
+    "query": "Walgreens NNN lease \"investment grade\" \"for sale\"",
+    "domains": ["crexi.com", "loopnet.com", "brevitas.com"],
+    "minScore": 40,
+    "riskMax": 70,
+    "schedule": "0 * * * *",
+    "enabled": true
+  },
+  {
+    "id": "industrial-southeast",
+    "label": "Industrial IOS Southeast (cap ≥ 6.5%)",
+    "query": "industrial outdoor storage yard IOS southeast \"for sale\" cap rate 6.5..9%",
+    "domains": ["crexi.com", "loopnet.com", "brevitas.com"],
+    "minScore": 40,
+    "riskMax": 70,
+    "schedule": "0 */2 * * *",
+    "enabled": false
+  }
+]

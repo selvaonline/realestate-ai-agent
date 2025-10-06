@@ -7,7 +7,8 @@ import { ChangeDetectionStrategy } from '@angular/core';
 import { ChatPanelComponent } from './chat-panel.component';
 import { ChatUIActionsComponent } from './chat-ui-actions.component';
 import { KeyboardShortcutsComponent } from './keyboard-shortcuts.component';
-// Register Chart.js components
+import { CometToastComponent } from './comet-toast.component';
+import { NotificationsPanelComponent } from './notifications-panel.component';
 Chart.register(...registerables);
 
 type Card = {
@@ -49,7 +50,7 @@ export class SafeHtmlPipe implements PipeTransform {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent],
+  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent, CometToastComponent, NotificationsPanelComponent],
   template: `
   <div class="shell">
     <div class="header">RealEstate Deal Agent</div>
@@ -546,6 +547,12 @@ export class SafeHtmlPipe implements PipeTransform {
     <app-chat-panel 
       [getContext]="getChatContext">
     </app-chat-panel>
+
+    <!-- Comet Toast Notifications -->
+    <app-comet-toast></app-comet-toast>
+
+    <!-- Notifications Panel -->
+    <app-notifications-panel></app-notifications-panel>
     
     <!-- UI Actions Listener -->
     <app-chat-ui-actions

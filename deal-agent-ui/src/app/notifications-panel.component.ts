@@ -20,8 +20,10 @@ type CometAlert = {
   template: `
     <div class="notifications-panel" [class.expanded]="isExpanded()">
       <!-- Toggle Button -->
-      <button class="notifications-toggle" (click)="togglePanel()">
-        <span class="icon">🔔</span>
+      <button class="notifications-toggle" (click)="togglePanel()" [title]="'Notifications (' + unreadCount() + ' unread)'">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M12 2C11.172 2 10.5 2.672 10.5 3.5V4.1C8.53 4.56 7 6.24 7 8.5V14L5.29 15.71C4.9 16.1 5.17 17 5.83 17H18.17C18.83 17 19.1 16.1 18.71 15.71L17 14V8.5C17 6.24 15.47 4.56 13.5 4.1V3.5C13.5 2.672 12.828 2 12 2ZM10 19C10 20.1 10.9 21 12 21C13.1 21 14 20.1 14 19H10Z"/>
+        </svg>
         <span class="badge" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
       </button>
 
@@ -89,27 +91,33 @@ type CometAlert = {
     }
 
     .notifications-toggle {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      width: 56px;
-      height: 56px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid #e5e7eb;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      transition: all 0.3s;
+      transition: all 0.2s;
+      color: #6b7280;
     }
 
     .notifications-toggle:hover {
-      transform: scale(1.1);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+      border-color: #667eea;
+      color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
     }
 
-    .notifications-toggle .icon {
-      font-size: 24px;
+    .notifications-toggle svg {
+      transition: all 0.2s;
+    }
+
+    .notifications-toggle:hover svg {
+      transform: scale(1.1);
     }
 
     .notifications-toggle .badge {

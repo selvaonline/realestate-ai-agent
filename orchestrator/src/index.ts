@@ -7,6 +7,7 @@ import { runAgent } from "./agent.js";
 import { chatRouter } from "./routes/chat.js";
 import { chatEnhancedRouter } from "./routes/chatEnhanced.js";
 import { uiEventsRouter } from "./routes/uiEvents.js";
+import { savedPropertiesRouter } from "./routes/savedProperties.js";
 import { startCometScheduler } from "./comet/scheduler.js";
 import { startCometWorker } from "./comet/worker.js";
 
@@ -41,7 +42,16 @@ const allowedOrigins = rawOrigins.split(",").map((s) => s.trim()).filter(Boolean
 const corsOptions: any = {
   origin: (origin: string | undefined, cb: (err: Error | null, ok?: boolean) => void) => {
     if (!origin) return cb(null, true); // same-origin or curl
-    if (rawOrigins === "*" || allowedOrigins.includes(origin)) return cb(null, true);
+    if (rawOrigins === "*") return cb(null, true); // Allow all in dev
+    
+    // Allow localhost and local network IPs
+    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.') || origin.includes('10.0.')) {
+      return cb(null, true);
+    }
+    
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    
+    console.warn('[CORS] Blocked origin:', origin);
     return cb(new Error("Not allowed by CORS"));
   },
   credentials: true,
@@ -57,6 +67,7 @@ app.use(express.json({ limit: "4mb" }));
 app.use(chatRouter);
 app.use(chatEnhancedRouter);
 app.use(uiEventsRouter);
+app.use("/api/saved-properties", savedPropertiesRouter);
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 

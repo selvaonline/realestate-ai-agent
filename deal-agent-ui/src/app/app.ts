@@ -193,6 +193,12 @@ export class SafeHtmlPipe implements PipeTransform {
               <a [href]="src.url" target="_blank" class="url-link">{{ src.url }}</a>
             </div>
             <div class="source-snippet">{{ src.snippet }}</div>
+            <button class="source-save-btn" (click)="showWatchlistSelector(src)" title="Add to Watchlist">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span>Save to Watchlist</span>
+            </button>
           </div>
         </div>
       </div>
@@ -537,6 +543,12 @@ export class SafeHtmlPipe implements PipeTransform {
                 <span>View Listing on {{ d.source }}</span>
                 <span class="link-arrow">→</span>
               </a>
+              <button class="add-to-watchlist-btn" (click)="showWatchlistSelector(d)" title="Add to Watchlist">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>Save</span>
+              </button>
             </div>
           </div>
         </div>
@@ -571,6 +583,38 @@ export class SafeHtmlPipe implements PipeTransform {
       (closeModal)="handleCloseModal()"
       (openChat)="handleOpenChat()">
     </app-keyboard-shortcuts>
+
+    <!-- Watchlist Selector Modal -->
+    <div *ngIf="showWatchlistModal()"
+         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(4px);"
+         (click)="showWatchlistModal.set(false)">
+      <div style="background: white; padding: 32px; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);"
+           (click)="$event.stopPropagation()">
+        <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700; color: #1f2937;">Add to Watchlist</h2>
+        <p style="margin: 0 0 24px 0; color: #6b7280; font-size: 14px;">
+          Save "{{ selectedPropertyToSave()?.title }}" to monitor for changes
+        </p>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+          <button *ngFor="let w of availableWatchlists()"
+                  (click)="saveToWatchlist(w.id)"
+                  [disabled]="savingToWatchlist()"
+                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 16px 20px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; text-align: left; transition: all 0.2s; display: flex; flex-direction: column; gap: 4px;">
+            <span>{{ w.label }}</span>
+            <span style="font-size: 12px; opacity: 0.9; font-weight: 400;">{{ w.query.substring(0, 60) }}...</span>
+          </button>
+          
+          <div *ngIf="availableWatchlists().length === 0" style="text-align: center; padding: 20px; color: #6b7280;">
+            No watchlists available. Create one in watchlists.json
+          </div>
+        </div>
+        
+        <button (click)="showWatchlistModal.set(false)"
+                style="width: 100%; background: #f3f4f6; color: #6b7280; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+          Cancel
+        </button>
+      </div>
+    </div>
   `,
   styles: [`
     :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }
@@ -979,6 +1023,32 @@ export class SafeHtmlPipe implements PipeTransform {
     .source-snippet::-webkit-scrollbar-thumb:hover {
       background: #3a5080;
     }
+    
+    .source-save-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: 8px;
+      color: #667eea;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 12px;
+    }
+    
+    .source-save-btn:hover {
+      background: rgba(102, 126, 234, 0.2);
+      border-color: rgba(102, 126, 234, 0.5);
+      transform: translateY(-1px);
+    }
+    
+    .source-save-btn svg {
+      stroke: currentColor;
+    }
 
     /* Share section */
     .share-section {
@@ -1244,6 +1314,9 @@ export class SafeHtmlPipe implements PipeTransform {
       margin-top: auto;
       padding-top: 16px;
       border-top: 1px solid #1d2735;
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
     
     .deal-link {
@@ -1259,6 +1332,32 @@ export class SafeHtmlPipe implements PipeTransform {
       background: rgba(47, 92, 255, 0.1);
       border-radius: 8px;
       border: 1px solid rgba(47, 92, 255, 0.2);
+      flex: 1;
+    }
+    
+    .add-to-watchlist-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid rgba(102, 126, 234, 0.3);
+      border-radius: 8px;
+      color: #667eea;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .add-to-watchlist-btn:hover {
+      background: rgba(102, 126, 234, 0.2);
+      border-color: rgba(102, 126, 234, 0.5);
+      transform: translateY(-1px);
+    }
+    
+    .add-to-watchlist-btn svg {
+      stroke: currentColor;
     }
     .deal-link:hover {
       color: #6eb3ff;
@@ -1370,6 +1469,10 @@ export class App implements AfterViewChecked {
   showComparisonModal = signal(false);
   dealsToCompare = signal<any[]>([]);
   activeFilters = signal<any>({});
+  showWatchlistModal = signal(false);
+  selectedPropertyToSave = signal<any>(null);
+  availableWatchlists = signal<any[]>([]);
+  savingToWatchlist = signal(false);
   private typingInterval: any = null;
   private isTypingActive = true;
   private currentExampleIndex = 0;
@@ -2543,6 +2646,61 @@ export class App implements AfterViewChecked {
     }
   }
 
+  async showWatchlistSelector(property: any) {
+    console.log('[watchlist] Opening selector for:', property.title);
+    this.selectedPropertyToSave.set(property);
+    
+    // Load available watchlists
+    try {
+      const response = await fetch('http://localhost:3001/api/saved-properties/watchlists');
+      const watchlists = await response.json();
+      this.availableWatchlists.set(watchlists.filter((w: any) => w.enabled !== false));
+      this.showWatchlistModal.set(true);
+    } catch (err) {
+      console.error('[watchlist] Failed to load watchlists:', err);
+      alert('Failed to load watchlists');
+    }
+  }
+
+  async saveToWatchlist(watchlistId: string) {
+    const property = this.selectedPropertyToSave();
+    if (!property) return;
+    
+    this.savingToWatchlist.set(true);
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/saved-properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: property.url,
+          title: property.title,
+          score: property.peScore || property.score,
+          risk: property.riskScore || property.risk,
+          watchlistId
+        })
+      });
+      
+      if (response.status === 409) {
+        alert('This property is already saved to this watchlist');
+      } else if (!response.ok) {
+        throw new Error('Failed to save property');
+      } else {
+        console.log('[watchlist] ✅ Property saved successfully');
+        this.showWatchlistModal.set(false);
+        
+        // Show success toast
+        const watchlist = this.availableWatchlists().find((w: any) => w.id === watchlistId);
+        alert(`✅ Saved to "${watchlist?.label || watchlistId}"`);
+      }
+    } catch (err) {
+      console.error('[watchlist] Failed to save:', err);
+      alert('Failed to save property');
+    } finally {
+      this.savingToWatchlist.set(false);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Helper Methods
   // ─────────────────────────────────────────────────────────────────────────────
@@ -2622,6 +2780,7 @@ Chat Commands:
     this.showDealModal.set(false);
     this.showChartsModal.set(false);
     this.showComparisonModal.set(false);
+    this.showWatchlistModal.set(false);
     console.log('⌨️ Esc: Closed modals');
   }
 

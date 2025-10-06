@@ -23,6 +23,13 @@
       "address": "NNN- Strong Sales Trend- Growing Suburb · Retail Property For Sale. Walgreens, Gilbert, AZ for sale "
     },
     {
+      "url": "https://www.loopnet.com/Listing/2875-Main-St-Susanville-CA/36631190/",
+      "score": 43,
+      "risk": 52,
+      "title": "2875 Main St, Susanville, CA 96130 - Walgreens",
+      "address": "Walgreens | 7.50% CAP | Absolute NNN · Retail Property For Sale. Share. 1/6 ... investment grade ten"
+    },
+    {
       "url": "https://www.loopnet.com/Listing/12-Park-Dr-Hornell-NY/30418198/",
       "score": 43,
       "risk": 52,
@@ -30,5 +37,5 @@
       "address": "... Investment Grade Tenant (S&P: BBB) ... 12 Park Dr, Hornell, NY for sale Building Photo- Image 1 "
     }
   ],
-  "ts": 1759788003012
+  "ts": 1759788475011
 }

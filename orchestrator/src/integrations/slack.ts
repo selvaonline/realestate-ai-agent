@@ -74,7 +74,7 @@ export function formatCometAlert(watchLabel: string, newCount: number, changedCo
         type: "mrkdwn",
         text: `_... and ${items.length - 5} more_`
       }]
-    });
+    } as any);
   }
 
   return { text, blocks };

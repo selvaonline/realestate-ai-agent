@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1759749654888-hy7lbg9ug",
+    "url": "test",
+    "title": "Test Property",
+    "score": 50,
+    "risk": 30,
+    "watchlistId": "mob-florida",
+    "addedAt": 1759749654888
+  },
+  {
+    "id": "1759750152239-ann984zgp",
+    "url": "http://test.com",
+    "title": "Test",
+    "score": 50,
+    "risk": 30,
+    "watchlistId": "mob-florida",
+    "addedAt": 1759750152239
+  }
+]

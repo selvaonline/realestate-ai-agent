@@ -130,7 +130,7 @@ savedPropertiesRouter.delete("/:id", (req, res) => {
   }
 });
 
-// GET /api/watchlists - Get available watchlists
+// GET /api/saved-properties/watchlists - Get available watchlists
 savedPropertiesRouter.get("/watchlists", (req, res) => {
   try {
     const watchlistsPath = path.join(process.cwd(), "watchlists.json");
@@ -143,5 +143,48 @@ savedPropertiesRouter.get("/watchlists", (req, res) => {
   } catch (err) {
     console.error("[saved-properties] Error loading watchlists:", err);
     res.status(500).json({ error: "Failed to load watchlists" });
+  }
+});
+
+// POST /api/saved-properties/watchlists - Create a new watchlist
+savedPropertiesRouter.post("/watchlists", (req, res) => {
+  try {
+    const { id, label, query } = req.body;
+    
+    if (!id || !label || !query) {
+      return res.status(400).json({ error: "id, label, and query are required" });
+    }
+    
+    const watchlistsPath = path.join(process.cwd(), "watchlists.json");
+    let watchlists: any[] = [];
+    
+    if (fs.existsSync(watchlistsPath)) {
+      watchlists = JSON.parse(fs.readFileSync(watchlistsPath, "utf-8"));
+    }
+    
+    // Check if ID already exists
+    if (watchlists.some(w => w.id === id)) {
+      return res.status(409).json({ error: "Watchlist with this ID already exists" });
+    }
+    
+    const newWatchlist = {
+      id,
+      label,
+      query,
+      domains: ["crexi.com", "loopnet.com", "brevitas.com"],
+      minScore: 40,
+      riskMax: 70,
+      schedule: "0 * * * *",
+      enabled: true
+    };
+    
+    watchlists.push(newWatchlist);
+    fs.writeFileSync(watchlistsPath, JSON.stringify(watchlists, null, 2));
+    
+    console.log(`[saved-properties] Created new watchlist: ${label} (${id})`);
+    res.json(newWatchlist);
+  } catch (err) {
+    console.error("[saved-properties] Error creating watchlist:", err);
+    res.status(500).json({ error: "Failed to create watchlist" });
   }
 });

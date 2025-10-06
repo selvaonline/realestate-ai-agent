@@ -1,6 +1,7 @@
-import { Component, AfterViewChecked, signal, ElementRef, ChangeDetectorRef, NgZone, Pipe, PipeTransform } from '@angular/core';
+import { Component, AfterViewChecked, AfterViewInit, signal, ElementRef, ChangeDetectorRef, NgZone, Pipe, PipeTransform } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { AgentService, AgentEvent } from './agent.service';
 import { Chart, registerables } from 'chart.js';
 import { ChangeDetectionStrategy } from '@angular/core';
@@ -50,7 +51,7 @@ export class SafeHtmlPipe implements PipeTransform {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent, CometToastComponent, NotificationsPanelComponent],
+  imports: [CommonModule, FormsModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent, CometToastComponent, NotificationsPanelComponent],
   template: `
   <div class="shell">
     <div class="header">RealEstate Deal Agent</div>
@@ -155,29 +156,7 @@ export class SafeHtmlPipe implements PipeTransform {
         </div>
       </div>
 
-      <!-- Macro Ticker (after answer) -->
-      <div class="macro-ticker" *ngIf="sources().length && answerComplete()">
-        <div class="ticker-item">
-          <span class="ticker-label">📊 10Y Treasury</span>
-          <span class="ticker-value">{{ getTreasuryRate() }}%</span>
-        </div>
-        <div class="ticker-item">
-          <span class="ticker-label">📈 S&P 500</span>
-          <span class="ticker-value">{{ getSP500() }}</span>
-        </div>
-        <div class="ticker-item">
-          <span class="ticker-label">🏢 Properties</span>
-          <span class="ticker-value">{{ sources().length }}</span>
-        </div>
-        <div class="ticker-item">
-          <span class="ticker-label">⭐ Avg PE</span>
-          <span class="ticker-value">{{ getAvgPE() }}</span>
-        </div>
-        <div class="ticker-item">
-          <span class="ticker-label">⚠️ Avg Risk</span>
-          <span class="ticker-value">{{ getAvgRisk() }}</span>
-        </div>
-      </div>
+      <!-- Macro Ticker removed - using the one in deals section to avoid duplication -->
 
       <!-- Sources -->
       <div class="sources-section" *ngIf="sources().length && answerComplete()">
@@ -185,21 +164,14 @@ export class SafeHtmlPipe implements PipeTransform {
         <div class="source-item" *ngFor="let src of sources()">
           <div class="source-header">
             <span class="source-num">[{{ src.id }}]</span>
-            <a [href]="src.url" target="_blank" class="source-title">{{ src.title }}</a>
-          </div>
-          <div class="source-details">
-            <div class="source-url">
-              <span class="url-icon">🔗</span>
-              <a [href]="src.url" target="_blank" class="url-link">{{ src.url }}</a>
+            <div class="source-content">
+              <a [href]="src.url" target="_blank" class="source-title">{{ src.title }}</a>
+              <div class="source-url">
+                <a [href]="src.url" target="_blank" class="url-link">{{ src.url }}</a>
+              </div>
             </div>
-            <div class="source-snippet">{{ src.snippet }}</div>
-            <button class="source-save-btn" (click)="showWatchlistSelector(src)" title="Add to Watchlist">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-              </svg>
-              <span>Save to Watchlist</span>
-            </button>
           </div>
+          <div class="source-snippet">{{ src.snippet }}</div>
         </div>
       </div>
 
@@ -597,22 +569,61 @@ export class SafeHtmlPipe implements PipeTransform {
         
         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
           <button *ngFor="let w of availableWatchlists()"
-                  (click)="saveToWatchlist(w.id)"
-                  [disabled]="savingToWatchlist()"
-                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 16px 20px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; text-align: left; transition: all 0.2s; display: flex; flex-direction: column; gap: 4px;">
+                  (click)="selectedWatchlistId.set(w.id); showCreateWatchlist.set(false)"
+                  [style.background]="selectedWatchlistId() === w.id ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#ffffff'"
+                  [style.color]="selectedWatchlistId() === w.id ? 'white' : '#374151'"
+                  [style.border]="selectedWatchlistId() === w.id ? '2px solid #667eea' : '2px solid #e5e7eb'"
+                  [style.transform]="selectedWatchlistId() === w.id ? 'scale(1.02)' : 'scale(1)'"
+                  [style.boxShadow]="selectedWatchlistId() === w.id ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none'"
+                  style="padding: 16px 20px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; text-align: left; transition: all 0.2s; display: flex; flex-direction: column; gap: 4px; position: relative;">
             <span>{{ w.label }}</span>
-            <span style="font-size: 12px; opacity: 0.9; font-weight: 400;">{{ w.query.substring(0, 60) }}...</span>
+            <span [style.opacity]="selectedWatchlistId() === w.id ? '0.9' : '0.6'" style="font-size: 12px; font-weight: 400;">{{ w.query.substring(0, 60) }}...</span>
+            <span *ngIf="selectedWatchlistId() === w.id" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 20px;">✓</span>
           </button>
           
-          <div *ngIf="availableWatchlists().length === 0" style="text-align: center; padding: 20px; color: #6b7280;">
-            No watchlists available. Create one in watchlists.json
+          <!-- Create New Watchlist Button -->
+          <button (click)="toggleCreateWatchlist()"
+                  [style.background]="showCreateWatchlist() ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#ffffff'"
+                  [style.color]="showCreateWatchlist() ? 'white' : '#10b981'"
+                  [style.border]="showCreateWatchlist() ? '2px solid #10b981' : '2px solid #10b981'"
+                  style="padding: 16px 20px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; text-align: center; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span style="font-size: 18px;">+</span>
+            <span>Create New Watchlist</span>
+          </button>
+          
+          <!-- New Watchlist Form -->
+          <div *ngIf="showCreateWatchlist()" style="padding: 16px; background: #f0fdf4; border: 2px solid #10b981; border-radius: 12px; margin-top: 8px;">
+            <input [(ngModel)]="newWatchlistName" 
+                   type="text" 
+                   placeholder="Watchlist name (e.g., 'High-Cap Retail Properties')"
+                   style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; margin-bottom: 12px; box-sizing: border-box;">
+            <textarea [(ngModel)]="newWatchlistQuery" 
+                      placeholder="Search query (e.g., 'retail NNN lease investment grade cap rate 6..8%')"
+                      rows="3"
+                      style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; resize: vertical; box-sizing: border-box;"></textarea>
+            <div style="margin-top: 8px; font-size: 12px; color: #059669;">
+              💡 Tip: The query will be used to find similar properties automatically
+            </div>
+          </div>
+          
+          <div *ngIf="availableWatchlists().length === 0 && !showCreateWatchlist()" style="text-align: center; padding: 20px; color: #6b7280;">
+            No watchlists available. Create one above!
           </div>
         </div>
         
-        <button (click)="showWatchlistModal.set(false)"
-                style="width: 100%; background: #f3f4f6; color: #6b7280; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
-          Cancel
-        </button>
+        <div style="display: flex; gap: 12px;">
+          <button (click)="showWatchlistModal.set(false)"
+                  style="flex: 1; background: #f3f4f6; color: #6b7280; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;">
+            Cancel
+          </button>
+          <button (click)="saveToWatchlist()"
+                  [disabled]="!selectedWatchlistId() || savingToWatchlist()"
+                  style="flex: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; opacity: 1;"
+                  [style.opacity]="!selectedWatchlistId() || savingToWatchlist() ? '0.5' : '1'"
+                  [style.cursor]="!selectedWatchlistId() || savingToWatchlist() ? 'not-allowed' : 'pointer'">
+            {{ savingToWatchlist() ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -968,9 +979,9 @@ export class SafeHtmlPipe implements PipeTransform {
     }
     .source-header {
       display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 8px;
     }
     .source-num { 
       color: #475569; 
@@ -981,30 +992,47 @@ export class SafeHtmlPipe implements PipeTransform {
       border-radius: 6px;
       min-width: 35px;
       text-align: center;
+      flex-shrink: 0;
     }
-    .source-url a { 
-      color: #64748b; 
-      text-decoration: none; 
-      font-size: 13px;
-      word-break: break-all;
-      transition: color 0.2s;
+    .source-content {
       flex: 1;
+      min-width: 0;
+    }
+    .source-title {
+      color: #1a0dab;
+      font-size: 18px;
+      font-weight: 400;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 4px;
+      line-height: 1.3;
     }
     .source-title:hover { 
-      color: #1e40af; 
       text-decoration: underline; 
     }
+    .source-url { 
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .url-link { 
+      color: #006621; 
+      text-decoration: none; 
+      font-size: 14px;
+      word-break: break-all;
+      transition: color 0.2s;
+      line-height: 1.3;
+    }
     .url-link:hover {
-      color: #a8c5f0;
+      text-decoration: underline;
     }
     .source-snippet { 
-      color: #475569; 
+      color: #545454; 
       font-size: 14px; 
       line-height: 1.6;
-      padding: 12px;
-      background: #ffffff;
-      border-radius: 6px;
-      border-left: 3px solid #e2e8f0;
+      padding-left: 47px;
+      margin-bottom: 12px;
       white-space: pre-wrap;
       max-height: 120px;
       overflow-y: auto;
@@ -1047,6 +1075,31 @@ export class SafeHtmlPipe implements PipeTransform {
     }
     
     .source-save-btn svg {
+      stroke: currentColor;
+    }
+    
+    .source-save-btn-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    
+    .source-save-btn-header:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .source-save-btn-header svg {
       stroke: currentColor;
     }
 
@@ -1445,7 +1498,7 @@ export class SafeHtmlPipe implements PipeTransform {
     }
   `]
 })
-export class App implements AfterViewChecked {
+export class App implements AfterViewInit, AfterViewChecked {
   q = signal('');
   busy = signal(false);
   cards = signal<Card[]>([]);
@@ -1471,8 +1524,12 @@ export class App implements AfterViewChecked {
   activeFilters = signal<any>({});
   showWatchlistModal = signal(false);
   selectedPropertyToSave = signal<any>(null);
+  selectedWatchlistId = signal<string | null>(null);
   availableWatchlists = signal<any[]>([]);
   savingToWatchlist = signal(false);
+  showCreateWatchlist = signal(false);
+  newWatchlistName = '';
+  newWatchlistQuery = '';
   private typingInterval: any = null;
   private isTypingActive = true;
   private currentExampleIndex = 0;
@@ -1538,25 +1595,44 @@ export class App implements AfterViewChecked {
     return shuffled.slice(0, count);
   }
 
+  ngAfterViewInit() {
+    // Set up event delegation for dynamically added buttons
+    document.addEventListener('click', (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Handle "Deal Factors" button clicks
+      if (target.classList.contains('show-breakdown') || target.closest('.show-breakdown')) {
+        const button = target.classList.contains('show-breakdown') ? target : target.closest('.show-breakdown') as HTMLElement;
+        if (button) {
+          this.toggleFactorChart(event);
+        }
+      }
+      
+      // Handle "Add to Watchlist" button clicks
+      if (target.classList.contains('add-to-watchlist-btn-inline') || target.closest('.add-to-watchlist-btn-inline')) {
+        const button = target.classList.contains('add-to-watchlist-btn-inline') ? target : target.closest('.add-to-watchlist-btn-inline') as HTMLElement;
+        if (button) {
+          event.stopPropagation();
+          event.preventDefault();
+          const url = button.dataset['url'] || '';
+          const title = button.dataset['title'] || '';
+          const score = parseInt(button.dataset['score'] || '0');
+          const risk = parseInt(button.dataset['risk'] || '0');
+          console.log('[watchlist] Button clicked via delegation!', { url, title, score, risk });
+          this.showWatchlistSelector({ url, title, peScore: score, riskScore: risk });
+        }
+      }
+    });
+  }
+
   ngAfterViewChecked() {
     // Debug: Check if icon exists
     const icon = document.getElementById('pe-model-info-icon');
     if (icon) {
-      console.log('Info icon found in DOM:', icon);
       // Ensure it's clickable
       icon.style.cursor = 'pointer';
       icon.style.userSelect = 'none';
-    } else {
-      console.log('Info icon NOT found in DOM');
     }
-
-    // Add listeners for deal factor buttons
-    this.el.nativeElement.querySelectorAll('.show-breakdown').forEach((button: HTMLElement) => {
-      if (!button.dataset['listenerAttached']) {
-        button.addEventListener('click', (event: MouseEvent) => this.toggleFactorChart(event));
-        button.dataset['listenerAttached'] = 'true';
-      }
-    });
     
     // Initialize chart buttons after DOM updates
     this.initializeChartButtons();
@@ -1579,6 +1655,34 @@ export class App implements AfterViewChecked {
         });
       }
     }
+  }
+  
+  private attachWatchlistButtonListeners() {
+    // Attach listeners to "Add to Watchlist" buttons in opportunities
+    document.querySelectorAll('.add-to-watchlist-btn-inline').forEach((element) => {
+      const button = element as HTMLElement;
+      if (!button.dataset['listenerAttached']) {
+        const clickHandler = (event: MouseEvent) => {
+          event.stopPropagation();
+          event.preventDefault();
+          console.log('[watchlist] Button clicked!');
+          const url = button.dataset['url'] || '';
+          const title = button.dataset['title'] || '';
+          const score = parseInt(button.dataset['score'] || '0');
+          const risk = parseInt(button.dataset['risk'] || '0');
+          console.log('[watchlist] Property data:', { url, title, score, risk });
+          
+          // Use setTimeout to ensure this runs after any other event handlers
+          setTimeout(() => {
+            this.showWatchlistSelector({ url, title, peScore: score, riskScore: risk });
+          }, 0);
+        };
+        
+        button.addEventListener('click', clickHandler, { once: false });
+        button.dataset['listenerAttached'] = 'true';
+        console.log('[watchlist] Listener attached to button for:', button.dataset['title']);
+      }
+    });
   }
 
   toggleFactorChart(event: MouseEvent) {
@@ -2646,29 +2750,125 @@ export class App implements AfterViewChecked {
     }
   }
 
-  async showWatchlistSelector(property: any) {
-    console.log('[watchlist] Opening selector for:', property.title);
-    this.selectedPropertyToSave.set(property);
+  toggleCreateWatchlist() {
+    const isShowing = !this.showCreateWatchlist();
+    this.showCreateWatchlist.set(isShowing);
+    this.selectedWatchlistId.set(isShowing ? 'new' : null);
     
-    // Load available watchlists
-    try {
-      const response = await fetch('http://localhost:3001/api/saved-properties/watchlists');
-      const watchlists = await response.json();
-      this.availableWatchlists.set(watchlists.filter((w: any) => w.enabled !== false));
-      this.showWatchlistModal.set(true);
-    } catch (err) {
-      console.error('[watchlist] Failed to load watchlists:', err);
-      alert('Failed to load watchlists');
+    if (isShowing) {
+      // Auto-fill query based on property title
+      const property = this.selectedPropertyToSave();
+      if (property && property.title) {
+        // Clean up title - remove "..." and other artifacts
+        let title = property.title.replace(/\.{3,}/g, '').trim();
+        // Extract key terms (remove common words like "for sale", "listing", etc.)
+        title = title.replace(/\s+(for sale|listing|property)$/i, '').trim();
+        this.newWatchlistQuery = `${title} commercial real estate for sale`;
+      }
     }
   }
 
-  async saveToWatchlist(watchlistId: string) {
-    const property = this.selectedPropertyToSave();
-    if (!property) return;
+  async showWatchlistSelector(property: any) {
+    console.log('[watchlist] Opening selector for:', property.title);
+    console.log('[watchlist] Full property object:', property);
+    console.log('[watchlist] Stack trace:', new Error().stack);
+    this.selectedPropertyToSave.set(property);
+    this.selectedWatchlistId.set(null); // Reset selection
+    this.showCreateWatchlist.set(false); // Reset create form
+    this.newWatchlistName = '';
+    this.newWatchlistQuery = '';
     
+    // Load available watchlists
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch('http://localhost:3001/api/saved-properties/watchlists', {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const watchlists = await response.json();
+      this.availableWatchlists.set(watchlists.filter((w: any) => w.enabled !== false));
+      this.showWatchlistModal.set(true);
+    } catch (err: any) {
+      console.error('[watchlist] Failed to load watchlists:', err);
+      if (err.name === 'AbortError') {
+        alert('⏱️ Request timed out loading watchlists');
+      } else {
+        alert('❌ Failed to load watchlists. Check if backend is running on port 3001.');
+      }
+    }
+  }
+
+  async saveToWatchlist() {
+    const property = this.selectedPropertyToSave();
+    let watchlistId = this.selectedWatchlistId();
+    
+    if (!property || !watchlistId) {
+      console.error('[watchlist] Missing property or watchlist ID');
+      return;
+    }
+    
+    // If creating a new watchlist, validate and create it first
+    if (watchlistId === 'new') {
+      if (!this.newWatchlistName.trim()) {
+        alert('⚠️ Please enter a name for the new watchlist');
+        return;
+      }
+      if (!this.newWatchlistQuery.trim()) {
+        alert('⚠️ Please enter a search query for the new watchlist');
+        return;
+      }
+      
+      // Generate ID from name
+      watchlistId = this.newWatchlistName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      
+      // Create the watchlist via API
+      try {
+        console.log('[watchlist] Creating new watchlist:', { id: watchlistId, label: this.newWatchlistName, query: this.newWatchlistQuery });
+        
+        const response = await fetch('http://localhost:3001/api/saved-properties/watchlists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: watchlistId,
+            label: this.newWatchlistName,
+            query: this.newWatchlistQuery
+          })
+        });
+        
+        if (response.status === 409) {
+          alert('⚠️ A watchlist with this name already exists. Please choose a different name.');
+          return;
+        } else if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const newWatchlist = await response.json();
+        console.log('[watchlist] ✅ Watchlist created successfully:', newWatchlist);
+        
+        // Add to available watchlists
+        this.availableWatchlists.update(lists => [...lists, newWatchlist]);
+        
+      } catch (err: any) {
+        console.error('[watchlist] Failed to create watchlist:', err);
+        alert('❌ Failed to create watchlist. Check console for details.');
+        return;
+      }
+    }
+    
+    console.log('[watchlist] Saving property:', property.title, 'to', watchlistId);
     this.savingToWatchlist.set(true);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const response = await fetch('http://localhost:3001/api/saved-properties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2678,25 +2878,34 @@ export class App implements AfterViewChecked {
           score: property.peScore || property.score,
           risk: property.riskScore || property.risk,
           watchlistId
-        })
+        }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.status === 409) {
         alert('This property is already saved to this watchlist');
       } else if (!response.ok) {
-        throw new Error('Failed to save property');
+        throw new Error(`HTTP ${response.status}`);
       } else {
         console.log('[watchlist] ✅ Property saved successfully');
         this.showWatchlistModal.set(false);
+        this.selectedWatchlistId.set(null); // Reset selection
         
         // Show success toast
         const watchlist = this.availableWatchlists().find((w: any) => w.id === watchlistId);
         alert(`✅ Saved to "${watchlist?.label || watchlistId}"`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[watchlist] Failed to save:', err);
-      alert('Failed to save property');
+      if (err.name === 'AbortError') {
+        alert('⏱️ Request timed out. Please check if the backend server is running on port 3001.');
+      } else {
+        alert(`Failed to save property: ${err.message || 'Unknown error'}`);
+      }
     } finally {
+      console.log('[watchlist] Resetting savingToWatchlist flag');
       this.savingToWatchlist.set(false);
     }
   }

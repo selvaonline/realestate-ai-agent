@@ -3,6 +3,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgentService, AgentEvent } from './agent.service';
+import { environment } from '../environments/environment';
 import { Chart, registerables } from 'chart.js';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { ChatPanelComponent } from './chat-panel.component';
@@ -2783,7 +2784,8 @@ export class App implements AfterViewInit, AfterViewChecked {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch('http://localhost:3001/api/saved-properties/watchlists', {
+      const apiUrl = (localStorage.getItem('apiUrl') || environment.apiUrl).replace(/\/$/, '');
+      const response = await fetch(`${apiUrl}/api/saved-properties/watchlists`, {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -2832,7 +2834,8 @@ export class App implements AfterViewInit, AfterViewChecked {
       try {
         console.log('[watchlist] Creating new watchlist:', { id: watchlistId, label: this.newWatchlistName, query: this.newWatchlistQuery });
         
-        const response = await fetch('http://localhost:3001/api/saved-properties/watchlists', {
+        const apiUrl = (localStorage.getItem('apiUrl') || environment.apiUrl).replace(/\/$/, '');
+        const response = await fetch(`${apiUrl}/api/saved-properties/watchlists`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2869,7 +2872,8 @@ export class App implements AfterViewInit, AfterViewChecked {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch('http://localhost:3001/api/saved-properties', {
+      const apiUrl = (localStorage.getItem('apiUrl') || environment.apiUrl).replace(/\/$/, '');
+      const response = await fetch(`${apiUrl}/api/saved-properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

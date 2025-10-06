@@ -9,11 +9,25 @@
       "address": "10600 Montana Ave, El Paso, TX 79935. This Retail property is available for sale. Long-Term Corporat"
     },
     {
+      "url": "https://www.loopnet.com/Listing/4142-Pontchartrain-Dr-Slidell-LA/18327358/",
+      "score": 45,
+      "risk": 52,
+      "title": "4142 Pontchartrain Dr, Slidell, LA 70458",
+      "address": "Walgreens NNN Strong Sales New Orleans MSA · Retail Property For Sale. 4142 ... Walgreens Corporate "
+    },
+    {
       "url": "https://www.loopnet.com/Listing/Walgreens-Louisville-KY/26099142/",
       "score": 43,
       "risk": 52,
       "title": "Walgreens, Louisville, KY 40258 - 2 Asset Portfolio- NNN",
       "address": "Walgreens Louisville, KY 40258 2 Asset Portfolio- NNN- High Yields · Retail Property For Sale · INVE"
+    },
+    {
+      "url": "https://www.crexi.com/properties/267821/texas-walgreens-core-nnn-portfolio-15-yr-lease",
+      "score": 43,
+      "risk": 52,
+      "title": "Walgreens Core NNN Portfolio 15 YR Lease",
+      "address": "Marcus & Millichap is pleased to present for sale this Walgreens portfolio ... □ Walgreens Corporate"
     },
     {
       "url": "https://www.loopnet.com/Listing/12-Park-Dr-Hornell-NY/30418198/",
@@ -23,26 +37,12 @@
       "address": "... Investment Grade Tenant (S&P: BBB) ... 12 Park Dr, Hornell, NY for sale Building Photo- Image 1 "
     },
     {
-      "url": "https://www.loopnet.com/Listing/Walgreens-Eastpointe-MI/15752756/",
-      "score": 43,
+      "url": "https://www.loopnet.com/search/listings/nnn-properties/hometown-il/for-sale/",
+      "score": 41,
       "risk": 52,
-      "title": "Walgreens, Eastpointe, MI 48021",
-      "address": "NNN Lease- Strong Sales- Near Costco · Retail Property For Sale. Walgreens ... investment grade tena"
-    },
-    {
-      "url": "https://www.loopnet.com/Listing/Walgreens-Gilbert-AZ/17254445/",
-      "score": 43,
-      "risk": 52,
-      "title": "Walgreens, Gilbert, AZ 85295",
-      "address": "NNN- Strong Sales Trend- Growing Suburb · Retail Property For Sale. Walgreens, Gilbert, AZ for sale "
-    },
-    {
-      "url": "https://www.loopnet.com/Listing/Walgreens-Union-City-GA/14292303/",
-      "score": 43,
-      "risk": 52,
-      "title": "Walgreens, Union City, GA 30291",
-      "address": "Absolute NNN- PAD of Walmart- Near Amazon · Retail Property For Sale ... investment grade single ten"
+      "title": "Hometown NNN Properties For Sale",
+      "address": "Search For Lease ... View NNN Property For Sale · 7200 Roosevelt Rd · Walgreens · 12,209 SF Retail ."
     }
   ],
-  "ts": 1759722258250
+  "ts": 1759722339512
 }

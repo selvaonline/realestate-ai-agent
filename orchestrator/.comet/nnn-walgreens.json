@@ -2,40 +2,33 @@
   "watchId": "nnn-walgreens",
   "items": [
     {
-      "url": "https://www.loopnet.com/Listing/10600-Montana-Ave-El-Paso-TX/36800917/",
+      "url": "https://www.crexi.com/properties/2159743/north-carolina-walgreens-wilmington-nc-absolute-nnn-lease",
       "score": 45,
-      "risk": 52,
-      "title": "Walgreens 10600 Montana Ave El Paso, TX 79935",
-      "address": "10600 Montana Ave, El Paso, TX 79935. This Retail property is available for sale. Long-Term Corporat"
+      "risk": 53,
+      "title": "2401 N College Rd, Wilmington, NC 28405 | Crexi.com",
+      "address": "The subject property is located just 7 miles from downtown Wilmington. Walgreens executed a long-ter"
+    },
+    {
+      "url": "https://www.crexi.com/properties/2159608/kentucky-walgreens-louisville-ky-absolute-nnn-lease",
+      "score": 45,
+      "risk": 53,
+      "title": "7700 Shepherdsville Rd, Louisville, KY 40219 | Crexi.com",
+      "address": "Walgreens executed a long-term Absolute NNN lease with rent commencing in December 2006. The corpora"
     },
     {
       "url": "https://www.loopnet.com/Listing/Walgreens-Louisville-KY/26099142/",
       "score": 43,
-      "risk": 52,
-      "title": "Walgreens, Louisville, KY 40258 - 2 Asset Portfolio- NNN",
-      "address": "Two (2) STNL Walgreens (Fee Simple) - Investment Grade Credit Tenant - Rated “BBB-” by S&P's; High Y"
+      "risk": 53,
+      "title": "Walgreens, Louisville, KY 40258 - 2 Asset Portfolio- NNN ...",
+      "address": "The SnyderCarlton Team is pleased to offer to qualified investors an opportunity to purchase two (2)"
     },
     {
-      "url": "https://www.loopnet.com/Listing/12-Park-Dr-Hornell-NY/30418198/",
+      "url": "https://www.loopnet.com/Listing/4001-W-Irving-Park-Rd-Chicago-IL/31611363/",
       "score": 43,
-      "risk": 52,
-      "title": "Corp Abs NNN w/ Incrs 12 Park Dr Hornell, NY 14843",
-      "address": "... Investment Grade Tenant (S&P: BBB) ... 12 Park Dr, Hornell, NY for sale Building Photo- Image 1 "
-    },
-    {
-      "url": "https://www.loopnet.com/Listing/Walgreens-Gilbert-AZ/17254445/",
-      "score": 43,
-      "risk": 52,
-      "title": "Walgreens, Gilbert, AZ 85295",
-      "address": "NNN- Strong Sales Trend- Growing Suburb · Retail Property For Sale. Walgreens, Gilbert, AZ for sale "
-    },
-    {
-      "url": "https://www.loopnet.com/Listing/2875-Main-St-Susanville-CA/36631190/",
-      "score": 43,
-      "risk": 52,
-      "title": "2875 Main St, Susanville, CA 96130 - Walgreens",
-      "address": "Walgreens | 7.50% CAP | Absolute NNN · Retail Property For Sale. Share. 1/6 ... investment grade ten"
+      "risk": 53,
+      "title": "4001 W Irving Park Rd, Chicago, IL 60641 - Walgreens ...",
+      "address": "The Old Irving Park Retail Property at 4001 W Irving Park Rd, Chicago, IL 60641 is currently availab"
     }
   ],
-  "ts": 1759800755565
+  "ts": 1759870824152
 }

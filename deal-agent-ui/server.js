@@ -17,11 +17,25 @@ const proxyOptions = {
   changeOrigin: true,
   ws: true, // Enable WebSocket proxying for SSE
   logLevel: 'debug',
+  // Preserve headers for SSE
   onProxyReq: (proxyReq, req, res) => {
     console.log(`[Proxy] ${req.method} ${req.url} -> ${API_URL}${req.url}`);
+    // Ensure SSE headers are preserved
+    if (req.url.includes('/ui/events') || req.url.includes('/events/')) {
+      proxyReq.setHeader('Accept', 'text/event-stream');
+      proxyReq.setHeader('Cache-Control', 'no-cache');
+      proxyReq.setHeader('Connection', 'keep-alive');
+    }
   },
   onProxyRes: (proxyRes, req, res) => {
     console.log(`[Proxy Response] ${req.url} -> Status: ${proxyRes.statusCode}`);
+    // For SSE, ensure proper headers are set
+    if (req.url.includes('/ui/events') || req.url.includes('/events/')) {
+      proxyRes.headers['content-type'] = 'text/event-stream';
+      proxyRes.headers['cache-control'] = 'no-cache';
+      proxyRes.headers['connection'] = 'keep-alive';
+      proxyRes.headers['x-accel-buffering'] = 'no';
+    }
   },
   onError: (err, req, res) => {
     console.error('[Proxy Error]', err.message);

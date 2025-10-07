@@ -1,5 +1,5 @@
 // Production environment (cloud)
 export const environment = {
   production: true,
-  apiUrl: 'https://my-docs.ai' // Same domain - API requests proxied to backend
+  apiUrl: '' // Empty string = same origin (works with proxy)
 };

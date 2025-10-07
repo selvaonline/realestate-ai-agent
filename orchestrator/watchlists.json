@@ -55,5 +55,19 @@
     "riskMax": 70,
     "schedule": "0 * * * *",
     "enabled": true
+  },
+  {
+    "id": "test",
+    "label": "test",
+    "query": "632 E 16th St, Holland, MI 49423 commercial real estate for sale",
+    "domains": [
+      "crexi.com",
+      "loopnet.com",
+      "brevitas.com"
+    ],
+    "minScore": 40,
+    "riskMax": 70,
+    "schedule": "0 * * * *",
+    "enabled": true
   }
 ]

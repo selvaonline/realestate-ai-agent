@@ -44,6 +44,25 @@ app.get('/healthz', createProxyMiddleware(proxyOptions));
 
 // Serve static files from Angular build
 const distPath = path.join(__dirname, 'dist/deal-agent-ui/browser');
+
+// Check if dist folder exists
+const fs = require('fs');
+if (!fs.existsSync(distPath)) {
+  console.error(`❌ ERROR: dist folder not found at: ${distPath}`);
+  console.error('Available directories:');
+  try {
+    const distRoot = path.join(__dirname, 'dist');
+    if (fs.existsSync(distRoot)) {
+      console.error(fs.readdirSync(distRoot));
+    } else {
+      console.error('dist/ directory does not exist!');
+    }
+  } catch (e) {
+    console.error('Could not read dist directory');
+  }
+  process.exit(1);
+}
+
 app.use(express.static(distPath));
 
 // All other routes return the Angular app (for client-side routing)

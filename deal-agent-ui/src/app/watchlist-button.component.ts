@@ -331,10 +331,14 @@ export class WatchlistButtonComponent {
   async loadWatchlists() {
     try {
       const baseUrl = environment.apiUrl || window.location.origin;
-      const response = await fetch(`${baseUrl}/watchlists`);
+      const response = await fetch(`${baseUrl}/api/saved-properties/watchlists`);
       if (response.ok) {
         const data = await response.json();
-        this.watchlists.set(data.watchlists || []);
+        // API returns array directly, not wrapped in an object
+        const watchlistsArray = Array.isArray(data) ? data : [];
+        // Filter out disabled watchlists
+        this.watchlists.set(watchlistsArray.filter((w: any) => w.enabled !== false));
+        console.log('[watchlist-button] Loaded watchlists:', this.watchlists().length);
       }
     } catch (error) {
       console.error('[watchlist-button] Failed to load watchlists:', error);

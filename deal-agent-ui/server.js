@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 8080;
 // Default to local backend in development, production backend in production
 const API_URL = process.env.API_URL || 
   (process.env.NODE_ENV === 'production' 
-    ? 'https://realestate-api.onrender.com' 
+    ? 'https://realestate-ai-agent.onrender.com' 
     : 'http://localhost:3001');
 
 // Proxy configuration

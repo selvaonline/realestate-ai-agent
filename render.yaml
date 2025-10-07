@@ -52,6 +52,6 @@ services:
       - key: PORT
         value: 8080
       - key: API_URL
-        value: https://realestate-api.onrender.com
+        value: https://realestate-ai-agent.onrender.com
     # Custom domain
     # After deployment, add custom domain 'my-docs.ai' in Render dashboard

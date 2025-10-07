@@ -33,10 +33,15 @@ interface QuickAction {
       </button>
 
       <!-- Chat Window -->
-      <div class="chat-window" *ngIf="isExpanded()">
-        <!-- Header -->
-        <div class="chat-header">
+      <div class="chat-window" *ngIf="isExpanded()" 
+           [style.transform]="'translate(' + position().x + 'px, ' + position().y + 'px)'">
+        <!-- Header (Draggable) -->
+        <div class="chat-header"
+             (mousedown)="startDrag($event)"
+             style="cursor: move; user-select: none;"
+             title="Drag to reposition">
           <div class="chat-title">
+            <span class="drag-handle" style="margin-right: 8px; opacity: 0.5;">⋮⋮</span>
             <span class="chat-title-icon">🤖</span>
             <span>DealSense Chat</span>
             <button class="help-btn" 
@@ -465,6 +470,11 @@ export class ChatPanelComponent {
   unreadCount = signal(0);
   showQuickActions = signal(true);
   
+  // Draggable position
+  position = signal({ x: 0, y: 0 });
+  private isDragging = false;
+  private dragStart = { x: 0, y: 0 };
+  
   // Session ID for multi-turn memory
   private sessionId = crypto.randomUUID();
 
@@ -618,5 +628,40 @@ export class ChatPanelComponent {
       const element = this.messagesContainer.nativeElement;
       element.scrollTop = element.scrollHeight;
     }
+  }
+
+  // Drag functionality
+  startDrag(event: MouseEvent) {
+    event.preventDefault();
+    this.isDragging = true;
+    this.dragStart = {
+      x: event.clientX - this.position().x,
+      y: event.clientY - this.position().y
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!this.isDragging) return;
+      
+      const newX = e.clientX - this.dragStart.x;
+      const newY = e.clientY - this.dragStart.y;
+      
+      // Keep within viewport bounds
+      const maxX = window.innerWidth - 420; // chat window width
+      const maxY = window.innerHeight - 600; // chat window height
+      
+      this.position.set({
+        x: Math.max(-400, Math.min(maxX, newX)),
+        y: Math.max(-500, Math.min(maxY, newY))
+      });
+    };
+
+    const onMouseUp = () => {
+      this.isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   }
 }

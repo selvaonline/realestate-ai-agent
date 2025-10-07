@@ -1734,6 +1734,9 @@ export class App implements AfterViewInit, AfterViewChecked {
         }]
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 2.5,
         indexAxis: 'y',
         scales: {
           x: { beginAtZero: true, max: 100 }
@@ -2347,6 +2350,7 @@ export class App implements AfterViewInit, AfterViewChecked {
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          aspectRatio: 1.5,
           cutout: "68%",
           plugins: {
             legend: {
@@ -2416,6 +2420,7 @@ export class App implements AfterViewInit, AfterViewChecked {
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          aspectRatio: 1.5,
           cutout: "68%",
           plugins: {
             legend: {

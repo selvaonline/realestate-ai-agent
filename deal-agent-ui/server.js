@@ -5,7 +5,11 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const API_URL = process.env.API_URL || 'https://realestate-api.onrender.com';
+// Default to local backend in development, production backend in production
+const API_URL = process.env.API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://realestate-api.onrender.com' 
+    : 'http://localhost:3001');
 
 // Proxy API requests to backend
 const apiProxy = createProxyMiddleware({

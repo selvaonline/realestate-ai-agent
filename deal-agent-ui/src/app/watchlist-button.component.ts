@@ -346,12 +346,19 @@ export class WatchlistButtonComponent {
   }
 
   viewWatchlist(watchlist: Watchlist) {
-    // Navigate to watchlist view or trigger search
-    console.log('[watchlist-button] View watchlist:', watchlist);
-    // You can emit an event or navigate here
+    // Trigger search with watchlist query
+    console.log('[watchlist-button] Running watchlist:', watchlist.label);
+    
+    // Dispatch event to main app to run the search
     window.dispatchEvent(new CustomEvent('run-watchlist-query', { 
-      detail: { query: watchlist.query, label: watchlist.label } 
+      detail: { 
+        query: watchlist.query, 
+        label: watchlist.label,
+        id: watchlist.id 
+      } 
     }));
+    
+    // Close the panel
     this.togglePanel();
   }
 

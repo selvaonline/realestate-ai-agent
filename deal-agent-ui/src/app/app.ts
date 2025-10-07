@@ -68,6 +68,13 @@ export class SafeHtmlPipe implements PipeTransform {
       </button>
     </div>
 
+    <!-- Watchlist Context Banner -->
+    <div class="watchlist-banner" *ngIf="currentWatchlist()">
+      <span class="watchlist-icon">📌</span>
+      <span class="watchlist-label">Showing results for: <strong>{{ currentWatchlist()!.label }}</strong></span>
+      <button class="clear-watchlist-btn" (click)="currentWatchlist.set(null)" title="Clear watchlist filter">✕</button>
+    </div>
+
     <!-- Perplexity-style Answer Section -->
     <div class="perplexity-section" *ngIf="answer() || sources().length">
       <!-- Thinking Steps -->
@@ -661,6 +668,55 @@ export class SafeHtmlPipe implements PipeTransform {
     }
     .new-search-btn:hover:not(:disabled) { background:#059669; transform: translateY(-1px); }
     .new-search-icon { font-size:16px; }
+
+    /* Watchlist Context Banner */
+    .watchlist-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      margin: 16px 0;
+      animation: slideDown 0.3s ease-out;
+    }
+    .watchlist-icon {
+      font-size: 18px;
+    }
+    .watchlist-label {
+      flex: 1;
+      color: #065f46;
+      font-size: 14px;
+    }
+    .watchlist-label strong {
+      color: #047857;
+      font-weight: 600;
+    }
+    .clear-watchlist-btn {
+      background: none;
+      border: none;
+      color: #6b7280;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .clear-watchlist-btn:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: #374151;
+    }
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
     /* Perplexity-style sections */
     .perplexity-section { margin-top: 24px; }
@@ -1542,6 +1598,7 @@ export class App implements AfterViewInit, AfterViewChecked {
   showCreateWatchlist = signal(false);
   newWatchlistName = '';
   newWatchlistQuery = '';
+  currentWatchlist = signal<{id: string; label: string} | null>(null);
   private typingInterval: any = null;
   private isTypingActive = true;
   private currentExampleIndex = 0;
@@ -1573,6 +1630,22 @@ export class App implements AfterViewInit, AfterViewChecked {
         });
       }
     });
+
+    // Listen for watchlist click events
+    window.addEventListener('run-watchlist-query', ((e: CustomEvent) => {
+      this.zone.run(() => {
+        const { query, label, id } = e.detail;
+        console.log('[app] Running watchlist query:', label, query);
+        
+        // Store current watchlist info
+        this.currentWatchlist.set({ id, label });
+        
+        // Set the query and run the search
+        this.q.set(query);
+        this.stopTyping();
+        this.run();
+      });
+    }) as EventListener);
   }
 
   private async loadPrompts() {
@@ -2160,6 +2233,7 @@ export class App implements AfterViewInit, AfterViewChecked {
     this.showMemo.set(false);
     this.memoText.set('');
     this.portfolioChartsInitialized = false;
+    this.currentWatchlist.set(null); // Clear watchlist context
     
     // Stop current typing animation first
     this.stopTyping();

@@ -631,7 +631,14 @@ export class SafeHtmlPipe implements PipeTransform {
   styles: [`
     :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }
     .shell { max-width: 920px; margin: 0 auto; padding: 20px; }
-    .header { font-weight:700; font-size:20px; color:#1a2332; margin-bottom: 12px; }
+    .header { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 600; 
+      font-size: 24px; 
+      color: #1a2332; 
+      margin-bottom: 12px; 
+      letter-spacing: -0.5px;
+    }
     .ask { display:flex; gap:12px; margin:20px 0; }
     input { flex:1; padding:12px 16px; background:#ffffff; border:1px solid #d0d8e4; border-radius:8px; color:#1a2332; font-size:15px; }
     input::placeholder { color: #8b9db5; opacity: 1; }

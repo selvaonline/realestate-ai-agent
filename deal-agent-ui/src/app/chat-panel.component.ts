@@ -187,6 +187,7 @@ interface QuickAction {
       flex-direction: column;
       overflow: hidden;
       animation: slideUp 0.3s ease;
+      z-index: 999999;
     }
 
     @keyframes slideUp {
@@ -216,6 +217,7 @@ interface QuickAction {
 
     .help-btn {
       margin-left: auto;
+      margin-right: 4px;
       background: rgba(255, 255, 255, 0.2);
       border: none;
       width: 32px;
@@ -227,6 +229,7 @@ interface QuickAction {
       justify-content: center;
       transition: all 0.2s;
       color: white;
+      flex-shrink: 0;
     }
 
     .help-btn:hover {

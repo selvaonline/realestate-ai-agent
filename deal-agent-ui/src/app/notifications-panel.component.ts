@@ -385,7 +385,9 @@ export class NotificationsPanelComponent implements OnInit, OnDestroy {
     this.loadAlerts();
 
     // Connect to SSE
-    const url = `${environment.apiUrl}/ui/events`;
+    // Use relative URL if apiUrl is empty (production with proxy) or absolute URL (development)
+    const baseUrl = environment.apiUrl || window.location.origin;
+    const url = `${baseUrl}/ui/events`;
     console.log('[notifications-panel] Connecting to:', url);
     this.eventSource = new EventSource(url);
     
@@ -397,6 +399,15 @@ export class NotificationsPanelComponent implements OnInit, OnDestroy {
       this.alerts.update(alerts => [{ ...alert, read: false }, ...alerts]);
       this.updateUnreadCount();
       this.saveAlerts();
+    });
+
+    this.eventSource.addEventListener('error', (error) => {
+      console.error('[notifications-panel] SSE connection error:', error);
+      // EventSource will automatically reconnect
+    });
+
+    this.eventSource.addEventListener('open', () => {
+      console.log('[notifications-panel] SSE connection established');
     });
   }
 

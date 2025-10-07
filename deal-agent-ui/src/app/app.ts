@@ -11,6 +11,7 @@ import { ChatUIActionsComponent } from './chat-ui-actions.component';
 import { KeyboardShortcutsComponent } from './keyboard-shortcuts.component';
 import { CometToastComponent } from './comet-toast.component';
 import { NotificationsPanelComponent } from './notifications-panel.component';
+import { WatchlistButtonComponent } from './watchlist-button.component';
 Chart.register(...registerables);
 
 type Card = {
@@ -52,7 +53,7 @@ export class SafeHtmlPipe implements PipeTransform {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent, CometToastComponent, NotificationsPanelComponent],
+  imports: [CommonModule, FormsModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent, CometToastComponent, NotificationsPanelComponent, WatchlistButtonComponent],
   template: `
   <div class="shell">
     <div class="header">🏢 DealSense Agent</div>
@@ -536,6 +537,9 @@ export class SafeHtmlPipe implements PipeTransform {
     <!-- Comet Toast Notifications -->
     <app-comet-toast></app-comet-toast>
 
+    <!-- Watchlist Button -->
+    <app-watchlist-button></app-watchlist-button>
+    
     <!-- Notifications Panel -->
     <app-notifications-panel></app-notifications-panel>
     
@@ -1819,6 +1823,11 @@ export class App implements AfterViewInit, AfterViewChecked {
       clearTimeout(this.typingInterval);
       this.typingInterval = null;
     }
+    // Clear the placeholder cursor when stopping
+    const currentPlaceholder = this.typingPlaceholder();
+    if (currentPlaceholder.endsWith('|')) {
+      this.typingPlaceholder.set(currentPlaceholder.slice(0, -1));
+    }
   }
 
   async shareResults() {
@@ -2152,9 +2161,17 @@ export class App implements AfterViewInit, AfterViewChecked {
     this.memoText.set('');
     this.portfolioChartsInitialized = false;
     
-    // Restart typing animation
-    this.isTypingActive = true;
-    this.startTypingAnimation();
+    // Stop current typing animation first
+    this.stopTyping();
+    
+    // Set clean placeholder without cursor
+    this.typingPlaceholder.set('Ask a question...');
+    
+    // Restart typing animation with a small delay to ensure clean state
+    setTimeout(() => {
+      this.isTypingActive = true;
+      this.startTypingAnimation();
+    }, 50);
     
     // Focus on input
     setTimeout(() => {

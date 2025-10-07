@@ -2160,10 +2160,14 @@ export class App implements AfterViewInit, AfterViewChecked {
     // Stop current typing animation first
     this.stopTyping();
     
-    // Restart typing animation with clean state
-    this.isTypingActive = true;
+    // Set clean placeholder without cursor
     this.typingPlaceholder.set('Ask a question...');
-    this.startTypingAnimation();
+    
+    // Restart typing animation with a small delay to ensure clean state
+    setTimeout(() => {
+      this.isTypingActive = true;
+      this.startTypingAnimation();
+    }, 50);
     
     // Focus on input
     setTimeout(() => {

@@ -3,7 +3,7 @@
 
 export async function postSlack(webhookUrl: string, payload: { text: string; blocks?: any[] }): Promise<void> {
   if (!webhookUrl) {
-    console.log("[slack] No webhook URL configured, skipping notification");
+    // Silently skip if not configured
     return;
   }
 

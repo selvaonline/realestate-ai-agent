@@ -1819,6 +1819,11 @@ export class App implements AfterViewInit, AfterViewChecked {
       clearTimeout(this.typingInterval);
       this.typingInterval = null;
     }
+    // Clear the placeholder cursor when stopping
+    const currentPlaceholder = this.typingPlaceholder();
+    if (currentPlaceholder.endsWith('|')) {
+      this.typingPlaceholder.set(currentPlaceholder.slice(0, -1));
+    }
   }
 
   async shareResults() {
@@ -2152,8 +2157,12 @@ export class App implements AfterViewInit, AfterViewChecked {
     this.memoText.set('');
     this.portfolioChartsInitialized = false;
     
-    // Restart typing animation
+    // Stop current typing animation first
+    this.stopTyping();
+    
+    // Restart typing animation with clean state
     this.isTypingActive = true;
+    this.typingPlaceholder.set('Ask a question...');
     this.startTypingAnimation();
     
     // Focus on input

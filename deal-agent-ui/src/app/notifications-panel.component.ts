@@ -3,6 +3,7 @@
 
 import { Component, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { environment } from '../environments/environment';
 
 type CometAlert = {
   watchId: string;
@@ -384,7 +385,9 @@ export class NotificationsPanelComponent implements OnInit, OnDestroy {
     this.loadAlerts();
 
     // Connect to SSE
-    this.eventSource = new EventSource('http://localhost:3001/ui/events');
+    const url = `${environment.apiUrl}/ui/events`;
+    console.log('[notifications-panel] Connecting to:', url);
+    this.eventSource = new EventSource(url);
     
     this.eventSource.addEventListener('comet-alert', (event: MessageEvent) => {
       const alert = JSON.parse(event.data) as CometAlert;

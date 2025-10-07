@@ -3,6 +3,7 @@
 
 import { Component, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { environment } from '../environments/environment';
 
 type CometAlert = {
   watchId: string;
@@ -167,7 +168,9 @@ export class CometToastComponent implements OnInit, OnDestroy {
     console.log('[comet-toast] Initializing, connecting to SSE...');
     
     // Connect to UI events SSE
-    this.eventSource = new EventSource('http://localhost:3001/ui/events');
+    const url = `${environment.apiUrl}/ui/events`;
+    console.log('[comet-toast] Connecting to:', url);
+    this.eventSource = new EventSource(url);
     
     this.eventSource.onopen = () => {
       console.log('[comet-toast] ✅ SSE connection established');

@@ -2961,6 +2961,9 @@ export class App implements AfterViewInit, AfterViewChecked {
         // Add to available watchlists
         this.availableWatchlists.update(lists => [...lists, newWatchlist]);
         
+        // Notify watchlist button to refresh
+        window.dispatchEvent(new CustomEvent('watchlist-created', { detail: newWatchlist }));
+        
       } catch (err: any) {
         console.error('[watchlist] Failed to create watchlist:', err);
         alert('❌ Failed to create watchlist. Check console for details.');

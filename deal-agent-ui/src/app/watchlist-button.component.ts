@@ -1,7 +1,7 @@
 // src/app/watchlist-button.component.ts
 // Watchlist button component to view saved watchlists
 
-import { Component, signal } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { environment } from '../environments/environment';
 
@@ -316,12 +316,28 @@ type Watchlist = {
     }
   `]
 })
-export class WatchlistButtonComponent {
+export class WatchlistButtonComponent implements OnInit, OnDestroy {
   isExpanded = signal(false);
   watchlists = signal<Watchlist[]>([]);
+  private watchlistCreatedListener?: (event: Event) => void;
 
   constructor() {
     this.loadWatchlists();
+  }
+
+  ngOnInit() {
+    // Listen for watchlist creation events
+    this.watchlistCreatedListener = (event: Event) => {
+      console.log('[watchlist-button] Watchlist created, reloading...');
+      this.loadWatchlists();
+    };
+    window.addEventListener('watchlist-created', this.watchlistCreatedListener);
+  }
+
+  ngOnDestroy() {
+    if (this.watchlistCreatedListener) {
+      window.removeEventListener('watchlist-created', this.watchlistCreatedListener);
+    }
   }
 
   togglePanel() {

@@ -11,8 +11,8 @@ const API_URL = process.env.API_URL ||
     ? 'https://realestate-api.onrender.com' 
     : 'http://localhost:3001');
 
-// Proxy API requests to backend
-const apiProxy = createProxyMiddleware({
+// Proxy configuration
+const proxyOptions = {
   target: API_URL,
   changeOrigin: true,
   ws: true, // Enable WebSocket proxying for SSE
@@ -20,22 +20,27 @@ const apiProxy = createProxyMiddleware({
   onProxyReq: (proxyReq, req, res) => {
     console.log(`[Proxy] ${req.method} ${req.url} -> ${API_URL}${req.url}`);
   },
+  onProxyRes: (proxyRes, req, res) => {
+    console.log(`[Proxy Response] ${req.url} -> Status: ${proxyRes.statusCode}`);
+  },
   onError: (err, req, res) => {
-    console.error('[Proxy Error]', err);
-    res.status(500).json({ error: 'Proxy error', details: err.message });
+    console.error('[Proxy Error]', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Proxy error', details: err.message });
+    }
   }
-});
+};
 
-// Proxy all API routes
-app.use('/run', apiProxy);
-app.use('/run_sync', apiProxy);
-app.use('/events', apiProxy);
-app.use('/result', apiProxy);
-app.use('/ui/events', apiProxy);
-app.use('/ui/test-alert', apiProxy);
-app.use('/api', apiProxy);
-app.use('/chat', apiProxy);
-app.use('/healthz', apiProxy);
+// Proxy all API routes - MUST come before static files
+app.post('/run', createProxyMiddleware(proxyOptions));
+app.post('/run_sync', createProxyMiddleware(proxyOptions));
+app.get('/events/*', createProxyMiddleware(proxyOptions));
+app.get('/result/*', createProxyMiddleware(proxyOptions));
+app.get('/ui/events', createProxyMiddleware(proxyOptions));
+app.post('/ui/test-alert', createProxyMiddleware(proxyOptions));
+app.use('/api', createProxyMiddleware(proxyOptions));
+app.use('/chat', createProxyMiddleware(proxyOptions));
+app.get('/healthz', createProxyMiddleware(proxyOptions));
 
 // Serve static files from Angular build
 const distPath = path.join(__dirname, 'dist/deal-agent-ui/browser');

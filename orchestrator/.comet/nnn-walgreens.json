@@ -2,13 +2,6 @@
   "watchId": "nnn-walgreens",
   "items": [
     {
-      "url": "https://www.loopnet.com/Listing/10600-Montana-Ave-El-Paso-TX/36800917/",
-      "score": 45,
-      "risk": 52,
-      "title": "Walgreens 10600 Montana Ave El Paso, TX 79935",
-      "address": "10600 Montana Ave, El Paso, TX 79935. This Retail property is available for sale. Long-Term Corporat"
-    },
-    {
       "url": "https://www.loopnet.com/Listing/Walgreens-Louisville-KY/26099142/",
       "score": 43,
       "risk": 52,
@@ -16,26 +9,40 @@
       "address": "Walgreens Louisville, KY 40258 2 Asset Portfolio- NNN- High Yields · Retail Property For Sale · INVE"
     },
     {
-      "url": "https://www.loopnet.com/Listing/Walgreens-Gilbert-AZ/17254445/",
-      "score": 43,
-      "risk": 52,
-      "title": "Walgreens, Gilbert, AZ 85295",
-      "address": "NNN- Strong Sales Trend- Growing Suburb · Retail Property For Sale. Walgreens, Gilbert, AZ for sale "
-    },
-    {
-      "url": "https://www.loopnet.com/Listing/2875-Main-St-Susanville-CA/36631190/",
-      "score": 43,
-      "risk": 52,
-      "title": "2875 Main St, Susanville, CA 96130 - Walgreens",
-      "address": "Walgreens | 7.50% CAP | Absolute NNN · Retail Property For Sale. Share. 1/6 ... investment grade ten"
-    },
-    {
       "url": "https://www.loopnet.com/Listing/12-Park-Dr-Hornell-NY/30418198/",
       "score": 43,
       "risk": 52,
       "title": "Corp Abs NNN w/ Incrs 12 Park Dr Hornell, NY 14843",
       "address": "... Investment Grade Tenant (S&P: BBB) ... 12 Park Dr, Hornell, NY for sale Building Photo- Image 1 "
+    },
+    {
+      "url": "https://www.crexi.com/properties/267821/texas-walgreens-core-nnn-portfolio-15-yr-lease",
+      "score": 43,
+      "risk": 52,
+      "title": "Walgreens Core NNN Portfolio 15 YR Lease",
+      "address": "Marcus & Millichap is pleased to present for sale this Walgreens portfolio ... □ Walgreens Corporate"
+    },
+    {
+      "url": "https://www.crexi.com/properties/809878/maryland-walgreens-prime-retailmedical-east-coast-property",
+      "score": 41,
+      "risk": 52,
+      "title": "Walgreens | Prime Retail/Medical Property in Maryland",
+      "address": "The Sparks Agency, LLC is Pleased to Exclusively Present for Sale this NNN Walgreens and a prime ret"
+    },
+    {
+      "url": "https://www.loopnet.com/search/listings/nnn-properties/hometown-il/for-sale/",
+      "score": 41,
+      "risk": 52,
+      "title": "Hometown NNN Properties For Sale",
+      "address": "Search For Lease ... View NNN Property For Sale · 7200 Roosevelt Rd · Walgreens · 12,209 SF Retail ."
+    },
+    {
+      "url": "https://www.loopnet.com/Listing/158-Main-St-North-Reading-MA/34462954/",
+      "score": 40,
+      "risk": 52,
+      "title": "Walgreens 158 Main St North Reading, MA 01864",
+      "address": "INVESTMENT HIGHLIGHTS. Long Term Lease; Investment Grade Credit; High ... 158 Main St, North Reading"
     }
   ],
-  "ts": 1759788475011
+  "ts": 1759799062249
 }

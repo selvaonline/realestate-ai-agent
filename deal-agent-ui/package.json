@@ -4,7 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve --hmr",
+    "start:prod": "node server.js",
     "build": "ng build",
+    "build:prod": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
@@ -29,6 +31,8 @@
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
     "chart.js": "^4.5.0",
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

@@ -17,8 +17,28 @@ export class AgentService {
       headers: { 'Content-Type':'application/json' },
       body: JSON.stringify({ query })
     });
-    const j = await r.json();
-    if (!j.runId) throw new Error('no runId');
+    
+    if (!r.ok) {
+      const text = await r.text();
+      console.error('[agent.service] /run failed:', r.status, text);
+      throw new Error(`Failed to start run: ${r.status} ${text}`);
+    }
+    
+    const text = await r.text();
+    if (!text || text.trim() === '') {
+      console.error('[agent.service] /run returned empty response');
+      throw new Error('Empty response from server');
+    }
+    
+    let j;
+    try {
+      j = JSON.parse(text);
+    } catch (e) {
+      console.error('[agent.service] Failed to parse JSON:', text);
+      throw new Error('Invalid JSON response from server');
+    }
+    
+    if (!j.runId) throw new Error('no runId in response');
     return j.runId;
   }
 
@@ -30,7 +50,23 @@ export class AgentService {
 
   async getResult(runId: string) {
     const r = await fetch(`${this.base}/result/${runId}`);
-    if (!r.ok) throw new Error('result not ready');
-    return r.json() as Promise<{ plan:string; deals:any[] }>;
+    if (!r.ok) {
+      const text = await r.text();
+      console.error('[agent.service] /result failed:', r.status, text);
+      throw new Error('result not ready');
+    }
+    
+    const text = await r.text();
+    if (!text || text.trim() === '') {
+      console.error('[agent.service] /result returned empty response');
+      throw new Error('Empty result from server');
+    }
+    
+    try {
+      return JSON.parse(text) as { plan:string; deals:any[] };
+    } catch (e) {
+      console.error('[agent.service] Failed to parse result JSON:', text);
+      throw new Error('Invalid JSON in result');
+    }
   }
 }

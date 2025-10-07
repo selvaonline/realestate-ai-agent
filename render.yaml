@@ -1,0 +1,57 @@
+# Render.com Blueprint for RealEstate Deal Agent
+# Deploys both backend (orchestrator) and frontend (deal-agent-ui) with proxy
+
+services:
+  # Backend API Service (Node.js/Express)
+  - type: web
+    name: realestate-api
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: OPENAI_API_KEY
+        sync: false  # Set this in Render dashboard
+      - key: SERPER_API_KEY
+        sync: false  # Set this in Render dashboard
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: CORS_ORIGINS
+        value: https://my-docs.ai,http://localhost:4200
+      - key: BROWSER_HEADED
+        value: false
+      - key: BROWSER_DEVTOOLS
+        value: false
+      - key: BROWSER_ENGINE
+        value: chromium
+      - key: COMET_ENABLED
+        value: true
+      - key: SKIP_EXTRACTION
+        value: true
+      - key: MIN_BROWSE_SCORE
+        value: 70
+    healthCheckPath: /healthz
+
+  # Frontend with Proxy (Node.js/Express serving Angular + proxying API)
+  - type: web
+    name: realestate-frontend
+    env: node
+    region: oregon
+    plan: free
+    rootDir: deal-agent-ui
+    buildCommand: npm install && npm run build:prod
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: API_URL
+        value: https://realestate-api.onrender.com
+    # Custom domain
+    # After deployment, add custom domain 'my-docs.ai' in Render dashboard

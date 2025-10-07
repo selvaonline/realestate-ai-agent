@@ -207,7 +207,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   
   // Emit top scored sources immediately (value even without browsing!)
   emit(ctx, "answer_chunk", { text: `<div style='margin:24px 0;'>
-    <h2 style='color:#1a2332; font-size:22px; font-weight:700; margin:0 0 8px 0;'>🏢 Investment Opportunities</h2>
+    <h2 style='font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Roboto", "Helvetica Neue", Arial, sans-serif; color:#1a2332; font-size:24px; font-weight:600; margin:0 0 8px 0; letter-spacing:-0.5px;'>🏢 Investment Opportunities</h2>
     <p style='color:#5b7a9f; font-size:14px; margin:0 0 16px 0;'>${topResults.length} properties found • Ranked by DealSense PE Model <span id="pe-model-info-icon" style="cursor: pointer; font-size: 16px; color: #3b82f6; text-decoration: underline;" title="Click to learn how the DealSense PE Model works">ℹ️</span></p>
   </div>` });
   

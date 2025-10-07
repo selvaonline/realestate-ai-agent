@@ -6,6 +6,18 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+    // Suppress browser extension errors in corporate VDI environments
+    window.addEventListener('unhandledrejection', function(event) {
+      // Ignore extension-related promise rejections
+      if (event.reason && event.reason.message && 
+          (event.reason.message.includes('message channel closed') ||
+           event.reason.message.includes('Extension context invalidated'))) {
+        event.preventDefault();
+        console.warn('Suppressed extension error:', event.reason.message);
+      }
+    });
+  </script>
 </head>
 <body>
   <app-root></app-root>

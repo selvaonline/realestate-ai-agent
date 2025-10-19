@@ -188,3 +188,41 @@ savedPropertiesRouter.post("/watchlists", (req, res) => {
     res.status(500).json({ error: "Failed to create watchlist" });
   }
 });
+
+// DELETE /api/saved-properties/watchlists/:id - Delete a watchlist
+savedPropertiesRouter.delete("/watchlists/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const watchlistsPath = path.join(process.cwd(), "watchlists.json");
+    
+    if (!fs.existsSync(watchlistsPath)) {
+      return res.status(404).json({ error: "Watchlists file not found" });
+    }
+    
+    let watchlists: any[] = JSON.parse(fs.readFileSync(watchlistsPath, "utf-8"));
+    const originalLength = watchlists.length;
+    
+    // Filter out the watchlist with the given ID
+    watchlists = watchlists.filter(w => w.id !== id);
+    
+    if (watchlists.length === originalLength) {
+      return res.status(404).json({ error: "Watchlist not found" });
+    }
+    
+    // Save updated watchlists
+    fs.writeFileSync(watchlistsPath, JSON.stringify(watchlists, null, 2));
+    
+    // Also delete the associated saved properties file if it exists
+    const savedPropertiesFile = path.join(SAVED_DIR, `${id}.json`);
+    if (fs.existsSync(savedPropertiesFile)) {
+      fs.unlinkSync(savedPropertiesFile);
+      console.log(`[saved-properties] Deleted associated properties file for ${id}`);
+    }
+    
+    console.log(`[saved-properties] Deleted watchlist: ${id}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[saved-properties] Error deleting watchlist:", err);
+    res.status(500).json({ error: "Failed to delete watchlist" });
+  }
+});

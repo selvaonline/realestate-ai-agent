@@ -580,18 +580,29 @@ export class SafeHtmlPipe implements PipeTransform {
         </p>
         
         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
-          <button *ngFor="let w of availableWatchlists()"
-                  (click)="selectedWatchlistId.set(w.id); showCreateWatchlist.set(false)"
-                  [style.background]="selectedWatchlistId() === w.id ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#ffffff'"
-                  [style.color]="selectedWatchlistId() === w.id ? 'white' : '#374151'"
-                  [style.border]="selectedWatchlistId() === w.id ? '2px solid #667eea' : '2px solid #e5e7eb'"
-                  [style.transform]="selectedWatchlistId() === w.id ? 'scale(1.02)' : 'scale(1)'"
-                  [style.boxShadow]="selectedWatchlistId() === w.id ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none'"
-                  style="padding: 16px 20px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; text-align: left; transition: all 0.2s; display: flex; flex-direction: column; gap: 4px; position: relative;">
-            <span>{{ w.label }}</span>
-            <span [style.opacity]="selectedWatchlistId() === w.id ? '0.9' : '0.6'" style="font-size: 12px; font-weight: 400;">{{ w.query.substring(0, 60) }}...</span>
-            <span *ngIf="selectedWatchlistId() === w.id" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 20px;">✓</span>
-          </button>
+          <div *ngFor="let w of availableWatchlists()" 
+               style="position: relative; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <button (click)="selectedWatchlistId.set(w.id); showCreateWatchlist.set(false)"
+                    [style.background]="selectedWatchlistId() === w.id ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#ffffff'"
+                    [style.color]="selectedWatchlistId() === w.id ? 'white' : '#374151'"
+                    [style.border]="selectedWatchlistId() === w.id ? '2px solid #667eea' : '2px solid #e5e7eb'"
+                    [style.transform]="selectedWatchlistId() === w.id ? 'scale(1.02)' : 'scale(1)'"
+                    [style.boxShadow]="selectedWatchlistId() === w.id ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none'"
+                    style="padding: 16px 20px; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; text-align: left; transition: all 0.2s; display: flex; flex-direction: column; gap: 4px; position: relative; flex: 1;">
+              <span>{{ w.label }}</span>
+              <span [style.opacity]="selectedWatchlistId() === w.id ? '0.9' : '0.6'" style="font-size: 12px; font-weight: 400;">{{ w.query.substring(0, 60) }}...</span>
+              <span *ngIf="selectedWatchlistId() === w.id" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 20px;">✓</span>
+            </button>
+            <button (click)="deleteWatchlistFromModal($event, w)"
+                    style="background: none; border: none; color: #9ca3af; cursor: pointer; padding: 8px; border-radius: 6px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: 0.7;"
+                    onmouseover="this.style.background='#fee2e2'; this.style.color='#dc2626'; this.style.opacity='1';"
+                    onmouseout="this.style.background='none'; this.style.color='#9ca3af'; this.style.opacity='0.7';"
+                    title="Delete watchlist">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          </div>
           
           <!-- Create New Watchlist Button -->
           <button (click)="toggleCreateWatchlist()"
@@ -635,6 +646,63 @@ export class SafeHtmlPipe implements PipeTransform {
                   [style.cursor]="!selectedWatchlistId() || savingToWatchlist() ? 'not-allowed' : 'pointer'">
             {{ savingToWatchlist() ? 'Saving...' : 'Save' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deal Comparison Modal -->
+    <div *ngIf="showComparisonModal()"
+         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(4px);"
+         (click)="showComparisonModal.set(false)">
+      <div style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); padding: 32px; border-radius: 20px; max-width: 1200px; width: 95%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative;"
+           (click)="$event.stopPropagation()">
+        <button (click)="showComparisonModal.set(false)"
+                style="position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">×</button>
+        
+        <h2 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: white; text-align: center;">
+          🔍 Deal Comparison
+        </h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
+          <div *ngFor="let deal of dealsToCompare(); let i = index" 
+               style="background: rgba(255,255,255,0.95); padding: 24px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); backdrop-filter: blur(10px);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+              <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f2937; line-height: 1.3;">{{ deal.title }}</h3>
+              <div style="background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                Deal #{{ i + 1 }}
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                <div style="flex: 1;">
+                  <div style="font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">PE Score</div>
+                  <div style="font-size: 24px; font-weight: 700; color: #10b981;">{{ deal.peScore || 'N/A' }}</div>
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
+                  <div style="font-size: 24px; font-weight: 700; color: #ef4444;">{{ deal.riskScore || 'N/A' }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 14px; color: #374151; line-height: 1.5;">{{ deal.description || 'No description available.' }}</div>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <a [href]="deal.url" target="_blank" 
+                 style="flex: 1; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; transition: all 0.2s;"
+                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)';"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                View Listing
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; color: rgba(255,255,255,0.9); font-size: 14px;">
+          💡 <strong>Pro Tip:</strong> Compare PE scores, risk levels, and property details to make informed investment decisions
         </div>
       </div>
     </div>
@@ -2872,17 +2940,7 @@ export class App implements AfterViewInit, AfterViewChecked {
     }
   }
 
-  async showWatchlistSelector(property: any) {
-    console.log('[watchlist] Opening selector for:', property.title);
-    console.log('[watchlist] Full property object:', property);
-    console.log('[watchlist] Stack trace:', new Error().stack);
-    this.selectedPropertyToSave.set(property);
-    this.selectedWatchlistId.set(null); // Reset selection
-    this.showCreateWatchlist.set(false); // Reset create form
-    this.newWatchlistName = '';
-    this.newWatchlistQuery = '';
-    
-    // Load available watchlists
+  async loadWatchlists() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -2899,7 +2957,6 @@ export class App implements AfterViewInit, AfterViewChecked {
       
       const watchlists = await response.json();
       this.availableWatchlists.set(watchlists.filter((w: any) => w.enabled !== false));
-      this.showWatchlistModal.set(true);
     } catch (err: any) {
       console.error('[watchlist] Failed to load watchlists:', err);
       if (err.name === 'AbortError') {
@@ -2908,6 +2965,21 @@ export class App implements AfterViewInit, AfterViewChecked {
         alert('❌ Failed to load watchlists. Check if backend is running on port 3001.');
       }
     }
+  }
+
+  async showWatchlistSelector(property: any) {
+    console.log('[watchlist] Opening selector for:', property.title);
+    console.log('[watchlist] Full property object:', property);
+    console.log('[watchlist] Stack trace:', new Error().stack);
+    this.selectedPropertyToSave.set(property);
+    this.selectedWatchlistId.set(null); // Reset selection
+    this.showCreateWatchlist.set(false); // Reset create form
+    this.newWatchlistName = '';
+    this.newWatchlistQuery = '';
+    
+    // Load available watchlists
+    await this.loadWatchlists();
+    this.showWatchlistModal.set(true);
   }
 
   async saveToWatchlist() {
@@ -3109,6 +3181,41 @@ Chat Commands:
     if (chatButton) {
       chatButton.click();
       console.log('⌨️ Cmd+/: Opened chat');
+    }
+  }
+
+  async deleteWatchlistFromModal(event: Event, watchlist: any) {
+    event.stopPropagation();
+    
+    if (!confirm(`Are you sure you want to delete the watchlist "${watchlist.label}"?\n\n⚠️ This will also remove all saved properties in this watchlist.`)) {
+      return;
+    }
+    
+    try {
+      const baseUrl = environment.apiUrl || window.location.origin;
+      const response = await fetch(`${baseUrl}/api/saved-properties/watchlists/${watchlist.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        console.log('[app] Deleted watchlist:', watchlist.label);
+        // Reload watchlists
+        await this.loadWatchlists();
+        // Clear selection if the deleted watchlist was selected
+        if (this.selectedWatchlistId() === watchlist.id) {
+          this.selectedWatchlistId.set('');
+        }
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('watchlist-deleted', { 
+          detail: { id: watchlist.id } 
+        }));
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete watchlist: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('[app] Failed to delete watchlist:', error);
+      alert('Failed to delete watchlist. Please try again.');
     }
   }
 }

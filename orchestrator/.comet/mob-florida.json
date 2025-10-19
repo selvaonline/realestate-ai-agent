@@ -2,12 +2,26 @@
   "watchId": "mob-florida",
   "items": [
     {
+      "url": "https://www.loopnet.com/search/office-buildings/miami-dade-county-fl/for-sale/3/",
+      "score": 30,
+      "risk": 50,
+      "title": "Miami/Dade County Office Spaces for sale - Page 3",
+      "address": "More details for 1560 Lenox Ave, Miami Beach, FL - Office for Sale ... Beyond its current use as a m"
+    },
+    {
+      "url": "https://www.loopnet.com/search/commercial-real-estate/south-tampa-tampa-fl/for-sale/",
+      "score": 28,
+      "risk": 50,
+      "title": "South Tampa Commercial Real Estate Properties for sale",
+      "address": "The final unit is a 2,000 SF medical office ... LoopNet USA Florida Tampa Commercial Real Estate Pro"
+    },
+    {
       "url": "https://www.loopnet.com/Listing/891-Outer-Rd-Orlando-FL/24053150/",
       "score": 28,
-      "risk": 53,
+      "risk": 50,
       "title": "891 Outer Rd, Orlando, FL 32814",
       "address": "891 Outer Rd Orlando, FL 32814. Baldwin Park - Hospital Guar - NN Investment · Office Property For S"
     }
   ],
-  "ts": 1759870822929
+  "ts": 1760904001932
 }

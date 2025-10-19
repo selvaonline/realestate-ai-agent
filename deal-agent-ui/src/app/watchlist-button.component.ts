@@ -11,6 +11,7 @@ type Watchlist = {
   query: string;
   lastRun?: number;
   itemCount?: number;
+  enabled?: boolean;
 };
 
 @Component({
@@ -42,23 +43,33 @@ type Watchlist = {
           </div>
 
           <div *ngFor="let watchlist of watchlists()" 
-               class="watchlist-item"
-               (click)="viewWatchlist(watchlist)">
-            <div class="watchlist-header">
-              <span class="watchlist-icon">📌</span>
-              <div class="watchlist-info">
-                <strong>{{ watchlist.label }}</strong>
-                <span class="watchlist-query">{{ watchlist.query }}</span>
+               class="watchlist-item">
+            <div class="watchlist-content" (click)="viewWatchlist(watchlist)">
+              <div class="watchlist-header">
+                <span class="watchlist-icon">📌</span>
+                <div class="watchlist-info">
+                  <strong>{{ watchlist.label }}</strong>
+                  <span class="watchlist-query">{{ watchlist.query }}</span>
+                  <span *ngIf="watchlist.enabled === false" class="disabled-badge">Disabled</span>
+                </div>
+              </div>
+              <div class="watchlist-meta">
+                <span *ngIf="watchlist.itemCount" class="item-count">
+                  {{ watchlist.itemCount }} properties
+                </span>
+                <span *ngIf="watchlist.lastRun" class="last-run">
+                  Last checked: {{ getTimeAgo(watchlist.lastRun) }}
+                </span>
               </div>
             </div>
-            <div class="watchlist-meta">
-              <span *ngIf="watchlist.itemCount" class="item-count">
-                {{ watchlist.itemCount }} properties
-              </span>
-              <span *ngIf="watchlist.lastRun" class="last-run">
-                Last checked: {{ getTimeAgo(watchlist.lastRun) }}
-              </span>
-            </div>
+            <button class="delete-btn" 
+                    (click)="deleteWatchlist($event, watchlist)"
+                    title="Delete watchlist">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+              </svg>
+              <span style="font-size: 12px;">Delete</span>
+            </button>
           </div>
         </div>
 
@@ -66,6 +77,30 @@ type Watchlist = {
           <button class="create-btn" (click)="createWatchlist()">
             <span>+</span> Create Watchlist
           </button>
+        </div>
+      </div>
+
+      <!-- Delete Confirmation Modal -->
+      <div *ngIf="showDeleteModal()" 
+           class="delete-modal-overlay"
+           (click)="showDeleteModal.set(false)">
+        <div class="delete-modal" (click)="$event.stopPropagation()">
+          <div class="modal-icon">🗑️</div>
+          <h3>Delete Watchlist?</h3>
+          <p class="modal-message">
+            Are you sure you want to delete <strong>"{{ watchlistToDelete()?.label }}"</strong>?
+          </p>
+          <p class="modal-warning">
+            ⚠️ This will also remove all saved properties in this watchlist.
+          </p>
+          <div class="modal-actions">
+            <button class="modal-btn cancel-btn" (click)="showDeleteModal.set(false)">
+              Cancel
+            </button>
+            <button class="modal-btn delete-btn-confirm" (click)="confirmDelete()">
+              Delete Watchlist
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -126,7 +161,7 @@ type Watchlist = {
       position: absolute;
       top: 70px;
       right: 0;
-      width: 400px;
+      width: 420px;
       max-height: 600px;
       background: white;
       border-radius: 16px;
@@ -214,13 +249,24 @@ type Watchlist = {
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 8px;
-      cursor: pointer;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .watchlist-item:hover {
       background: #f0fdf4;
       border-color: #10b981;
+    }
+
+    .watchlist-content {
+      flex: 1;
+      cursor: pointer;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .watchlist-header {
@@ -243,14 +289,20 @@ type Watchlist = {
     .watchlist-info strong {
       color: #1f2937;
       font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 180px;
+      display: block;
     }
 
     .watchlist-query {
       color: #6b7280;
-      font-size: 12px;
+      font-size: 11px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      max-width: 200px;
     }
 
     .watchlist-meta {
@@ -264,6 +316,17 @@ type Watchlist = {
     .item-count {
       color: #10b981;
       font-weight: 600;
+    }
+
+    .disabled-badge {
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-top: 4px;
+      display: inline-block;
     }
 
     .panel-footer {
@@ -314,11 +377,173 @@ type Watchlist = {
     .watchlists-list::-webkit-scrollbar-thumb:hover {
       background: #9ca3af;
     }
+
+    .delete-btn {
+      background: #dc2626;
+      border: 2px solid #dc2626;
+      color: white;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.2s;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      opacity: 1;
+      pointer-events: auto;
+      min-width: 32px;
+      min-height: 32px;
+      font-size: 11px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+      white-space: nowrap;
+    }
+
+    .watchlist-item:hover .delete-btn {
+      opacity: 1;
+      background: #b91c1c;
+      border-color: #b91c1c;
+      transform: scale(1.05);
+    }
+
+    .delete-btn:hover {
+      background: #991b1b;
+      border-color: #991b1b;
+      transform: scale(1.1);
+      box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
+    }
+
+    .delete-btn svg {
+      transition: transform 0.2s;
+    }
+
+    .delete-btn:hover svg {
+      transform: scale(1.1);
+    }
+
+    .delete-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999999;
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .delete-modal {
+      background: white;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 440px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-out;
+      text-align: center;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+
+    .delete-modal h3 {
+      margin: 0 0 16px 0;
+      font-size: 24px;
+      color: #1f2937;
+      font-weight: 700;
+    }
+
+    .modal-message {
+      margin: 0 0 16px 0;
+      color: #4b5563;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .modal-message strong {
+      color: #1f2937;
+      font-weight: 600;
+    }
+
+    .modal-warning {
+      margin: 0 0 24px 0;
+      padding: 12px 16px;
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      border-radius: 8px;
+      color: #92400e;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .modal-btn {
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      min-width: 140px;
+    }
+
+    .cancel-btn {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .cancel-btn:hover {
+      background: #e5e7eb;
+      transform: translateY(-1px);
+    }
+
+    .delete-btn-confirm {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      color: white;
+    }
+
+    .delete-btn-confirm:hover {
+      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+    }
   `]
 })
 export class WatchlistButtonComponent implements OnInit, OnDestroy {
   isExpanded = signal(false);
   watchlists = signal<Watchlist[]>([]);
+  showDeleteModal = signal(false);
+  watchlistToDelete = signal<Watchlist | null>(null);
   private watchlistCreatedListener?: (event: Event) => void;
 
   constructor() {
@@ -353,7 +578,7 @@ export class WatchlistButtonComponent implements OnInit, OnDestroy {
         // API returns array directly, not wrapped in an object
         const watchlistsArray = Array.isArray(data) ? data : [];
         // Filter out disabled watchlists
-        this.watchlists.set(watchlistsArray.filter((w: any) => w.enabled !== false));
+        this.watchlists.set(watchlistsArray); // Show all watchlists for management
         console.log('[watchlist-button] Loaded watchlists:', this.watchlists().length);
       }
     } catch (error) {
@@ -395,5 +620,47 @@ export class WatchlistButtonComponent implements OnInit, OnDestroy {
     if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
     return `${days}d ago`;
+  }
+
+  deleteWatchlist(event: Event, watchlist: Watchlist) {
+    // Prevent triggering the parent click event
+    event.stopPropagation();
+    
+    // Show custom delete modal
+    this.watchlistToDelete.set(watchlist);
+    this.showDeleteModal.set(true);
+  }
+
+  async confirmDelete() {
+    const watchlist = this.watchlistToDelete();
+    if (!watchlist) return;
+    
+    try {
+      const baseUrl = environment.apiUrl || window.location.origin;
+      const response = await fetch(`${baseUrl}/api/saved-properties/watchlists/${watchlist.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        console.log('[watchlist-button] Deleted watchlist:', watchlist.label);
+        // Close modal
+        this.showDeleteModal.set(false);
+        this.watchlistToDelete.set(null);
+        // Reload watchlists
+        await this.loadWatchlists();
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('watchlist-deleted', { 
+          detail: { id: watchlist.id } 
+        }));
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete watchlist: ${error.error || 'Unknown error'}`);
+        this.showDeleteModal.set(false);
+      }
+    } catch (error) {
+      console.error('[watchlist-button] Failed to delete watchlist:', error);
+      alert('Failed to delete watchlist. Please try again.');
+      this.showDeleteModal.set(false);
+    }
   }
 }

@@ -4,6 +4,7 @@
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";
+import { unscheduleWatchlist, scheduleWatchlist, rescheduleAllWatchlists } from "../comet/scheduler.js";
 
 export const savedPropertiesRouter = express.Router();
 
@@ -149,7 +150,7 @@ savedPropertiesRouter.get("/watchlists", (req, res) => {
 // POST /api/saved-properties/watchlists - Create a new watchlist
 savedPropertiesRouter.post("/watchlists", (req, res) => {
   try {
-    const { id, label, query } = req.body;
+    const { id, label, query, schedule } = req.body;
     
     if (!id || !label || !query) {
       return res.status(400).json({ error: "id, label, and query are required" });
@@ -174,18 +175,60 @@ savedPropertiesRouter.post("/watchlists", (req, res) => {
       domains: ["crexi.com", "loopnet.com", "brevitas.com"],
       minScore: 40,
       riskMax: 70,
-      schedule: "0 * * * *",
+      schedule: schedule || "0 * * * *",
       enabled: true
     };
     
     watchlists.push(newWatchlist);
     fs.writeFileSync(watchlistsPath, JSON.stringify(watchlists, null, 2));
     
+    // Schedule the new watchlist in the background agent
+    scheduleWatchlist(newWatchlist);
+    
     console.log(`[saved-properties] Created new watchlist: ${label} (${id})`);
     res.json(newWatchlist);
   } catch (err) {
     console.error("[saved-properties] Error creating watchlist:", err);
     res.status(500).json({ error: "Failed to create watchlist" });
+  }
+});
+
+// PUT /api/saved-properties/watchlists/:id - Update a watchlist
+savedPropertiesRouter.put("/watchlists/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { label, query, schedule, enabled } = req.body;
+    
+    const watchlistsPath = path.join(process.cwd(), "watchlists.json");
+    
+    if (!fs.existsSync(watchlistsPath)) {
+      return res.status(404).json({ error: "Watchlists file not found" });
+    }
+    
+    let watchlists: any[] = JSON.parse(fs.readFileSync(watchlistsPath, "utf-8"));
+    const watchlistIndex = watchlists.findIndex(w => w.id === id);
+    
+    if (watchlistIndex === -1) {
+      return res.status(404).json({ error: "Watchlist not found" });
+    }
+    
+    // Update watchlist properties
+    if (label !== undefined) watchlists[watchlistIndex].label = label;
+    if (query !== undefined) watchlists[watchlistIndex].query = query;
+    if (schedule !== undefined) watchlists[watchlistIndex].schedule = schedule;
+    if (enabled !== undefined) watchlists[watchlistIndex].enabled = enabled;
+    
+    // Save updated watchlists
+    fs.writeFileSync(watchlistsPath, JSON.stringify(watchlists, null, 2));
+    
+    // Reschedule the watchlist in the background agent
+    scheduleWatchlist(watchlists[watchlistIndex]);
+    
+    console.log(`[saved-properties] Updated watchlist: ${id}`);
+    res.json(watchlists[watchlistIndex]);
+  } catch (err) {
+    console.error("[saved-properties] Error updating watchlist:", err);
+    res.status(500).json({ error: "Failed to update watchlist" });
   }
 });
 
@@ -211,6 +254,9 @@ savedPropertiesRouter.delete("/watchlists/:id", (req, res) => {
     
     // Save updated watchlists
     fs.writeFileSync(watchlistsPath, JSON.stringify(watchlists, null, 2));
+    
+    // Unschedule the watchlist from the background agent
+    unscheduleWatchlist(id);
     
     // Also delete the associated saved properties file if it exists
     const savedPropertiesFile = path.join(SAVED_DIR, `${id}.json`);

@@ -1,4 +1,4 @@
-import { Component, AfterViewChecked, AfterViewInit, signal, ElementRef, ChangeDetectorRef, NgZone, Pipe, PipeTransform } from '@angular/core';
+import { Component, AfterViewChecked, AfterViewInit, OnInit, signal, ElementRef, ChangeDetectorRef, NgZone, Pipe, PipeTransform } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -56,7 +56,21 @@ export class SafeHtmlPipe implements PipeTransform {
   imports: [CommonModule, FormsModule, SafeHtmlPipe, ChatPanelComponent, ChatUIActionsComponent, KeyboardShortcutsComponent, CometToastComponent, NotificationsPanelComponent, WatchlistButtonComponent],
   template: `
   <div class="shell">
-    <div class="header">🏢 DealSense Agent</div>
+    <div class="header">
+      <div class="header-content">
+        <div class="header-title">🏢 DealSense Agent</div>
+        <div class="header-nav" *ngIf="currentView() === 'config'">
+          <button 
+            class="nav-btn" 
+            (click)="currentView.set('main')">
+            🏠 Main
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main View -->
+    <div *ngIf="currentView() === 'main'" class="main-content">
 
     <div class="ask">
       <input #qinput [value]="q()" (input)="q.set(qinput.value); stopTyping();"
@@ -706,6 +720,161 @@ export class SafeHtmlPipe implements PipeTransform {
         </div>
       </div>
     </div>
+
+    <!-- Charts Modal -->
+    <div *ngIf="showChartsModal()"
+         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(4px);"
+         (click)="showChartsModal.set(false)">
+      <div style="background: white; padding: 32px; border-radius: 20px; max-width: 1000px; width: 95%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative;"
+           (click)="$event.stopPropagation()">
+        <button (click)="showChartsModal.set(false)"
+                style="position: absolute; top: 15px; right: 15px; background: #f3f4f6; border: none; color: #6b7280; font-size: 24px; cursor: pointer; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">×</button>
+        
+        <h2 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: #1f2937; text-align: center;">
+          📊 Portfolio Analytics
+        </h2>
+        
+        <!-- Charts Container -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+          <!-- Score Distribution Chart -->
+          <div style="background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
+            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #374151; text-align: center;">Score Distribution</h3>
+            <div style="position: relative; height: 300px;">
+              <canvas id="score-distribution-chart" width="400" height="300"></canvas>
+            </div>
+          </div>
+          
+          <!-- Geographic Distribution Chart -->
+          <div style="background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
+            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #374151; text-align: center;">Geographic Distribution</h3>
+            <div style="position: relative; height: 300px;">
+              <canvas id="geo-distribution-chart" width="400" height="300"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div style="background: #f0f9ff; border-radius: 12px; padding: 20px; border: 1px solid #0ea5e9; margin-bottom: 16px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #0c4a6e;">Portfolio Summary</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 14px; color: #0c4a6e;">
+            <div><strong>Total Opportunities:</strong> {{ deals().length }}</div>
+            <div><strong>Average Score:</strong> {{ getAverageScore() }}/100</div>
+            <div><strong>Score Range:</strong> {{ getScoreRange() }}</div>
+            <div><strong>Premium (≥80):</strong> {{ getPremiumCount() }} ({{ getPremiumPercentage() }}%)</div>
+            <div><strong>Investment Grade (70-79):</strong> {{ getInvestmentGradeCount() }} ({{ getInvestmentGradePercentage() }}%)</div>
+            <div><strong>Below Threshold (<70):</strong> {{ getBelowThresholdCount() }} ({{ getBelowThresholdPercentage() }}%)</div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; color: #6b7280; font-size: 14px;">
+          💡 <strong>Analysis:</strong> Based on proprietary PE scoring model. Click source links for detailed property information.
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration View -->
+    <div *ngIf="currentView() === 'config'" class="config-content">
+      <div style="padding: 20px; background: white; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2>🔧 Watchlist Configuration</h2>
+        <p>Manage your watchlists and their monitoring schedules</p>
+        
+        <!-- Back Button -->
+        <div style="margin-bottom: 20px;">
+          <button style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;"
+                  (click)="currentView.set('main')">
+            ← Back to Main
+          </button>
+        </div>
+        
+        <!-- Scheduler Status -->
+        <div style="margin: 20px 0; padding: 20px; background: #f0f9ff; border-radius: 8px; border: 2px solid #0ea5e9;">
+          <h3>⏰ Scheduler Status</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px;">
+            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #0ea5e9;">
+              <div style="font-weight: 600; color: #0c4a6e;">🟢 Status</div>
+              <div style="color: #059669; font-size: 14px;">Running</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #0ea5e9;">
+              <div style="font-weight: 600; color: #0c4a6e;">⏱️ Interval</div>
+              <div style="color: #059669; font-size: 14px;">Every 5 minutes</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #0ea5e9;">
+              <div style="font-weight: 600; color: #0c4a6e;">📋 Watchlists</div>
+              <div style="color: #059669; font-size: 14px;">{{ availableWatchlists().length }} active</div>
+            </div>
+            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #0ea5e9;">
+              <div style="font-weight: 600; color: #0c4a6e;">🔄 Last Check</div>
+              <div style="color: #059669; font-size: 14px;">{{ getCurrentTime() }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Current Watchlists -->
+        <div style="margin: 20px 0; padding: 20px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <h3>📋 Current Watchlists</h3>
+          
+          <!-- Loading State -->
+          <div *ngIf="availableWatchlists().length === 0" style="text-align: center; padding: 40px; color: #64748b;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+            <p>Loading watchlists...</p>
+            <p style="font-size: 14px;">If this takes too long, check the browser console for errors</p>
+            <button style="margin-top: 12px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;"
+                    (click)="loadWatchlists()">
+              🔄 Retry Loading
+            </button>
+          </div>
+          
+          <div *ngFor="let watchlist of availableWatchlists()" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 12px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div>
+                <h4 style="margin: 0; color: #1f2937;">{{ watchlist.label }}</h4>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 14px;">ID: {{ watchlist.id }}</p>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span style="padding: 4px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                  {{ watchlist.enabled ? 'Active' : 'Disabled' }}
+                </span>
+                <button style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;"
+                        (click)="deleteWatchlistFromModal($event, watchlist)">
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div style="color: #64748b; font-size: 14px;">
+              <p style="margin: 0 0 8px 0;"><strong>Query:</strong> {{ watchlist.query }}</p>
+              <p style="margin: 0 0 8px 0;"><strong>Schedule:</strong> {{ watchlist.schedule || 'Every hour' }}</p>
+              <p style="margin: 0;"><strong>Status:</strong> {{ watchlist.enabled ? '🟢 Running' : '🔴 Stopped' }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div style="margin: 20px 0; padding: 20px; background: #f0f9ff; border-radius: 8px; border: 1px solid #0ea5e9;">
+          <h3>⚡ Quick Actions</h3>
+          <div style="display: flex; gap: 12px; margin-top: 12px;">
+            <button style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;"
+                    (click)="createNewWatchlist()">
+              ➕ Create New Watchlist
+            </button>
+            <button style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;"
+                    (click)="loadWatchlists()">
+              🔄 Refresh Watchlists
+            </button>
+          </div>
+        </div>
+        
+        <!-- Instructions -->
+        <div style="margin: 20px 0; padding: 20px; background: #fef3c7; border-radius: 8px; border: 1px solid #f59e0b;">
+          <h3>💡 How to Use</h3>
+          <ul style="margin: 12px 0; padding-left: 20px; color: #92400e;">
+            <li>Click "Create New Watchlist" to add a new monitoring list</li>
+            <li>Set custom search queries and monitoring schedules</li>
+            <li>Enable/disable watchlists as needed</li>
+            <li>Delete watchlists you no longer need</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   `,
   styles: [`
     :host { color:#1f2937; background:#f8fafc; min-height:100vh; display:block; }
@@ -718,8 +887,66 @@ export class SafeHtmlPipe implements PipeTransform {
       margin-bottom: 12px; 
       letter-spacing: -0.5px;
     }
-    .ask { display:flex; gap:12px; margin:20px 0; }
-    input { flex:1; padding:12px 16px; background:#ffffff; border:1px solid #d0d8e4; border-radius:8px; color:#1a2332; font-size:15px; }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a2332;
+      margin: 0;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      background: #f1f5f9;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-btn:hover {
+      background: #e2e8f0;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
+
+    .nav-btn.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: white;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+
+    .nav-btn.active:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+
+    .config-content {
+      margin-top: 20px;
+    }
+    .ask { display:flex; gap:12px; margin:20px 0; position: relative; z-index: 10; }
+    input { flex:1; padding:12px 16px; background:#ffffff; border:1px solid #d0d8e4; border-radius:8px; color:#1a2332; font-size:15px; position: relative; z-index: 10; }
     input::placeholder { color: #8b9db5; opacity: 1; }
     input:focus { outline:none; border-color:#2f5cff; box-shadow:0 0 0 3px rgba(47,92,255,0.1); }
     button { padding:12px 24px; background:#2f5cff; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:15px; }
@@ -1634,7 +1861,7 @@ export class SafeHtmlPipe implements PipeTransform {
     }
   `]
 })
-export class App implements AfterViewInit, AfterViewChecked {
+export class App implements OnInit, AfterViewInit, AfterViewChecked {
   q = signal('');
   busy = signal(false);
   cards = signal<Card[]>([]);
@@ -1657,6 +1884,7 @@ export class App implements AfterViewInit, AfterViewChecked {
   selectedDealForCharts = signal<any | null>(null);
   showComparisonModal = signal(false);
   dealsToCompare = signal<any[]>([]);
+  currentView = signal<'main' | 'config'>('main');
   activeFilters = signal<any>({});
   showWatchlistModal = signal(false);
   selectedPropertyToSave = signal<any>(null);
@@ -2942,28 +3170,26 @@ export class App implements AfterViewInit, AfterViewChecked {
 
   async loadWatchlists() {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      console.log('[app] Loading watchlists...');
       
-      const apiUrl = (localStorage.getItem('apiUrl') || environment.apiUrl).replace(/\/$/, '');
-      const response = await fetch(`${apiUrl}/api/saved-properties/watchlists`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+      // Simple fetch without timeout for now
+      const response = await fetch('http://localhost:3001/api/saved-properties/watchlists');
+      
+      console.log('[app] Response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const watchlists = await response.json();
-      this.availableWatchlists.set(watchlists.filter((w: any) => w.enabled !== false));
+      console.log('[app] Loaded watchlists:', watchlists);
+      this.availableWatchlists.set(watchlists);
+      console.log('[app] Set available watchlists:', this.availableWatchlists());
     } catch (err: any) {
-      console.error('[watchlist] Failed to load watchlists:', err);
-      if (err.name === 'AbortError') {
-        alert('⏱️ Request timed out loading watchlists');
-      } else {
-        alert('❌ Failed to load watchlists. Check if backend is running on port 3001.');
-      }
+      console.error('[app] Failed to load watchlists:', err);
+      // Set empty array instead of showing error
+      this.availableWatchlists.set([]);
+      console.log('[app] Set empty watchlists due to error');
     }
   }
 
@@ -3217,5 +3443,95 @@ Chat Commands:
       console.error('[app] Failed to delete watchlist:', error);
       alert('Failed to delete watchlist. Please try again.');
     }
+  }
+
+  switchToConfig() {
+    console.log('[app] switchToConfig called - current view:', this.currentView());
+    console.log('[app] Switching to configuration view');
+    this.currentView.set('config');
+    console.log('[app] View set to config - new value:', this.currentView());
+    // Load watchlists when switching to config
+    this.loadWatchlists();
+  }
+
+  ngOnInit() {
+    console.log('[app] ngOnInit - setting up event listeners');
+    // Listen for switch to config event from watchlist panel
+    window.addEventListener('switch-to-config', () => {
+      console.log('[app] Received switch-to-config event');
+      this.switchToConfig();
+    });
+  }
+
+  // Test method to debug API connection
+  async testApiConnection() {
+    try {
+      console.log('[app] Testing API connection...');
+      const response = await fetch('http://localhost:3001/api/saved-properties/watchlists');
+      console.log('[app] Test response status:', response.status);
+      const data = await response.json();
+      console.log('[app] Test response data:', data);
+      return data;
+    } catch (error) {
+      console.error('[app] Test API error:', error);
+      return null;
+    }
+  }
+
+  createNewWatchlist() {
+    // Open the watchlist creation modal
+    this.showWatchlistSelector(null);
+  }
+
+  // Helper methods for portfolio analytics
+  getAverageScore(): number {
+    const scores = this.deals().map(deal => deal.peScore || 0).filter(score => score > 0);
+    if (scores.length === 0) return 0;
+    return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+  }
+
+  getScoreRange(): string {
+    const scores = this.deals().map(deal => deal.peScore || 0).filter(score => score > 0);
+    if (scores.length === 0) return 'N/A';
+    const min = Math.min(...scores);
+    const max = Math.max(...scores);
+    return `${min} - ${max}`;
+  }
+
+  getPremiumCount(): number {
+    return this.deals().filter(deal => (deal.peScore || 0) >= 80).length;
+  }
+
+  getPremiumPercentage(): number {
+    const total = this.deals().length;
+    if (total === 0) return 0;
+    return Math.round((this.getPremiumCount() / total) * 100);
+  }
+
+  getInvestmentGradeCount(): number {
+    return this.deals().filter(deal => {
+      const score = deal.peScore || 0;
+      return score >= 70 && score < 80;
+    }).length;
+  }
+
+  getInvestmentGradePercentage(): number {
+    const total = this.deals().length;
+    if (total === 0) return 0;
+    return Math.round((this.getInvestmentGradeCount() / total) * 100);
+  }
+
+  getBelowThresholdCount(): number {
+    return this.deals().filter(deal => (deal.peScore || 0) < 70).length;
+  }
+
+  getBelowThresholdPercentage(): number {
+    const total = this.deals().length;
+    if (total === 0) return 0;
+    return Math.round((this.getBelowThresholdCount() / total) * 100);
+  }
+
+  getCurrentTime(): string {
+    return new Date().toLocaleTimeString();
   }
 }

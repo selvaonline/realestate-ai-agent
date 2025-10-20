@@ -32,7 +32,12 @@ type Watchlist = {
       <div class="panel-content" *ngIf="isExpanded()">
         <div class="panel-header">
           <h3>Watchlists</h3>
-          <button class="close-btn" (click)="togglePanel()">✕</button>
+          <div class="header-actions">
+            <button class="config-btn" (click)="openConfig()" title="Configure watchlists & schedules">
+              ⚙️
+            </button>
+            <button class="close-btn" (click)="togglePanel()">✕</button>
+          </div>
         </div>
 
         <div class="watchlists-list">
@@ -168,6 +173,7 @@ type Watchlist = {
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
       display: flex;
       flex-direction: column;
+      z-index: 1000;
       animation: slideIn 0.3s ease-out;
     }
 
@@ -188,6 +194,31 @@ type Watchlist = {
       display: flex;
       justify-content: space-between;
       align-items: center;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .config-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .config-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     }
 
     .panel-header h3 {
@@ -611,6 +642,16 @@ export class WatchlistButtonComponent implements OnInit, OnDestroy {
     window.dispatchEvent(new CustomEvent('create-watchlist'));
   }
 
+  openConfig() {
+    console.log('[watchlist-button] Gear icon clicked - opening config');
+    // Close the watchlist panel first
+    this.togglePanel();
+    
+    // Dispatch event to switch to config view
+    console.log('[watchlist-button] Dispatching switch-to-config event');
+    window.dispatchEvent(new CustomEvent('switch-to-config'));
+  }
+
   getTimeAgo(timestamp: number): string {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     if (seconds < 60) return 'Just now';
@@ -623,26 +664,40 @@ export class WatchlistButtonComponent implements OnInit, OnDestroy {
   }
 
   deleteWatchlist(event: Event, watchlist: Watchlist) {
+    console.log('[watchlist-button] Delete button clicked for:', watchlist.label);
     // Prevent triggering the parent click event
     event.stopPropagation();
     
     // Show custom delete modal
+    console.log('[watchlist-button] Setting watchlist to delete:', watchlist);
     this.watchlistToDelete.set(watchlist);
     this.showDeleteModal.set(true);
+    console.log('[watchlist-button] Delete modal should be visible now');
   }
 
   async confirmDelete() {
+    console.log('[watchlist-button] confirmDelete called');
     const watchlist = this.watchlistToDelete();
-    if (!watchlist) return;
+    if (!watchlist) {
+      console.log('[watchlist-button] No watchlist to delete');
+      return;
+    }
+    
+    console.log('[watchlist-button] Confirming delete for:', watchlist.label);
     
     try {
       const baseUrl = environment.apiUrl || window.location.origin;
+      console.log('[watchlist-button] Making DELETE request to:', `${baseUrl}/api/saved-properties/watchlists/${watchlist.id}`);
+      
       const response = await fetch(`${baseUrl}/api/saved-properties/watchlists/${watchlist.id}`, {
         method: 'DELETE'
       });
       
+      console.log('[watchlist-button] Delete response status:', response.status);
+      console.log('[watchlist-button] Response ok:', response.ok);
+      
       if (response.ok) {
-        console.log('[watchlist-button] Deleted watchlist:', watchlist.label);
+        console.log('[watchlist-button] Successfully deleted watchlist:', watchlist.label);
         // Close modal
         this.showDeleteModal.set(false);
         this.watchlistToDelete.set(null);
@@ -653,8 +708,18 @@ export class WatchlistButtonComponent implements OnInit, OnDestroy {
           detail: { id: watchlist.id } 
         }));
       } else {
-        const error = await response.json();
-        alert(`Failed to delete watchlist: ${error.error || 'Unknown error'}`);
+        console.error('[watchlist-button] Delete failed - status:', response.status);
+        console.error('[watchlist-button] Response headers:', response.headers);
+        let errorText = '';
+        try {
+          const error = await response.json();
+          console.error('[watchlist-button] Delete failed - error object:', error);
+          errorText = error.error || 'Unknown error';
+        } catch (e) {
+          errorText = await response.text();
+          console.error('[watchlist-button] Delete failed - error text:', errorText);
+        }
+        alert(`Failed to delete watchlist: ${errorText}`);
         this.showDeleteModal.set(false);
       }
     } catch (error) {

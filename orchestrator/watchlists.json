@@ -1,8 +1,8 @@
 [
   {
-    "id": "phoenix-realestate-list",
-    "label": "Phoenix RealEstate List",
-    "query": "20635 N 29th Pl, Phoenix, AZ 85050 commercial real estate for sale",
+    "id": "datacenters",
+    "label": "DataCenters",
+    "query": "Why Data Centers Are the New Industrial Powerhouse - Blog commercial real estate for sale",
     "domains": [
       "crexi.com",
       "loopnet.com",
@@ -10,7 +10,21 @@
     ],
     "minScore": 40,
     "riskMax": 70,
-    "schedule": "0 * * * *",
+    "schedule": "*/5 * * * *",
+    "enabled": true
+  },
+  {
+    "id": "test-scheduler",
+    "label": "Test Scheduler",
+    "query": "test query for scheduler",
+    "domains": [
+      "crexi.com",
+      "loopnet.com",
+      "brevitas.com"
+    ],
+    "minScore": 40,
+    "riskMax": 70,
+    "schedule": "*/1 * * * *",
     "enabled": true
   }
 ]

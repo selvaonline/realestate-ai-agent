@@ -85,29 +85,6 @@ type Watchlist = {
         </div>
       </div>
 
-      <!-- Delete Confirmation Modal -->
-      <div *ngIf="showDeleteModal()" 
-           class="delete-modal-overlay"
-           (click)="showDeleteModal.set(false)">
-        <div class="delete-modal" (click)="$event.stopPropagation()">
-          <div class="modal-icon">🗑️</div>
-          <h3>Delete Watchlist?</h3>
-          <p class="modal-message">
-            Are you sure you want to delete <strong>"{{ watchlistToDelete()?.label }}"</strong>?
-          </p>
-          <p class="modal-warning">
-            ⚠️ This will also remove all saved properties in this watchlist.
-          </p>
-          <div class="modal-actions">
-            <button class="modal-btn cancel-btn" (click)="showDeleteModal.set(false)">
-              Cancel
-            </button>
-            <button class="modal-btn delete-btn-confirm" (click)="confirmDelete()">
-              Delete Watchlist
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   `,
   styles: [`
@@ -453,128 +430,13 @@ type Watchlist = {
       transform: scale(1.1);
     }
 
-    .delete-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999999;
-      backdrop-filter: blur(4px);
-      animation: fadeIn 0.2s ease-out;
-    }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
 
-    .delete-modal {
-      background: white;
-      border-radius: 20px;
-      padding: 32px;
-      max-width: 440px;
-      width: 90%;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      animation: slideUp 0.3s ease-out;
-      text-align: center;
-    }
-
-    @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .modal-icon {
-      font-size: 56px;
-      margin-bottom: 16px;
-    }
-
-    .delete-modal h3 {
-      margin: 0 0 16px 0;
-      font-size: 24px;
-      color: #1f2937;
-      font-weight: 700;
-    }
-
-    .modal-message {
-      margin: 0 0 16px 0;
-      color: #4b5563;
-      font-size: 15px;
-      line-height: 1.6;
-    }
-
-    .modal-message strong {
-      color: #1f2937;
-      font-weight: 600;
-    }
-
-    .modal-warning {
-      margin: 0 0 24px 0;
-      padding: 12px 16px;
-      background: #fef3c7;
-      border-left: 4px solid #f59e0b;
-      border-radius: 8px;
-      color: #92400e;
-      font-size: 13px;
-      line-height: 1.5;
-      text-align: left;
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-    }
-
-    .modal-btn {
-      padding: 12px 24px;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s;
-      min-width: 140px;
-    }
-
-    .cancel-btn {
-      background: #f3f4f6;
-      color: #374151;
-    }
-
-    .cancel-btn:hover {
-      background: #e5e7eb;
-      transform: translateY(-1px);
-    }
-
-    .delete-btn-confirm {
-      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-      color: white;
-    }
-
-    .delete-btn-confirm:hover {
-      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
-    }
   `]
 })
 export class WatchlistButtonComponent implements OnInit, OnDestroy {
   isExpanded = signal(false);
   watchlists = signal<Watchlist[]>([]);
-  showDeleteModal = signal(false);
-  watchlistToDelete = signal<Watchlist | null>(null);
   private watchlistCreatedListener?: (event: Event) => void;
 
   constructor() {
@@ -668,22 +530,14 @@ export class WatchlistButtonComponent implements OnInit, OnDestroy {
     // Prevent triggering the parent click event
     event.stopPropagation();
     
-    // Show custom delete modal
-    console.log('[watchlist-button] Setting watchlist to delete:', watchlist);
-    this.watchlistToDelete.set(watchlist);
-    this.showDeleteModal.set(true);
-    console.log('[watchlist-button] Delete modal should be visible now');
+    // Use browser native confirm dialog
+    if (confirm(`Are you sure you want to delete the watchlist "${watchlist.label}"?\n\n⚠️ This will also remove all saved properties in this watchlist.`)) {
+      this.confirmDelete(watchlist);
+    }
   }
 
-  async confirmDelete() {
-    console.log('[watchlist-button] confirmDelete called');
-    const watchlist = this.watchlistToDelete();
-    if (!watchlist) {
-      console.log('[watchlist-button] No watchlist to delete');
-      return;
-    }
-    
-    console.log('[watchlist-button] Confirming delete for:', watchlist.label);
+  async confirmDelete(watchlist: Watchlist) {
+    console.log('[watchlist-button] confirmDelete called for:', watchlist.label);
     
     try {
       const baseUrl = environment.apiUrl || window.location.origin;
@@ -696,36 +550,31 @@ export class WatchlistButtonComponent implements OnInit, OnDestroy {
       console.log('[watchlist-button] Delete response status:', response.status);
       console.log('[watchlist-button] Response ok:', response.ok);
       
-      if (response.ok) {
-        console.log('[watchlist-button] Successfully deleted watchlist:', watchlist.label);
-        // Close modal
-        this.showDeleteModal.set(false);
-        this.watchlistToDelete.set(null);
-        // Reload watchlists
-        await this.loadWatchlists();
-        // Dispatch event to notify other components
-        window.dispatchEvent(new CustomEvent('watchlist-deleted', { 
-          detail: { id: watchlist.id } 
-        }));
-      } else {
-        console.error('[watchlist-button] Delete failed - status:', response.status);
-        console.error('[watchlist-button] Response headers:', response.headers);
-        let errorText = '';
-        try {
-          const error = await response.json();
-          console.error('[watchlist-button] Delete failed - error object:', error);
-          errorText = error.error || 'Unknown error';
-        } catch (e) {
-          errorText = await response.text();
-          console.error('[watchlist-button] Delete failed - error text:', errorText);
+        if (response.ok) {
+          console.log('[watchlist-button] Successfully deleted watchlist:', watchlist.label);
+          // Reload watchlists
+          await this.loadWatchlists();
+          // Dispatch event to notify other components
+          window.dispatchEvent(new CustomEvent('watchlist-deleted', { 
+            detail: { id: watchlist.id } 
+          }));
+        } else {
+          console.error('[watchlist-button] Delete failed - status:', response.status);
+          console.error('[watchlist-button] Response headers:', response.headers);
+          let errorText = '';
+          try {
+            const error = await response.json();
+            console.error('[watchlist-button] Delete failed - error object:', error);
+            errorText = error.error || 'Unknown error';
+          } catch (e) {
+            errorText = await response.text();
+            console.error('[watchlist-button] Delete failed - error text:', errorText);
+          }
+          alert(`Failed to delete watchlist: ${errorText}`);
         }
-        alert(`Failed to delete watchlist: ${errorText}`);
-        this.showDeleteModal.set(false);
+      } catch (error) {
+        console.error('[watchlist-button] Failed to delete watchlist:', error);
+        alert('Failed to delete watchlist. Please try again.');
       }
-    } catch (error) {
-      console.error('[watchlist-button] Failed to delete watchlist:', error);
-      alert('Failed to delete watchlist. Please try again.');
-      this.showDeleteModal.set(false);
-    }
   }
 }

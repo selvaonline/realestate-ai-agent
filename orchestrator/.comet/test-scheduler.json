@@ -1,0 +1,13 @@
+{
+  "watchId": "test-scheduler",
+  "items": [
+    {
+      "url": "https://www.crexi.com/properties/Warehouses",
+      "score": 31,
+      "risk": 50,
+      "title": "Warehouses for Sale",
+      "address": "For Sale · Industrial; Warehouse. Warehouse Properties by Market. Houston Warehouse Space267 propert"
+    }
+  ],
+  "ts": 1760926502593
+}

@@ -14,6 +14,10 @@ import { NotificationsPanelComponent } from './notifications-panel.component';
 import { WatchlistButtonComponent } from './watchlist-button.component';
 Chart.register(...registerables);
 
+// Cache bust to force fresh load
+const CACHE_BUST = '2025-10-20-02-12-00';
+console.log('🔄 Cache bust version:', CACHE_BUST);
+
 type Card = {
   kind: 'status'|'wait'|'nav'|'action'|'fallback'|'shot'|'extracted'|'started'|'finished'|'thinking'|'source'|'answer';
   label?: string;
@@ -664,116 +668,10 @@ export class SafeHtmlPipe implements PipeTransform {
       </div>
     </div>
 
-    <!-- Deal Comparison Modal -->
-    <div *ngIf="showComparisonModal()"
-         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(4px);"
-         (click)="showComparisonModal.set(false)">
-      <div style="background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); padding: 32px; border-radius: 20px; max-width: 1200px; width: 95%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative;"
-           (click)="$event.stopPropagation()">
-        <button (click)="showComparisonModal.set(false)"
-                style="position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; cursor: pointer; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">×</button>
-        
-        <h2 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: white; text-align: center;">
-          🔍 Deal Comparison
-        </h2>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
-          <div *ngFor="let deal of dealsToCompare(); let i = index" 
-               style="background: rgba(255,255,255,0.95); padding: 24px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); backdrop-filter: blur(10px);">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
-              <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f2937; line-height: 1.3;">{{ deal.title }}</h3>
-              <div style="background: linear-gradient(135deg, #8b5cf6, #a855f7); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
-                Deal #{{ i + 1 }}
-              </div>
-            </div>
-            
-            <div style="margin-bottom: 16px;">
-              <div style="display: flex; gap: 16px; margin-bottom: 12px;">
-                <div style="flex: 1;">
-                  <div style="font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">PE Score</div>
-                  <div style="font-size: 24px; font-weight: 700; color: #10b981;">{{ deal.peScore || 'N/A' }}</div>
-                </div>
-                <div style="flex: 1;">
-                  <div style="font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
-                  <div style="font-size: 24px; font-weight: 700; color: #ef4444;">{{ deal.riskScore || 'N/A' }}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div style="margin-bottom: 16px;">
-              <div style="font-size: 14px; color: #374151; line-height: 1.5;">{{ deal.description || 'No description available.' }}</div>
-            </div>
-            
-            <div style="display: flex; gap: 8px; margin-top: 16px;">
-              <a [href]="deal.url" target="_blank" 
-                 style="flex: 1; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; transition: all 0.2s;"
-                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)';"
-                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                View Listing
-              </a>
-            </div>
-          </div>
-        </div>
-        
-        <div style="text-align: center; color: rgba(255,255,255,0.9); font-size: 14px;">
-          💡 <strong>Pro Tip:</strong> Compare PE scores, risk levels, and property details to make informed investment decisions
-        </div>
-      </div>
-    </div>
 
-    <!-- Charts Modal -->
-    <div *ngIf="showChartsModal()"
-         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(4px);"
-         (click)="showChartsModal.set(false)">
-      <div style="background: white; padding: 32px; border-radius: 20px; max-width: 1000px; width: 95%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative;"
-           (click)="$event.stopPropagation()">
-        <button (click)="showChartsModal.set(false)"
-                style="position: absolute; top: 15px; right: 15px; background: #f3f4f6; border: none; color: #6b7280; font-size: 24px; cursor: pointer; padding: 8px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">×</button>
-        
-        <h2 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: #1f2937; text-align: center;">
-          📊 Portfolio Analytics
-        </h2>
-        
-        <!-- Charts Container -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-          <!-- Score Distribution Chart -->
-          <div style="background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
-            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #374151; text-align: center;">Score Distribution</h3>
-            <div style="position: relative; height: 300px;">
-              <canvas id="score-distribution-chart" width="400" height="300"></canvas>
-            </div>
-          </div>
-          
-          <!-- Geographic Distribution Chart -->
-          <div style="background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
-            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #374151; text-align: center;">Geographic Distribution</h3>
-            <div style="position: relative; height: 300px;">
-              <canvas id="geo-distribution-chart" width="400" height="300"></canvas>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Summary Stats -->
-        <div style="background: #f0f9ff; border-radius: 12px; padding: 20px; border: 1px solid #0ea5e9; margin-bottom: 16px;">
-          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #0c4a6e;">Portfolio Summary</h3>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 14px; color: #0c4a6e;">
-            <div><strong>Total Opportunities:</strong> {{ deals().length }}</div>
-            <div><strong>Average Score:</strong> {{ getAverageScore() }}/100</div>
-            <div><strong>Score Range:</strong> {{ getScoreRange() }}</div>
-            <div><strong>Premium (≥80):</strong> {{ getPremiumCount() }} ({{ getPremiumPercentage() }}%)</div>
-            <div><strong>Investment Grade (70-79):</strong> {{ getInvestmentGradeCount() }} ({{ getInvestmentGradePercentage() }}%)</div>
-            <div><strong>Below Threshold (<70):</strong> {{ getBelowThresholdCount() }} ({{ getBelowThresholdPercentage() }}%)</div>
-          </div>
-        </div>
-        
-        <div style="text-align: center; color: #6b7280; font-size: 14px;">
-          💡 <strong>Analysis:</strong> Based on proprietary PE scoring model. Click source links for detailed property information.
-        </div>
-      </div>
-    </div>
 
     <!-- Configuration View -->
-    <div *ngIf="currentView() === 'config'" class="config-content">
+    <div *ngIf="currentView() === 'config'" class="config-content" style="background: #f0f9ff; border: 3px solid #0ea5e9; padding: 20px; margin: 20px; border-radius: 12px;">
       <div style="padding: 20px; background: white; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <h2>🔧 Watchlist Configuration</h2>
         <p>Manage your watchlists and their monitoring schedules</p>
@@ -1879,11 +1777,6 @@ export class App implements OnInit, AfterViewInit, AfterViewChecked {
   memoText = signal('');
   selectedDealForModal = signal<any | null>(null);
   showDealModal = signal(false);
-  showChartsModal = signal(false);
-  chartsScope = signal<'deal' | 'portfolio'>('portfolio');
-  selectedDealForCharts = signal<any | null>(null);
-  showComparisonModal = signal(false);
-  dealsToCompare = signal<any[]>([]);
   currentView = signal<'main' | 'config'>('main');
   activeFilters = signal<any>({});
   showWatchlistModal = signal(false);
@@ -2998,29 +2891,32 @@ export class App implements OnInit, AfterViewInit, AfterViewChecked {
   handleRenderCharts(data: { scope: string; id?: number }) {
     console.log('[ui-action] Render charts:', data);
     
-    this.chartsScope.set(data.scope as 'deal' | 'portfolio');
+    // Create a simple charts summary using browser native alert
+    let chartsInfo = '📊 Portfolio Analytics\n\n';
     
     if (data.scope === 'portfolio') {
-      // Show portfolio-level charts
-      this.showChartsModal.set(true);
-      this.selectedDealForCharts.set(null);
-      console.log('✅ Rendering portfolio charts');
-      
-      // Initialize charts after modal opens
-      setTimeout(() => this.initializePortfolioCharts(), 200);
+      chartsInfo += `Total Opportunities: ${this.deals().length}\n`;
+      chartsInfo += `Average Score: ${this.getAverageScore()}/100\n`;
+      chartsInfo += `Score Range: ${this.getScoreRange()}\n`;
+      chartsInfo += `Premium (≥80): ${this.getPremiumCount()} (${this.getPremiumPercentage()}%)\n`;
+      chartsInfo += `Investment Grade (70-79): ${this.getInvestmentGradeCount()} (${this.getInvestmentGradePercentage()}%)\n`;
+      chartsInfo += `Below Threshold (<70): ${this.getBelowThresholdCount()} (${this.getBelowThresholdPercentage()}%)\n\n`;
+      console.log('✅ Showing portfolio analytics');
       
     } else if (data.scope === 'deal' && data.id) {
-      // Show deal-specific factor breakdown
       const deal = this.deals()[data.id - 1];
       if (deal) {
-        this.selectedDealForCharts.set(deal);
-        this.showChartsModal.set(true);
-        console.log('✅ Rendering charts for:', deal.title);
-        
-        // Initialize deal-specific charts after modal opens
-        setTimeout(() => this.initializePortfolioCharts(), 200);
+        chartsInfo += `Deal: ${deal.title}\n`;
+        chartsInfo += `PE Score: ${deal.peScore || 'N/A'}\n`;
+        chartsInfo += `Risk Score: ${deal.riskScore || 'N/A'}\n`;
+        chartsInfo += `Description: ${deal.description || 'No description available'}\n\n`;
+        console.log('✅ Showing deal analytics for:', deal.title);
       }
     }
+    
+    chartsInfo += '💡 Analysis: Based on proprietary PE scoring model. Click source links for detailed property information.';
+    
+    alert(chartsInfo);
   }
 
   handleExportMemo(data: { id?: number; url?: string; format: string }) {
@@ -3141,9 +3037,20 @@ export class App implements OnInit, AfterViewInit, AfterViewChecked {
       .filter(Boolean);
     
     if (dealsToCompare.length > 0) {
-      this.dealsToCompare.set(dealsToCompare);
-      this.showComparisonModal.set(true);
-      console.log(`✅ Comparing ${dealsToCompare.length} deals:`, 
+      // Create a simple comparison message using browser native alert
+      let comparison = '🔍 Deal Comparison\n\n';
+      
+      dealsToCompare.forEach((deal, index) => {
+        comparison += `Deal ${index + 1}: ${deal.title}\n`;
+        comparison += `PE Score: ${deal.peScore || 'N/A'}\n`;
+        comparison += `Risk Score: ${deal.riskScore || 'N/A'}\n`;
+        comparison += `Description: ${deal.description || 'No description available'}\n\n`;
+      });
+      
+      comparison += '💡 Pro Tip: Compare PE scores, risk levels, and property details to make informed investment decisions';
+      
+      alert(comparison);
+      console.log(`✅ Compared ${dealsToCompare.length} deals:`, 
         dealsToCompare.map(d => d.title));
     } else {
       console.warn('No valid deals found for comparison:', data.ids);
@@ -3395,8 +3302,6 @@ Chat Commands:
     this.showPeModelInfo.set(false);
     this.showMarketRiskInfo.set(false);
     this.showDealModal.set(false);
-    this.showChartsModal.set(false);
-    this.showComparisonModal.set(false);
     this.showWatchlistModal.set(false);
     console.log('⌨️ Esc: Closed modals');
   }
@@ -3412,17 +3317,17 @@ Chat Commands:
 
   async deleteWatchlistFromModal(event: Event, watchlist: any) {
     event.stopPropagation();
-    
+
     if (!confirm(`Are you sure you want to delete the watchlist "${watchlist.label}"?\n\n⚠️ This will also remove all saved properties in this watchlist.`)) {
       return;
     }
-    
+
     try {
       const baseUrl = environment.apiUrl || window.location.origin;
       const response = await fetch(`${baseUrl}/api/saved-properties/watchlists/${watchlist.id}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         console.log('[app] Deleted watchlist:', watchlist.label);
         // Reload watchlists
@@ -3432,9 +3337,11 @@ Chat Commands:
           this.selectedWatchlistId.set('');
         }
         // Dispatch event to notify other components
-        window.dispatchEvent(new CustomEvent('watchlist-deleted', { 
-          detail: { id: watchlist.id } 
+        window.dispatchEvent(new CustomEvent('watchlist-deleted', {
+          detail: { id: watchlist.id }
         }));
+        // Show success message
+        alert(`Successfully deleted watchlist "${watchlist.label}"`);
       } else {
         const error = await response.json();
         alert(`Failed to delete watchlist: ${error.error || 'Unknown error'}`);

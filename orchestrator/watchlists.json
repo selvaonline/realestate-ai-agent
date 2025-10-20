@@ -2,13 +2,13 @@
   {
     "id": "datacenters",
     "label": "DataCenters",
-    "query": "Why Data Centers Are the New Industrial Powerhouse - Blog commercial real estate for sale",
+    "query": "data center commercial real estate for sale",
     "domains": [
       "crexi.com",
       "loopnet.com",
       "brevitas.com"
     ],
-    "minScore": 40,
+    "minScore": 30,
     "riskMax": 70,
     "schedule": "*/5 * * * *",
     "enabled": true
@@ -16,15 +16,43 @@
   {
     "id": "test-scheduler",
     "label": "Test Scheduler",
-    "query": "test query for scheduler",
+    "query": "industrial warehouse for sale",
     "domains": [
       "crexi.com",
       "loopnet.com",
       "brevitas.com"
     ],
-    "minScore": 40,
+    "minScore": 30,
     "riskMax": 70,
     "schedule": "*/1 * * * *",
+    "enabled": true
+  },
+  {
+    "id": "office-buildings",
+    "label": "Office Buildings",
+    "query": "office building commercial real estate for sale",
+    "domains": [
+      "crexi.com",
+      "loopnet.com",
+      "brevitas.com"
+    ],
+    "minScore": 30,
+    "riskMax": 70,
+    "schedule": "*/2 * * * *",
+    "enabled": true
+  },
+  {
+    "id": "retail-properties",
+    "label": "Retail Properties",
+    "query": "retail commercial real estate for sale",
+    "domains": [
+      "crexi.com",
+      "loopnet.com",
+      "brevitas.com"
+    ],
+    "minScore": 30,
+    "riskMax": 70,
+    "schedule": "*/3 * * * *",
     "enabled": true
   }
 ]

@@ -14,20 +14,6 @@
     "enabled": true
   },
   {
-    "id": "test-scheduler",
-    "label": "Test Scheduler",
-    "query": "industrial warehouse for sale",
-    "domains": [
-      "crexi.com",
-      "loopnet.com",
-      "brevitas.com"
-    ],
-    "minScore": 30,
-    "riskMax": 70,
-    "schedule": "*/1 * * * *",
-    "enabled": true
-  },
-  {
     "id": "office-buildings",
     "label": "Office Buildings",
     "query": "office building commercial real estate for sale",

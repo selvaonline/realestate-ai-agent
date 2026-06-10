@@ -5,12 +5,12 @@ and any external client use the same surface.
 
 ## Orchestrated runs
 
-### `POST /api/ns/run` · `POST /api/lg/run`
+### `POST /api/lg/run`
 
-Start a multi-agent run (Neuro SAN / LangGraph.js).
+Start a multi-agent run (LangGraph.js supervisor).
 
 ```json
-{ "query": "Find NNN Walgreens deals in Florida...", "threadId": "optional-lg-only" }
+{ "query": "Find NNN Walgreens deals in Florida...", "threadId": "optional" }
 ```
 
 Returns immediately:
@@ -19,8 +19,8 @@ Returns immediately:
 { "runId": "a1b2c3...", "threadId": "a1b2c3..." }
 ```
 
-`threadId` (LangGraph only) keys conversation memory — reuse it across runs
-for follow-up queries.
+`threadId` keys conversation memory — reuse it across runs for follow-up
+queries.
 
 ### `GET /events/:runId` (SSE)
 
@@ -29,7 +29,7 @@ The live event stream. Key kinds: `run_started`, `ns_hop`, `thinking`,
 `answer_complete`, `agent_done`, `run_finished`. See
 [Architecture → event contract](../architecture.md#the-event-contract).
 
-### `GET /api/ns/network` · `GET /api/lg/network`
+### `GET /api/lg/network`
 
 Agent graph topology for visualization:
 
@@ -40,10 +40,9 @@ Agent graph topology for visualization:
   "edges": [{ "from": "deal_advisor", "to": "risk_analyst" }] }
 ```
 
-### `GET /api/ns/health` · `GET /api/lg/health`
+### `GET /api/lg/health`
 
-`{"ok": true|false}` — Neuro SAN checks the :8080 server; LangGraph checks
-an LLM key is configured.
+`{"ok": true|false}` — healthy when an LLM key is configured.
 
 ## Tool layer
 
@@ -56,7 +55,7 @@ estimated durations. Powers the UI's tool popups and the docs'
 ### `POST /api/tools/execute`
 
 Run any single tool directly — **no LLM involved**. This is the zero-token
-execution path both orchestrators ride.
+execution path the orchestrator rides.
 
 ```json
 { "tool": "run_dcf", "args": { "purchasePrice": 4200000, "noi": 290000, "holdYears": 10 } }

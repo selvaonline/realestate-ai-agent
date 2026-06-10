@@ -1,8 +1,8 @@
 // src/platform/domainPack.ts — The seam between the generic multi-agent
 // platform and a vertical domain. A domain pack is data + tools, not core
 // code changes: it supplies the tool implementations, the specialist team
-// topology (consumed by both the LangGraph supervisor and the Neuro SAN
-// HOCON generator), and the prompts.
+// topology (consumed by the LangGraph supervisor and the UI network panel),
+// and the prompts.
 import type { RegisteredTool } from "../lib/agentTypes.js";
 import { registerTool } from "./registry.js";
 

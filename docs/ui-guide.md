@@ -5,9 +5,9 @@ no separate console needed.
 
 ## Orchestrator toggle
 
-The ⚡ pill in the header cycles **Classic → Neuro SAN → LangGraph.js**
-(amber glow = Neuro SAN, teal = LangGraph). Persisted per browser; fresh
-sessions default to Neuro SAN.
+The ⚡ pill in the header switches **Classic ↔ LangGraph.js** (teal glow =
+LangGraph multi-agent mode). Persisted per browser; fresh sessions default
+to LangGraph.js.
 
 ## Live agent network graph
 
@@ -47,7 +47,7 @@ color-accented card per specialist with their complete unabridged finding.
 Captured server-side, so the detail is guaranteed regardless of how the
 supervisor summarizes.
 
-## Conversation memory (LangGraph mode)
+## Conversation memory
 
 Runs share a conversation thread per browser session. Follow-ups work:
 
@@ -62,13 +62,12 @@ Your last 10 prompts appear as one-click pills on the home screen
 
 ## Suggested demo script
 
-1. Home screen → point at history pills and the ⚡ Neuro SAN default.
+1. Home screen → point at history pills and the ⚡ multi-agent default.
 2. Run the 6-part mega-query → narrate the graph lighting up, chips
    accumulating, activity line streaming.
 3. While it synthesizes → open a tool chip popup (*"zero tokens — this is an
    API call, not an LLM call"*).
 4. Answer lands → expand a Specialist Report.
-5. Flip to LangGraph.js → ask the follow-up (*"now check portfolio fit"*) →
-   conversation memory.
+5. Ask the follow-up (*"now check portfolio fit"*) → conversation memory.
 6. **↻ Replay** the first run → close on the eval story
    ([Evals](evals.md#the-defect-the-evals-caught)).

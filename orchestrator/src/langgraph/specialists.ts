@@ -2,14 +2,12 @@
 // The agent team definition (supervisor + specialists + prompts) lives in
 // the active domain pack (src/packs/*/specialists.ts); this module is fully
 // domain-agnostic: topology builder for the UI panel + JSON-schema→zod.
-// The Neuro SAN network HOCON is generated from the same pack data, so both
-// orchestrators expose an identical team.
 import { z, ZodTypeAny } from "zod";
 import { getActivePack, type SpecialistSpec } from "../platform/domainPack.js";
 
 export type SpecialistDef = SpecialistSpec;
 
-/** Same {nodes, edges} shape the Neuro SAN proxy serves, for the UI panel.
+/** {nodes, edges} topology for the UI network panel.
  *  Built from the active pack, so it adapts when the pack changes. */
 export function lgNetworkTopology() {
   const pack = getActivePack();

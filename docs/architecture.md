@@ -15,39 +15,36 @@ flowchart TB
     end
 
     subgraph EX["Express front door (:3001)"]
-        NSR["/api/ns/run · /api/ns/network"]
         LGR["/api/lg/run · /api/lg/network"]
         TE["/api/tools/execute (zero-token)"]
         EV["/events/:runId (SSE)"]
     end
 
     subgraph ORCH["Orchestration layer (swappable)"]
-        NS["Neuro SAN server (:8080)<br/>declarative HOCON network"]
         LG["LangGraph.js supervisor<br/>in-process, MemorySaver"]
     end
 
-    REG["20-tool registry (registry.ts)<br/>search · PE scoring · risk · DCF · portfolio · docs"]
+    REG["20-tool registry (platform/registry.ts)<br/>loaded from the domain pack<br/>search · PE scoring · risk · DCF · portfolio · docs"]
 
     UI -->|start run| EX
     EX -->|SSE events| UI
-    NSR --> NS
     LGR --> LG
-    NS -->|HTTP bridge| TE
     LG -->|direct in-process call| REG
     TE --> REG
 ```
 
 ## The event contract
 
-Both orchestrators translate their internal progress into one SSE vocabulary
-published on `/events/:runId`. The UI doesn't know which engine is running.
+The orchestrator translates its internal progress into one SSE vocabulary
+published on `/events/:runId`. The UI doesn't know which engine is running —
+any orchestrator emitting the same events drives the same UI.
 
 | Event | Meaning |
 |---|---|
 | `run_started` / `run_finished` | Run lifecycle |
 | `ns_hop` | Delegation hop: `{chain: [deal_advisor, risk_analyst, assess_risk], target, targetType}` — drives the live graph |
 | `thinking` | Human-readable activity line |
-| `tool_executing` / `tool_complete` | Tool lifecycle (+ `durationMs` on LangGraph) |
+| `tool_executing` / `tool_complete` | Tool lifecycle (+ `durationMs`) |
 | `agent_step` | Structured step: `delegate` / `tool_call` / `tool_result` / `finding` |
 | `answer_chunk` / `answer_complete` | Final report (HTML), incl. the Specialist Reports appendix |
 
@@ -59,10 +56,11 @@ published on `/events/:runId`. The UI doesn't know which engine is running.
     interoperability. Choose the boring technology where it's strictly
     better; spend tokens only on reasoning.
 
-!!! note "Generated, never hand-written, agent config"
-    `neurosan/generate_network.py` builds the Neuro SAN HOCON from the live
-    tool registry; LangGraph's `specialists.ts` mirrors the same groupings.
-    The agent network cannot drift from the backend.
+!!! note "One source of truth for the agent team"
+    The supervisor, specialists, prompts, and tool subsets are defined once
+    in the domain pack (`orchestrator/src/packs/cre/specialists.ts`); the
+    orchestrator, the UI network panel, and the generated docs all consume
+    the same data. The agent network cannot drift from the backend.
 
 !!! note "Deterministic detail, prompt-independent"
     Every specialist's full finding is captured server-side and appended to
@@ -79,7 +77,6 @@ published on `/events/:runId`. The UI doesn't know which engine is running.
 
 The supervisor passes concrete context forward: the scout's chosen property
 (title, URL, price, NOI) feeds the risk analyst, whose verdict feeds the
-financial modeler, whose IRR feeds the deal writer. In LangGraph mode the
-conversation itself is checkpointed (`MemorySaver` + `thread_id`), so
-follow-up queries like *"now run a DCF on that property"* resolve against
-prior turns.
+financial modeler, whose IRR feeds the deal writer. The conversation itself
+is checkpointed (`MemorySaver` + `thread_id`), so follow-up queries like
+*"now run a DCF on that property"* resolve against prior turns.

@@ -1,6 +1,6 @@
 # Getting Started
 
-Run the full multi-agent stack locally. Prereqs: **Node 20+**, **Python 3.10+**, and one LLM key (`GEMINI_API_KEY`, `OPENAI_API_KEY`, or `GROQ_API_KEY`).
+Run the full multi-agent stack locally. Prereqs: **Node 20+**, **Python 3.10+** (evals only), and one LLM key (`GEMINI_API_KEY`, `OPENAI_API_KEY`, or `GROQ_API_KEY`).
 
 ## 1. Backend tool layer (always required)
 
@@ -13,36 +13,17 @@ npm run dev          # Express on :3001 — 20-tool registry + orchestrator rout
 Verify: `curl localhost:3001/healthz` → `{"ok":true}` and
 `curl localhost:3001/api/tools/registry` lists 20 tools.
 
-## 2. Pick your orchestrator
+## 2. The orchestrator (zero extra setup)
 
-=== "LangGraph.js (in-process, zero extra setup)"
+Nothing to start — the LangGraph.js supervisor runs **inside** the Express
+process. Check it's live:
 
-    Nothing to start — the LangGraph supervisor runs **inside** the Express
-    process. Check it's live:
+```bash
+curl localhost:3001/api/lg/health    # {"ok":true} if an LLM key is set
+```
 
-    ```bash
-    curl localhost:3001/api/lg/health    # {"ok":true} if an LLM key is set
-    ```
-
-    Model tiering defaults: supervisor `gemini-2.5-pro`, specialists
-    `gemini-2.5-flash`. Override with `LG_SUPERVISOR_MODEL` / `LG_MODEL`.
-
-=== "Neuro SAN (Cognizant OSS, separate server)"
-
-    ```bash
-    cd neurosan
-    python3 -m venv .venv && source .venv/bin/activate
-    pip install -r requirements.txt
-
-    export GOOGLE_API_KEY=...                      # or OPENAI_API_KEY
-    export PYTHONPATH=$(pwd)
-    export AGENT_MANIFEST_FILE=$(pwd)/registries/manifest.hocon
-    export AGENT_TOOL_PATH=$(pwd)/coded_tools
-
-    python -m neuro_san.service.main_loop.server_main_loop   # :8080
-    ```
-
-    Verify: `curl localhost:3001/api/ns/health` → `{"ok":true}`.
+Model tiering defaults: supervisor `gemini-2.5-pro`, specialists
+`gemini-2.5-flash`. Override with `LG_SUPERVISOR_MODEL` / `LG_MODEL`.
 
 ## 3. Frontend
 
@@ -52,8 +33,8 @@ npm install
 npx ng serve         # http://localhost:4200
 ```
 
-Fresh sessions default to **Neuro SAN** mode. The ⚡ toggle in the header
-cycles Classic → Neuro SAN → LangGraph.js.
+Fresh sessions default to **LangGraph.js** multi-agent mode. The ⚡ toggle
+in the header switches Classic ↔ LangGraph.js.
 
 ## 4. First query
 
@@ -68,17 +49,6 @@ the network panel header to re-animate it in seconds.
 ## 5. Run the evals
 
 ```bash
-cd neurosan
-python3 evals/run_tool_evals.py                 # Tier 1: deterministic tool tests
-python3 evals/run_agent_evals.py                # Tier 2: routing (Neuro SAN)
-python3 evals/run_judge_evals.py --orch lg      # Tier 3: behavioral judge evals
+cd orchestrator
+python3 evals/run_judge_evals.py      # behavioral judge evals (routing, faithfulness, honesty...)
 ```
-
-!!! tip "Regenerating the Neuro SAN network"
-    The agent network hocon is **generated** from the live tool registry —
-    never edit it by hand. After changing tools in
-    `orchestrator/src/tools/registry.ts`:
-
-    ```bash
-    cd neurosan && python3 generate_network.py
-    ```

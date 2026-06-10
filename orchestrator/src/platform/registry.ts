@@ -1,7 +1,7 @@
 // src/platform/registry.ts — Domain-agnostic tool registry (platform core).
 // Domain packs register their tools here at bootstrap via loadPack(); every
-// consumer (agent loop, LangGraph supervisor, /api/tools, /mcp, Neuro SAN
-// bridge) resolves tools from this single Map at request time.
+// consumer (agent loop, LangGraph supervisor, /api/tools, /mcp) resolves
+// tools from this single Map at request time.
 import type { RegisteredTool } from "../lib/agentTypes.js";
 
 export const toolRegistry: Map<string, RegisteredTool> = new Map();

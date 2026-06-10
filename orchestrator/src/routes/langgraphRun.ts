@@ -1,6 +1,4 @@
-// src/routes/langgraphRun.ts — LangGraph.js orchestration endpoint.
-// Same contract as the Neuro SAN proxy (/api/ns/*): the UI flips between
-// orchestrators without changing anything else.
+// src/routes/langgraphRun.ts — LangGraph.js multi-agent orchestration endpoint.
 import { Router } from "express";
 import crypto from "crypto";
 import { pub } from "../lib/event-bus.js";
@@ -47,7 +45,7 @@ langgraphRouter.post("/api/lg/run", async (req, res) => {
     await new Promise((r) => setTimeout(r, 300));
 
     emit("run_started", { query });
-    emit("thinking", { text: "LangGraph supervisor (deal_advisor) is planning the work..." });
+    emit("thinking", { text: "Multi-agent supervisor is planning the work..." });
 
     // Capture each specialist's full finding so the final answer always
     // carries the detail, regardless of how tersely the supervisor synthesizes.

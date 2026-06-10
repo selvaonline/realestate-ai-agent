@@ -3,8 +3,8 @@
 // subsets all come from the pack — no domain knowledge in this file).
 //
 // Runs IN-PROCESS: specialists call the tool registry directly (no HTTP hop,
-// no second runtime). Emits the same event vocabulary as the Neuro SAN proxy
-// so the UI's live network panel works identically for both orchestrators.
+// no second runtime). Emits the ns_hop/tool_executing event vocabulary the
+// UI's live network panel consumes.
 import { z } from "zod";
 import { tool } from "@langchain/core/tools";
 import { HumanMessage } from "@langchain/core/messages";

@@ -10,7 +10,7 @@ interface LayoutEdge { from: string; to: string; d: string }
 /**
  * Live multi-agent network graph: supervisor on top, specialists in the
  * middle, tools below. Nodes light up and edges animate as ns_hop /
- * tool_executing events arrive. Works for any orchestrator (Neuro SAN,
+ * tool_executing events arrive. Works for any orchestrator (LangGraph.js,
  * LangGraph) that emits the shared event vocabulary.
  */
 @Component({
@@ -139,7 +139,7 @@ export class AgentNetworkPanelComponent implements OnDestroy {
   @Input() activeChain: string[] = [];
   @Input() visited: string[] = [];
   @Input() nodeCalls: Record<string, number> = {};
-  @Input() orchestrator = 'Neuro SAN';
+  @Input() orchestrator = 'LangGraph.js';
   @Input() hops = 0;
   @Input() canReplay = false;
   @Output() replay = new EventEmitter<void>();

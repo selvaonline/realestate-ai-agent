@@ -103,9 +103,9 @@ export class SafeHtmlPipe implements PipeTransform {
         <span class="meta-dot" *ngIf="sources().length"></span>
         <span class="meta-item">MCP + LLM Orchestration</span>
         <span class="meta-dot"></span>
-        <button class="how-it-works-link orch-toggle" [class.ns-on]="orchMode() === 'neurosan'"
+        <button class="how-it-works-link orch-toggle"
                 [class.lg-on]="orchMode() === 'langgraph'" (click)="cycleOrchestrator()"
-                title="Cycle orchestrator: Classic agent → Neuro SAN network → LangGraph.js supervisor">
+                title="Toggle orchestrator: Classic agent ↔ LangGraph.js multi-agent supervisor">
           ⚡ {{ orchLabel() }}
         </button>
         <span class="meta-dot"></span>
@@ -139,7 +139,7 @@ export class SafeHtmlPipe implements PipeTransform {
       </button>
     </div>
 
-    <!-- Multi-agent network (live) — Neuro SAN or LangGraph -->
+    <!-- Multi-agent network (live) — LangGraph supervisor -->
     <app-agent-network
       *ngIf="orchMode() !== 'classic' && nsNetwork() && (busy() || nsVisited().length)"
       [network]="nsNetwork()"
@@ -2403,12 +2403,11 @@ export class App implements AfterViewInit, AfterViewChecked {
   newWatchlistQuery = '';
   currentWatchlist = signal<{id: string; label: string} | null>(null);
   // Agent reasoning state
-  // ── Multi-agent orchestration mode: classic | neurosan | langgraph ──────
-  // Defaults to Neuro SAN multi-agent orchestration for fresh sessions.
-  orchMode = signal<'classic' | 'neurosan' | 'langgraph'>(
-    (['classic', 'neurosan', 'langgraph'].includes(localStorage.getItem('dealsense-orchestrator') || '')
-      ? localStorage.getItem('dealsense-orchestrator') as any
-      : 'neurosan')
+  // ── Multi-agent orchestration mode: classic | langgraph ─────────────────
+  // Defaults to the LangGraph.js multi-agent supervisor for fresh sessions.
+  // (Stored 'neurosan' preferences from older sessions migrate to langgraph.)
+  orchMode = signal<'classic' | 'langgraph'>(
+    localStorage.getItem('dealsense-orchestrator') === 'classic' ? 'classic' : 'langgraph'
   );
   nsNetwork = signal<NsNetwork | null>(null);
   nsActiveChain = signal<string[]>([]);
@@ -2530,26 +2529,20 @@ export class App implements AfterViewInit, AfterViewChecked {
   }
 
   orchLabel() {
-    return this.orchMode() === 'langgraph' ? 'LangGraph.js'
-         : this.orchMode() === 'neurosan' ? 'Neuro SAN' : 'Classic';
+    return this.orchMode() === 'langgraph' ? 'LangGraph.js' : 'Classic';
   }
 
-  /** If the selected orchestrator isn't reachable (e.g. Neuro SAN server not
-   * deployed), fall back gracefully: other orchestrator -> classic. The
-   * user's stored preference is not overwritten. */
+  /** If the multi-agent supervisor isn't reachable, fall back to the classic
+   * agent. The user's stored preference is not overwritten. */
   private async verifyOrchestratorAvailable() {
-    const mode = this.orchMode();
-    if (mode === 'classic') return;
+    if (this.orchMode() === 'classic') return;
     const base = (localStorage.getItem('apiUrl') || environment.apiUrl || '').replace(/\/$/, '');
-    const healthy = async (o: 'ns' | 'lg') => {
-      try { return (await (await fetch(`${base}/api/${o}/health`)).json()).ok === true; } catch { return false; }
-    };
-    const orch = mode === 'langgraph' ? 'lg' as const : 'ns' as const;
-    if (await healthy(orch)) return;
-    const other = orch === 'ns' ? 'lg' as const : 'ns' as const;
-    const next = (await healthy(other)) ? (other === 'lg' ? 'langgraph' : 'neurosan') : 'classic';
-    console.warn(`[orchestrator] ${mode} unavailable, falling back to ${next}`);
-    this.orchMode.set(next as any);
+    let healthy = false;
+    try { healthy = (await (await fetch(`${base}/api/lg/health`)).json()).ok === true; } catch {}
+    if (!healthy) {
+      console.warn('[orchestrator] langgraph unavailable, falling back to classic');
+      this.orchMode.set('classic');
+    }
   }
 
   /** MkDocs site, served by the orchestrator at /docs (same-origin in prod). */
@@ -3557,18 +3550,17 @@ export class App implements AfterViewInit, AfterViewChecked {
       let runId: string;
       const mode = this.orchMode();
       if (mode !== 'classic') {
-        // Multi-agent orchestration path (Neuro SAN or LangGraph.js)
-        const orch = mode === 'langgraph' ? 'lg' as const : 'ns' as const;
+        // Multi-agent orchestration path (LangGraph.js supervisor)
         this.nsActiveChain.set([]);
         this.nsVisited.set([]);
         this.nsNodeCalls.set({});
         this.nsToolMs.set({});
         this.nsReplayLog = [];
-        try { this.nsNetwork.set(await this.svc.getOrchestratorNetwork(orch) as NsNetwork); } catch {}
-        const threadId = orch === 'lg' ? (sessionStorage.getItem('dealsense-lg-thread') || undefined) : undefined;
-        const started = await this.svc.startOrchestratedRun(orch, query, threadId);
+        try { this.nsNetwork.set(await this.svc.getOrchestratorNetwork() as NsNetwork); } catch {}
+        const threadId = sessionStorage.getItem('dealsense-lg-thread') || undefined;
+        const started = await this.svc.startOrchestratedRun(query, threadId);
         runId = started.runId;
-        if (orch === 'lg' && started.threadId) sessionStorage.setItem('dealsense-lg-thread', started.threadId);
+        if (started.threadId) sessionStorage.setItem('dealsense-lg-thread', started.threadId);
       } else {
         runId = await this.svc.startRun(query, dataSources, orgSettings);
       }
@@ -3971,12 +3963,11 @@ export class App implements AfterViewInit, AfterViewChecked {
   }
 
   cycleOrchestrator() {
-    const order: Array<'classic' | 'neurosan' | 'langgraph'> = ['classic', 'neurosan', 'langgraph'];
-    const next = order[(order.indexOf(this.orchMode()) + 1) % order.length];
+    const next = this.orchMode() === 'classic' ? 'langgraph' : 'classic';
     this.orchMode.set(next);
     localStorage.setItem('dealsense-orchestrator', next);
     if (next !== 'classic') {
-      this.svc.getOrchestratorNetwork(next === 'langgraph' ? 'lg' : 'ns')
+      this.svc.getOrchestratorNetwork()
         .then(n => this.nsNetwork.set(n as NsNetwork))
         .catch(() => this.nsNetwork.set(null));
     }

@@ -1,3 +1,0 @@
-neuro-san
-aiohttp
-requests

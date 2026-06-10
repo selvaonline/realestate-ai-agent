@@ -42,10 +42,10 @@ export class AgentService {
     return j.runId;
   }
 
-  /** Start a run through a multi-agent orchestrator: 'ns' (Neuro SAN) or 'lg' (LangGraph.js).
-   * threadId (LangGraph only) keeps conversation memory across runs. */
-  async startOrchestratedRun(orch: 'ns' | 'lg', query: string, threadId?: string): Promise<{ runId: string; threadId?: string }> {
-    const r = await fetch(`${this.base}/api/${orch}/run`, {
+  /** Start a run through the LangGraph.js multi-agent supervisor.
+   * threadId keeps conversation memory across runs. */
+  async startOrchestratedRun(query: string, threadId?: string): Promise<{ runId: string; threadId?: string }> {
+    const r = await fetch(`${this.base}/api/lg/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, ...(threadId ? { threadId } : {}) }),
@@ -62,8 +62,8 @@ export class AgentService {
   }
 
   /** Agent network topology (for the live graph panel). */
-  async getOrchestratorNetwork(orch: 'ns' | 'lg'): Promise<{ nodes: any[]; edges: any[] }> {
-    const r = await fetch(`${this.base}/api/${orch}/network`);
+  async getOrchestratorNetwork(): Promise<{ nodes: any[]; edges: any[] }> {
+    const r = await fetch(`${this.base}/api/lg/network`);
     if (!r.ok) throw new Error('orchestrator network unavailable');
     return r.json();
   }

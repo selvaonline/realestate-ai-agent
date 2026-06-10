@@ -1,7 +1,7 @@
 // src/packs/cre/index.ts — The DealSense CRE domain pack.
 // Everything domain-specific lives behind this interface: tool
 // implementations, the specialist team, and the prompts. The platform core
-// (agent loop, LangGraph supervisor, tool/MCP routes, Neuro SAN bridge)
+// (agent loop, LangGraph supervisor, tool/MCP routes)
 // consumes only the DomainPack contract.
 import type { DomainPack } from "../../platform/domainPack.js";
 import { creTools } from "../../tools/registry.js";

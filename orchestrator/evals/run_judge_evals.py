@@ -10,14 +10,12 @@ Dimensions covered (what an evaluator asks of a multi-agent system):
   completeness  — are ALL parts of a multi-intent request addressed?
   honesty       — off-topic refused; missing data admitted, not fabricated
   resilience    — failed strict search retried with relaxed criteria
-  parity        — both orchestrators route the same query the same way
   latency       — every case has a time budget (warn at 1x, fail at 2x)
 
 Usage:
-    python3 evals/run_judge_evals.py --orch lg            # LangGraph.js
-    python3 evals/run_judge_evals.py --orch ns            # Neuro SAN
-    python3 evals/run_judge_evals.py --orch lg --only honesty_refusal
-    python3 evals/run_judge_evals.py --orch lg --skip completeness_multi_intent
+    python3 evals/run_judge_evals.py
+    python3 evals/run_judge_evals.py --only honesty_refusal
+    python3 evals/run_judge_evals.py --skip completeness_multi_intent
 """
 import argparse
 import json
@@ -150,7 +148,7 @@ CHECKS = {
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--api-url", default=os.environ.get("DEALSENSE_API_URL", "http://localhost:3001"))
-    ap.add_argument("--orch", choices=["ns", "lg"], default="lg")
+    ap.add_argument("--orch", choices=["lg"], default="lg")
     ap.add_argument("--only", help="run only the named case")
     ap.add_argument("--skip", action="append", default=[], help="case name to skip (repeatable)")
     args = ap.parse_args()
@@ -170,28 +168,19 @@ def main():
         print(f"--- {case['name']} [{case['type']}] ({args.orch})")
 
         if case["type"] == "parity":
-            try:
-                a = run_query(args.api_url, "ns", case["query"], budget)
-                b = run_query(args.api_url, "lg", case["query"], budget)
-            except Exception as exc:
-                print(f"FAIL {case['name']} — {exc}"); failed += 1; continue
-            problems = []
-            for s in case.get("expect_specialists", []):
-                if s not in a["specialists"]:
-                    problems.append(f"ns missed {s} (got {a['specialists']})")
-                if s not in b["specialists"]:
-                    problems.append(f"lg missed {s} (got {b['specialists']})")
-        else:
-            try:
-                res = run_query(args.api_url, args.orch, case["query"], budget)
-            except Exception as exc:
-                print(f"FAIL {case['name']} — {exc}"); failed += 1; continue
-            problems = CHECKS[case["type"]](case, res)
-            if res["duration_s"] > budget * 2:
-                problems.append(f"latency {res['duration_s']}s exceeds 2x budget ({budget}s)")
-            elif res["duration_s"] > budget:
-                print(f"  WARN latency {res['duration_s']}s over budget {budget}s")
-            print(f"  agents={res['specialists']} tools={res['tool_calls']} {res['duration_s']}s")
+            print(f"SKIP {case['name']} (parity requires multiple orchestrators)")
+            skipped += 1
+            continue
+        try:
+            res = run_query(args.api_url, args.orch, case["query"], budget)
+        except Exception as exc:
+            print(f"FAIL {case['name']} — {exc}"); failed += 1; continue
+        problems = CHECKS[case["type"]](case, res)
+        if res["duration_s"] > budget * 2:
+            problems.append(f"latency {res['duration_s']}s exceeds 2x budget ({budget}s)")
+        elif res["duration_s"] > budget:
+            print(f"  WARN latency {res['duration_s']}s over budget {budget}s")
+        print(f"  agents={res['specialists']} tools={res['tool_calls']} {res['duration_s']}s")
 
         if problems:
             print(f"FAIL {case['name']} — " + "; ".join(problems)); failed += 1

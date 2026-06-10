@@ -19,7 +19,6 @@ import { startCometWorker } from "./comet/worker.js";
 import { validate, runSchema } from "./middleware/validate.js";
 import { mcpRouter } from "./routes/mcp.js";
 import { toolsRouter } from "./routes/tools.js";
-import { neurosanRouter } from "./routes/neurosan.js";
 import { langgraphRouter } from "./routes/langgraphRun.js";
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -129,7 +128,6 @@ app.use(apiLimiter);
 app.use(chatRouter);
 app.use(chatEnhancedRouter);
 app.use(toolsRouter);
-app.use(neurosanRouter);
 app.use(langgraphRouter);
 app.use(uiEventsRouter);
 app.use("/api/saved-properties", savedPropertiesRouter);

@@ -1,8 +1,7 @@
 // src/packs/cre/specialists.ts — The DealSense agent team (CRE domain pack).
 // Single source of truth for the specialist topology, consumed by:
 //   - the LangGraph.js supervisor (in-process)
-//   - the Neuro SAN HOCON generator (neurosan/generate_network.py)
-//   - the UI network panel (via lgNetworkTopology / the NS connectivity API)
+//   - the UI network panel (via lgNetworkTopology)
 import type { SpecialistSpec } from "../../platform/domainPack.js";
 
 export const SUPERVISOR_NAME = "deal_advisor";

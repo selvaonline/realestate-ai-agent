@@ -22,8 +22,7 @@ html {
   box-sizing: border-box;
 }
 
-/* Neuro SAN mode toggle */
-.how-it-works-link.ns-on { color: #f59e0b !important; font-weight: 600; }
+/* Orchestrator mode toggle */
 .how-it-works-link.lg-on { color: #2dd4bf !important; font-weight: 600; }
 
 /* Specialist report appendix (multi-agent answers) */
@@ -70,7 +69,6 @@ html {
 /* Orchestrator toggle: segmented-pill look */
 .how-it-works-link.orch-toggle { border:1px solid #e2e8f0; border-radius:999px; padding:4px 14px !important;
   transition: all .2s; background:#fff; }
-.how-it-works-link.orch-toggle.ns-on { border-color:#f59e0b; background:#fffbeb; box-shadow:0 0 10px rgba(245,158,11,.25); }
 .how-it-works-link.orch-toggle.lg-on { border-color:#2dd4bf; background:#f0fdfa; box-shadow:0 0 10px rgba(45,212,191,.25); }
 
 /* Specialist report cards: accent bar + hover lift */

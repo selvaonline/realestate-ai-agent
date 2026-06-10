@@ -1,5 +1,5 @@
 {
-  "comment": "Judge-grade e2e evals, orchestrator-agnostic (runs against /api/ns/run or /api/lg/run). Dimensions: routing, faithfulness, completeness, honesty/refusal, resilience, latency budgets. Run: python3 evals/run_judge_evals.py --orch lg",
+  "comment": "Judge-grade e2e evals against the LangGraph supervisor (/api/lg/run). Dimensions: routing, faithfulness, completeness, honesty/refusal, resilience, latency budgets. Run: python3 evals/run_judge_evals.py",
   "cases": [
     {
       "name": "routing_dcf",
@@ -44,14 +44,6 @@
       "query": "Find NNN Walgreens properties in Texas under $5M with a 6%+ cap rate",
       "comment": "Hyper-specific criteria rarely match snippets; the scout must retry with relaxed criteria (>=2 search calls).",
       "min_tool_calls": { "search_properties": 2 },
-      "budget_s": 240
-    },
-    {
-      "name": "parity_routing_across_orchestrators",
-      "type": "parity",
-      "query": "How creditworthy is Walgreens as a tenant on a 12-year NNN lease?",
-      "expect_specialists": ["risk_analyst"],
-      "comment": "Same query through BOTH orchestrators must route to the same primary specialist.",
       "budget_s": 240
     }
   ]

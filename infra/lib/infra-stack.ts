@@ -216,6 +216,109 @@ export class InfraStack extends cdk.Stack {
       ],
     });
 
+    // ════════════════════════════════════════════════════════════════════════
+    // agentpack demo — M&A deal team (shares VPC, cluster, ALB, and secrets)
+    // ════════════════════════════════════════════════════════════════════════
+    const agentpackRepo = new ecr.Repository(this, "AgentpackRepo", {
+      repositoryName: "agentpack-demo",
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      emptyOnDelete: true,
+    });
+
+    // Small task: no browser automation in agentpack — 0.25 vCPU is plenty.
+    const agentpackTaskDef = new ecs.FargateTaskDefinition(this, "AgentpackTaskDef", {
+      cpu: 256,
+      memoryLimitMiB: 512,
+    });
+
+    agentpackTaskDef.addContainer("agentpack", {
+      image: ecs.ContainerImage.fromEcrRepository(agentpackRepo, "latest"),
+      logging: ecs.LogDrivers.awsLogs({
+        streamPrefix: "agentpack",
+        logRetention: logs.RetentionDays.ONE_WEEK,
+      }),
+      environment: {
+        PORT: "3000",
+        NODE_ENV: "production",
+        AGENTPACK_MANIFEST: "templates/deal-ma/agentpack.yaml",
+        AGENTPACK_RUN_LIMIT: "30",
+      },
+      secrets: {
+        GEMINI_API_KEY: ecs.Secret.fromSecretsManager(apiSecrets, "GEMINI_API_KEY"),
+        GROQ_API_KEY: ecs.Secret.fromSecretsManager(apiSecrets, "GROQ_API_KEY"),
+      },
+      portMappings: [{ containerPort: 3000 }],
+      healthCheck: {
+        // node:20-slim has no curl; use built-in fetch
+        command: [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ],
+        interval: cdk.Duration.seconds(30),
+        timeout: cdk.Duration.seconds(5),
+        retries: 3,
+        startPeriod: cdk.Duration.seconds(30),
+      },
+    });
+
+    const agentpackService = new ecs.FargateService(this, "AgentpackService", {
+      cluster,
+      taskDefinition: agentpackTaskDef,
+      desiredCount: 1,
+      assignPublicIp: true,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+    });
+
+    // Dedicated ALB listener on 8080 so agentpack never collides with
+    // DealSense's path-based routing on :80.
+    const agentpackListener = alb.addListener("AgentpackHttp", {
+      port: 8080,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+    });
+
+    agentpackListener.addTargets("Agentpack", {
+      port: 3000,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      targets: [agentpackService],
+      healthCheck: {
+        path: "/api/health",
+        interval: cdk.Duration.seconds(30),
+        timeout: cdk.Duration.seconds(10),
+        healthyHttpCodes: "200",
+      },
+      deregistrationDelay: cdk.Duration.seconds(15),
+    });
+
+    // Everything (UI, API, SSE, MCP) comes from the one container — a single
+    // no-cache behavior is all the distribution needs.
+    const agentpackDistribution = new cloudfront.Distribution(this, "AgentpackCdn", {
+      defaultBehavior: {
+        origin: new origins.LoadBalancerV2Origin(alb, {
+          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          httpPort: 8080,
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+      },
+    });
+
+    new cdk.CfnOutput(this, "AgentpackUrl", {
+      value: `https://${agentpackDistribution.distributionDomainName}`,
+      description: "agentpack demo URL (CloudFront)",
+    });
+
+    new cdk.CfnOutput(this, "AgentpackEcrRepoUri", {
+      value: agentpackRepo.repositoryUri,
+      description: "ECR repository URI for the agentpack demo image",
+    });
+
+    new cdk.CfnOutput(this, "AgentpackDistributionId", {
+      value: agentpackDistribution.distributionId,
+      description: "agentpack CloudFront distribution ID",
+    });
+
     // ── Outputs ──────────────────────────────────────────────────────────────
     new cdk.CfnOutput(this, "CloudFrontUrl", {
       value: `https://${distribution.distributionDomainName}`,

@@ -4,7 +4,7 @@
 Orchestrator-agnostic: exercises the full stack (Express front door ->
 orchestrator -> tools) through the same SSE event contract the UI uses.
 
-Dimensions covered (what a hackathon judge asks of a multi-agent system):
+Dimensions covered (what an evaluator asks of a multi-agent system):
   routing       — does the supervisor delegate to the right specialist?
   faithfulness  — do numbers in the answer come from tool outputs verbatim?
   completeness  — are ALL parts of a multi-intent request addressed?

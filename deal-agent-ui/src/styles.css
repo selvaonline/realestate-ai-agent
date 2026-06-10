@@ -51,7 +51,7 @@ html {
 .ma-tool-chip.ma-tool-running { background:#fffbeb; border-color:#f59e0b; color:#92400e; animation: nsblinkchip 1s ease-in-out infinite; }
 @keyframes nsblinkchip { 50% { opacity:.55 } }
 
-/* ── Hackathon polish pass ────────────────────────────────────────────── */
+/* ── UI polish pass ───────────────────────────────────────────────────── */
 
 /* Multi-agent stepper: connected timeline rail + richer card */
 .ma-progress { position:relative; border:none; box-shadow:0 0 0 1px #e2e8f0, 0 8px 24px rgba(15,23,42,.07); border-radius:16px; }

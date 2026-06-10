@@ -32,7 +32,7 @@ on top of it:
                           └─────────────────────────────────────┘
 ```
 
-**Design choices (the hackathon story):**
+**Design choices:**
 
 1. **Each agent is independently testable** — every specialist owns a clear
    tool subset, and every tool can be exercised with zero LLM involvement via

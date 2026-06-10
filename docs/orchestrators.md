@@ -18,7 +18,7 @@ toggle — the parity eval guarantees they route identically.
 
 ## Why run both?
 
-- **Hackathon alignment**: Neuro SAN is Cognizant's own framework — the
+- **Framework alignment**: Neuro SAN is Cognizant's own framework — the
   recommended path, and the default mode for fresh sessions.
 - **Production credibility**: LangGraph.js is the documented production path
   — biggest ecosystem, checkpointing/replay, observability story.

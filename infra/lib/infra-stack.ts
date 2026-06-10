@@ -240,7 +240,8 @@ export class InfraStack extends cdk.Stack {
       environment: {
         PORT: "3000",
         NODE_ENV: "production",
-        AGENTPACK_MANIFEST: "templates/deal-ma/agentpack.yaml",
+        AGENTPACK_MANIFEST:
+          "templates/deal-ma/agentpack.yaml templates/deal-vc/agentpack.yaml templates/deal-procurement/agentpack.yaml templates/starter/agentpack.yaml",
         AGENTPACK_RUN_LIMIT: "30",
       },
       secrets: {
@@ -289,9 +290,16 @@ export class InfraStack extends cdk.Stack {
       deregistrationDelay: cdk.Duration.seconds(15),
     });
 
+    const agentpackCert = new acm.Certificate(this, "AgentpackCert", {
+      domainName: "agentpack.selvaonline.com",
+      validation: acm.CertificateValidation.fromDns(),
+    });
+
     // Everything (UI, API, SSE, MCP) comes from the one container — a single
     // no-cache behavior is all the distribution needs.
     const agentpackDistribution = new cloudfront.Distribution(this, "AgentpackCdn", {
+      domainNames: ["agentpack.selvaonline.com"],
+      certificate: agentpackCert,
       defaultBehavior: {
         origin: new origins.LoadBalancerV2Origin(alb, {
           protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,

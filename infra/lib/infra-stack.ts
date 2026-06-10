@@ -241,7 +241,7 @@ export class InfraStack extends cdk.Stack {
         PORT: "3000",
         NODE_ENV: "production",
         AGENTPACK_MANIFEST:
-          "templates/deal-ma/agentpack.yaml templates/deal-vc/agentpack.yaml templates/deal-procurement/agentpack.yaml templates/starter/agentpack.yaml",
+          "templates/deal-ma/agentpack.yaml templates/deal-vc/agentpack.yaml templates/deal-procurement/agentpack.yaml templates/equity-research/agentpack.yaml templates/claims-triage/agentpack.yaml templates/support-triage/agentpack.yaml templates/starter/agentpack.yaml",
         AGENTPACK_RUN_LIMIT: "30",
       },
       secrets: {

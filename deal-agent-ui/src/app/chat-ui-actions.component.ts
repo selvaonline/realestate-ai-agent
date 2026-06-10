@@ -30,7 +30,8 @@ export class ChatUIActionsComponent implements OnInit, OnDestroy {
   }
 
   private connectToUIEvents() {
-    const url = `${environment.apiUrl}/ui/events`;
+    const baseUrl = environment.apiUrl || window.location.origin;
+    const url = `${baseUrl}/api/ui/events`;
     console.log('[chat-ui-actions] Connecting to:', url);
 
     this.eventSource = new EventSource(url);

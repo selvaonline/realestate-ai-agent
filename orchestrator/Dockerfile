@@ -14,6 +14,9 @@ RUN npx playwright install --with-deps chromium webkit
 COPY tsconfig.json ./
 COPY src ./src
 COPY config ./config
+COPY watchlists.json ./
+# MkDocs documentation site (copied from repo-root site/ by the deploy step)
+COPY site ./site
 ENV NODE_ENV=production
 RUN npx tsc
 

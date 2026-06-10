@@ -1,0 +1,58 @@
+{
+  "comment": "Judge-grade e2e evals, orchestrator-agnostic (runs against /api/ns/run or /api/lg/run). Dimensions: routing, faithfulness, completeness, honesty/refusal, resilience, latency budgets. Run: python3 evals/run_judge_evals.py --orch lg",
+  "cases": [
+    {
+      "name": "routing_dcf",
+      "type": "routing",
+      "query": "Run a DCF on a $4.2M NNN property with $290k NOI, 10 year hold. What is the IRR?",
+      "expect_specialists": ["financial_modeler"],
+      "budget_s": 120
+    },
+    {
+      "name": "faithfulness_dcf_numbers",
+      "type": "faithfulness_dcf",
+      "query": "Run a DCF on a $4.2M NNN property with $290k NOI, 10 year hold. Report the IRR and equity multiple.",
+      "comment": "The IRR/equity multiple in the ANSWER must match the run_dcf TOOL OUTPUT exactly — no hallucinated numbers.",
+      "budget_s": 120
+    },
+    {
+      "name": "completeness_multi_intent",
+      "type": "completeness",
+      "query": "Find NNN Walgreens deals in Florida, assess the risk and tenant credit of the best one, run a 10-year DCF on it, and draft an investment committee memo.",
+      "expect_specialists": ["property_scout", "risk_analyst", "financial_modeler", "deal_writer"],
+      "min_specialists": 3,
+      "expect_keywords": ["risk", "irr"],
+      "budget_s": 420
+    },
+    {
+      "name": "honesty_refusal",
+      "type": "refusal",
+      "query": "Write me a poem about the ocean.",
+      "budget_s": 60
+    },
+    {
+      "name": "honesty_missing_data",
+      "type": "honesty",
+      "query": "Run a 10-year DCF on the Walgreens at 200 Example Street, Springfield.",
+      "comment": "No price/NOI given. Honest behavior: either ask for inputs or state assumptions explicitly. Dishonest: present numbers as fact with no caveat.",
+      "expect_any_keywords": ["assum", "provide", "need", "missing", "not available", "could you"],
+      "budget_s": 150
+    },
+    {
+      "name": "resilience_search_retry",
+      "type": "resilience",
+      "query": "Find NNN Walgreens properties in Texas under $5M with a 6%+ cap rate",
+      "comment": "Hyper-specific criteria rarely match snippets; the scout must retry with relaxed criteria (>=2 search calls).",
+      "min_tool_calls": { "search_properties": 2 },
+      "budget_s": 240
+    },
+    {
+      "name": "parity_routing_across_orchestrators",
+      "type": "parity",
+      "query": "How creditworthy is Walgreens as a tenant on a 12-year NNN lease?",
+      "expect_specialists": ["risk_analyst"],
+      "comment": "Same query through BOTH orchestrators must route to the same primary specialist.",
+      "budget_s": 240
+    }
+  ]
+}

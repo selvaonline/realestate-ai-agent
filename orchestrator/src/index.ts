@@ -3,6 +3,9 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import rateLimit from "express-rate-limit";
 import { runAgent } from "./agent.js";
 import { chatRouter } from "./routes/chat.js";
 import { chatEnhancedRouter } from "./routes/chatEnhanced.js";
@@ -10,30 +13,26 @@ import { uiEventsRouter } from "./routes/uiEvents.js";
 import { savedPropertiesRouter } from "./routes/savedProperties.js";
 import { startCometScheduler } from "./comet/scheduler.js";
 import { startCometWorker } from "./comet/worker.js";
+import { validate, runSchema } from "./middleware/validate.js";
+import { mcpRouter } from "./routes/mcp.js";
+import { toolsRouter } from "./routes/tools.js";
+import { neurosanRouter } from "./routes/neurosan.js";
+import { langgraphRouter } from "./routes/langgraphRun.js";
 
 // ───────────────────────────────────────────────────────────────────────────────
-// In-process SSE bus + result cache
+// In-process SSE bus (shared via lib/event-bus so routes can publish) + result cache
 // ───────────────────────────────────────────────────────────────────────────────
-type Subscriber = (ev: any) => void;
+import { pub, sub } from "./lib/event-bus.js";
 
-const channel = new Map<string, Set<Subscriber>>(); // runId -> subs
 const results = new Map<string, any>(); // runId -> final result
-
-function pub(runId: string, ev: any) {
-  channel.get(runId)?.forEach((fn) => {
-    try { fn(ev); } catch { /* ignore */ }
-  });
-}
-function sub(runId: string, fn: Subscriber) {
-  if (!channel.has(runId)) channel.set(runId, new Set<Subscriber>());
-  channel.get(runId)!.add(fn);
-  return () => channel.get(runId)!.delete(fn);
-}
 
 // ───────────────────────────────────────────────────────────────────────────────
 // HTTP surface
 // ───────────────────────────────────────────────────────────────────────────────
 const app = express();
+
+// Trust proxy (behind ALB/CloudFront) — needed for rate limiting and client IP detection
+app.set("trust proxy", true);
 
 // Configurable CORS (comma-separated origins in CORS_ORIGINS, default "*")
 const rawOrigins = process.env.CORS_ORIGINS || "*";
@@ -55,58 +54,29 @@ const corsOptions: any = {
     return cb(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Mcp-Session-Id"],
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "4mb" }));
 
-// Mount chat routes
-app.use(chatRouter);
-app.use(chatEnhancedRouter);
-app.use(uiEventsRouter);
-app.use("/api/saved-properties", savedPropertiesRouter);
-
+// Routes exempt from rate limiting
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
-/**
- * Start a run (async). Returns { runId } immediately; UI listens on /events/:runId
- */
-app.post("/run", async (req, res) => {
-  const { query } = req.body as { query?: string };
-  if (!query || typeof query !== "string" || !query.trim()) {
-    return res.status(400).json({ error: "query required" });
-  }
-
-  const runId = crypto.randomBytes(8).toString("hex");
-  console.log(`[orchestrator] /run query: ${query}`);
-
-  // Fire-and-forget worker; client consumes SSE
-  (async () => {
-    try {
-      pub(runId, { kind: "run_started", runId, query, t: Date.now() });
-
-      const out = await runAgent(query, {
-        runId,
-        pub: (kind: string, payload: Record<string, any> = {}) =>
-          pub(runId, { kind, runId, t: Date.now(), ...payload }),
-      });
-
-      results.set(runId, out); // cache final result
-      pub(runId, { kind: "run_finished", runId, ok: true, t: Date.now() });
-    } catch (e: any) {
-      console.error("[/run worker] error:", e?.stack || e?.message || e);
-      pub(runId, { kind: "run_finished", runId, ok: false, t: Date.now() });
-    }
-  })();
-
-  res.json({ runId });
-});
+// Project documentation (MkDocs build output). Build with: mkdocs build
+// Dev: repo-root ../site. Docker: ./site (copied in at image build).
+const docsDir = [process.env.DOCS_DIR, path.resolve(process.cwd(), "../site"), path.resolve(process.cwd(), "site")]
+  .filter((d): d is string => Boolean(d))
+  .find((d) => fs.existsSync(d));
+if (docsDir) {
+  app.use("/docs", express.static(docsDir));
+  console.log(`[orchestrator] serving docs at /docs from ${docsDir}`);
+}
 
 /**
- * Server-Sent Events stream (live timeline)
+ * Server-Sent Events stream (live timeline) — exempt from rate limiting
  */
 app.get("/events/:runId", (req, res) => {
   const { runId } = req.params;
@@ -124,7 +94,6 @@ app.get("/events/:runId", (req, res) => {
     Vary: "Origin",
   });
 
-  // Heartbeat to keep intermediaries from closing the stream
   const heartbeat = setInterval(() => {
     res.write(`data:${JSON.stringify({ kind: "heartbeat", runId, t: Date.now() })}\n\n`);
   }, 15000);
@@ -136,6 +105,66 @@ app.get("/events/:runId", (req, res) => {
     clearInterval(heartbeat);
     unsub();
   });
+});
+
+// MCP server endpoint — mounted before rate limiter (has own session management)
+app.use("/mcp", mcpRouter);
+
+// Rate limiting — applied to all routes below
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+  validate: { trustProxy: false, xForwardedForHeader: false },
+});
+
+app.use(apiLimiter);
+
+// Mount chat routes
+app.use(chatRouter);
+app.use(chatEnhancedRouter);
+app.use(toolsRouter);
+app.use(neurosanRouter);
+app.use(langgraphRouter);
+app.use(uiEventsRouter);
+app.use("/api/saved-properties", savedPropertiesRouter);
+
+/**
+ * Start a run (async). Returns { runId } immediately; UI listens on /events/:runId
+ */
+app.post("/run", validate(runSchema), async (req, res) => {
+  const { query, dataSources, orgSettings } = req.body as {
+    query: string;
+    dataSources?: { enabledDomains: string[]; apiKeys: Record<string, string> };
+    orgSettings?: any;
+  };
+
+  const runId = crypto.randomBytes(8).toString("hex");
+  console.log(`[orchestrator] /run query: ${query}`, dataSources ? `[sources: ${dataSources.enabledDomains.join(',')}]` : '', orgSettings?.peWeights ? '[custom PE weights]' : '');
+
+  (async () => {
+    try {
+      pub(runId, { kind: "run_started", runId, query, t: Date.now() });
+
+      const out = await runAgent(query, {
+        runId,
+        dataSources,
+        orgSettings,
+        pub: (kind: string, payload: Record<string, any> = {}) =>
+          pub(runId, { kind, runId, t: Date.now(), ...payload }),
+      });
+
+      results.set(runId, out);
+      pub(runId, { kind: "run_finished", runId, ok: true, t: Date.now() });
+    } catch (e: any) {
+      console.error("[/run worker] error:", e?.stack || e?.message || e);
+      pub(runId, { kind: "run_finished", runId, ok: false, t: Date.now() });
+    }
+  })();
+
+  res.json({ runId });
 });
 
 /**
@@ -150,12 +179,9 @@ app.get("/result/:runId", (req, res) => {
 /**
  * Synchronous run (blocks until completion and returns JSON). Useful for CLI tests.
  */
-app.post("/run_sync", async (req, res) => {
+app.post("/run_sync", validate(runSchema), async (req, res) => {
   try {
-    const { query } = req.body as { query?: string };
-    if (!query || typeof query !== "string" || !query.trim()) {
-      return res.status(400).json({ error: "query required" });
-    }
+    const { query } = req.body as { query: string };
     console.log(`[orchestrator] /run_sync query: ${query}`);
 
     const out = await runAgent(query, { runId: "sync", pub: () => {} });

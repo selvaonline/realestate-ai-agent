@@ -12,7 +12,7 @@ const SUBSCRIBERS = new Set<Response>();
  * SSE endpoint for UI events
  * Client listens to this stream for chat-triggered UI actions
  */
-uiEventsRouter.get("/ui/events", (req, res) => {
+uiEventsRouter.get("/api/ui/events", (req, res) => {
   // Set SSE headers
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -90,7 +90,7 @@ export function closeAllConnections() {
 }
 
 // Test endpoint to manually trigger a Comet alert
-uiEventsRouter.post("/ui/test-alert", (req, res) => {
+uiEventsRouter.post("/api/ui/test-alert", (req, res) => {
   const testAlert = {
     watchId: "test",
     watchLabel: "Test Watchlist",

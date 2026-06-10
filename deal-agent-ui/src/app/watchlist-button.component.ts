@@ -71,15 +71,18 @@ type Watchlist = {
     </div>
   `,
   styles: [`
+    :host { display: contents; }
+
     .watchlist-button {
       position: fixed;
       top: 10px;
       right: 80px;
-      z-index: 999998;
+      z-index: 999999;
+      pointer-events: auto;
     }
 
     .watchlist-toggle {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       border: 2px solid #e5e7eb;
       width: 48px;
       height: 48px;
@@ -92,6 +95,8 @@ type Watchlist = {
       position: relative;
       transition: all 0.2s;
       color: #6b7280;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     .watchlist-toggle:hover {

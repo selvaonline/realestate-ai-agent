@@ -36,6 +36,44 @@ Find medical office buildings or urgent care facilities, cap rate 7%+
 - **Visual Confirmation** - Screenshots of source listings
 - **Deal Cards** - Clean presentation of investment opportunities
 
+### 📍 Mobility Intelligence Agent (NEW!)
+
+A "Location Intelligence / Foot Traffic" agent that estimates real-world property
+activity for investment underwriting via the `analyze_traffic_patterns` tool.
+
+- **What it scores** — for a given address (plus optional `propertyType`, `tenant`, `metro`)
+  it returns a 0–100 **Mobility Score** blended from five component scores:
+  parking utilization (25%), road traffic (25%), foot traffic (25%),
+  nearby anchors (15%), and visibility (10%) — plus a trend
+  (Increasing/Stable/Declining), confidence (Low/Medium/High), positive signals,
+  risks, and a recommendation impact (Positive/Neutral/Negative).
+- **PoC scoring model** — deterministic keyword/location heuristics
+  ([orchestrator/src/tools/locationIntel/scoring.ts](orchestrator/src/tools/locationIntel/scoring.ts)):
+  anchor tenants (Walgreens, CVS, Starbucks, Chick-fil-A, Walmart, Target, Costco,
+  Kroger, Publix, Whole Foods, hospitals) boost anchor strength; high-visit property
+  types (retail, pharmacy, medical office, grocery, QSR, urgent care) boost foot
+  traffic; growth metros (Dallas, Austin, Orlando, Phoenix, Atlanta, Charlotte,
+  Nashville, Tampa, Raleigh, Houston, Miami) boost road traffic; NNN / corporate-backed /
+  national-tenant language raises confidence; rural or unknown locations reduce it.
+  No paid APIs required.
+- **Future provider hooks** — drop-in interfaces for Placer.ai, SafeGraph,
+  Google Places, and state DOT traffic counts live in
+  [orchestrator/src/tools/locationIntel/providers/](orchestrator/src/tools/locationIntel/providers/);
+  any configured provider overrides the heuristic component scores.
+- **PE model integration** — the PE score now includes a 7th factor,
+  **Mobility / Real-World Activity (10 pts)**: Tenant Quality 20, Market Quality 20,
+  Yield/Cap Rate 15, Deal Economics 15, Execution Risk 10, Asset Fit 10, Mobility 10.
+- **Agent + MCP** — the planner calls the tool automatically for retail, pharmacy,
+  QSR, grocery, urgent care, and medical office queries (or anything mentioning foot
+  traffic, parking, visibility, or location strength), and it's exposed through the
+  MCP server for Claude Desktop / Cursor / Windsurf.
+- **UI** — a "Location Intelligence" result section shows the score breakdown,
+  trend, confidence, and signals; a **⚡ Mobility Enhanced** badge appears whenever
+  the tool contributed to the analysis.
+- **Try it** — *"Find NNN Walgreens in Texas under $5M with 6%+ cap rate and strong traffic"*
+  or *"Does this veterinary hospital location have strong real-world demand signals?"*
+- **Tests** — `cd orchestrator && npm test` runs the deterministic scoring unit tests.
+
 ### 🎨 Modern UI
 
 - **Perplexity-Inspired Design** - Clean, professional, engaging

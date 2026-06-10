@@ -1,18 +1,15 @@
 // src/routes/chat.ts
 import express from "express";
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import { webSearch } from "../tools/search.js";
 import { peScorePro } from "../tools/peScorePro.js";
 import { riskBlender } from "../tools/riskBlender.js";
 import { fred10Y, blsMetroUnemp, inferMetroSeriesIdFromText } from "../infra/market.js";
 import { generateIcMemo } from "../utils/memoGenerator.js";
+import { getLLM, hasLLM } from "../llm.js";
+import { validate, chatSchema } from "../middleware/validate.js";
 
 export const chatRouter = express.Router();
-
-// Initialize OpenAI client
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || "" 
-});
 
 // System prompt for DealSense Chat
 const SYSTEM_PROMPT = `You are DealSense Chat, an analyst assistant for commercial real estate.
@@ -155,17 +152,13 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 /**
  * POST /chat - Main chat endpoint with streaming support
  */
-chatRouter.post("/chat", async (req, res) => {
+chatRouter.post("/chat", validate(chatSchema), async (req, res) => {
   try {
     const { messages, context, stream = false } = req.body as { 
       messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[];
       context?: any;
       stream?: boolean;
     };
-
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: "messages array required" });
-    }
 
     // Build system messages with context if provided
     const systemMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -179,17 +172,17 @@ chatRouter.post("/chat", async (req, res) => {
       });
     }
 
-    // Check if OpenAI API key is available
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasLLM()) {
       return res.status(500).json({ 
-        error: "OPENAI_API_KEY not configured",
-        message: "Please add OPENAI_API_KEY to your .env file"
+        error: "No LLM API key configured",
+        message: "Please add one of OPENAI_API_KEY, GEMINI_API_KEY, XAI_API_KEY, or GROQ_API_KEY to your .env file"
       });
     }
 
-    // Make initial request to OpenAI
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const { client: llm, model } = getLLM();
+
+    const completion = await llm.chat.completions.create({
+      model,
       messages: [...systemMessages, ...messages],
       tools,
       tool_choice: "auto",
@@ -297,9 +290,8 @@ chatRouter.post("/chat", async (req, res) => {
         });
       }
 
-      // Send ALL tool results back to OpenAI for final response
-      const finalCompletion = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const finalCompletion = await llm.chat.completions.create({
+        model,
         messages: [
           ...systemMessages,
           ...messages,

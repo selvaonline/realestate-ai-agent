@@ -1,0 +1,10 @@
+{
+  "RealestateAiStack": {
+    "SecretArn": "arn:aws:secretsmanager:us-east-1:879381275427:secret:realestate-ai/api-keys-VABZk0",
+    "AlbUrl": "http://Reales-Alb16-SKMRdK1wzvnY-1701597792.us-east-1.elb.amazonaws.com",
+    "CloudFrontUrl": "https://d17zjz6wjnz5om.cloudfront.net",
+    "EcrRepoUri": "879381275427.dkr.ecr.us-east-1.amazonaws.com/realestate-ai-backend",
+    "SiteBucketName": "realestate-ai-frontend-879381275427",
+    "DistributionId": "E146TPQFTQI1DI"
+  }
+}

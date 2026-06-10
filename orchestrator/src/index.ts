@@ -1,5 +1,8 @@
 // src/index.ts
 import "dotenv/config";
+// Load the active domain pack into the platform registry BEFORE any route
+// module or orchestrator imports resolve tools from it.
+import "./bootstrap.js";
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";

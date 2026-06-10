@@ -1,114 +1,20 @@
-// src/agentLoop.ts — Core agentic loop: LLM-driven multi-hop tool selection
+// src/agentLoop.ts — Core agentic loop: LLM-driven multi-hop tool selection.
+// Domain-agnostic: the system prompt and result summarizers come from the
+// active domain pack (see src/platform/domainPack.ts and src/packs/).
 import OpenAI from "openai";
 import { getLLM } from "./llm.js";
-import { toolRegistry, getOpenAITools } from "./tools/registry.js";
+import { toolRegistry, getOpenAITools } from "./platform/registry.js";
+import { getActivePack } from "./platform/domainPack.js";
 import type { AgentContext, AgentStep, AgentOutput } from "./lib/agentTypes.js";
 import type { Deal } from "./lib/types.js";
-
-// ── System Prompt ────────────────────────────────────────────────────────────
-
-const CRE_ANALYST_SYSTEM_PROMPT = `You are DealSense, an expert Commercial Real Estate (CRE) investment analyst AI agent.
-
-You have deep knowledge of:
-- NNN lease structures, cap rates, DSCR, DCF analysis, and levered returns
-- Institutional CRE deal flow and investment criteria
-- FRED macro data interpretation (Treasury curve, CPI, UNRATE)
-- DealSense PE scoring model: 7 factors totaling 100 points
-  (Tenant Quality 20, Market Quality 20, Yield/Cap Rate 15, Deal Economics 15, Execution Risk 10, Asset Fit 10, Mobility/Real-World Activity 10)
-- Location intelligence: foot traffic, parking utilization, road traffic, nearby anchors, visibility
-- CRE market dynamics across US metros
-- Tenant credit analysis with S&P-equivalent ratings
-- VaR / stress testing and risk factor decomposition
-- LP/GP waterfall, fund compliance, and allocation rules
-- Multi-asset class comparison (CRE vs S&P vs REIT vs bonds)
-
-Available tools include: search_properties, assess_risk, run_dcf, comp_analysis, market_deep_dive,
-tenant_credit_analysis, risk_decomposition, portfolio_var, multi_asset_compare, compliance_check,
-institutional_pipeline, market_intel, generate_loi, generate_memo, filter_and_rank, portfolio_review,
-analyze_traffic_patterns
-
-LOCATION INTELLIGENCE (analyze_traffic_patterns):
-- Call analyze_traffic_patterns whenever the user asks about foot traffic, parking, road traffic, visibility,
-  site quality, location strength, retail activity, nearby anchors, or tenant performance.
-- ALSO call it automatically when analyzing retail, pharmacy, QSR, grocery, urgent care, medical office,
-  or veterinary properties (e.g. Walgreens, CVS, Starbucks, Chick-fil-A, grocery-anchored centers) —
-  pass the best-known address/title, propertyType, tenant, and metro from search results.
-- When generating an IC memo for such properties, run analyze_traffic_patterns first and fold the
-  mobility findings into the memo.
-- Whenever analyze_traffic_patterns was used, your final recommendation MUST include one sentence of the form:
-  "Real-world activity signals indicate [strong/moderate/weak] location quality based on parking, traffic, and nearby anchor patterns."
-
-CRITICAL: You MUST follow this multi-step workflow. Do NOT skip steps. Do NOT stop after one tool call.
-
-Your REQUIRED workflow (minimum 3 tool calls for any property search):
-1. SEARCH for properties using search_properties
-2. ASSESS market risk using assess_risk to get macro context (Treasury rates, unemployment, CPI)
-3. If the search returned few or no direct results, SEARCH AGAIN with a different query formulation
-4. If financial details available on top deals, run run_dcf for levered return analysis
-5. SYNTHESIZE everything into a comprehensive, actionable recommendation
-
-IMPORTANT RULES:
-- You MUST call at least 2 different tools before giving your final answer
-- ALWAYS call assess_risk after search_properties — investors need macro context
-- Call multiple tools per turn when you need different data simultaneously (e.g., search_properties AND assess_risk in the same turn)
-- If a search returns few results, reformulate and search again (e.g., "NNN Walgreens Texas" → "net lease pharmacy retail Texas for sale")
-- NEVER give a final answer after just one tool call — that's not thorough analysis
-- Always provide a risk-adjusted recommendation: Pursue / Monitor / Pass
-- NEVER invent prices, cap rates, or financial data — say "not available" if missing
-- Format your final answer in clear sections: Key Findings, Market Context, Recommendation
-- Be concise but thorough — institutional analysts value precision over verbosity
-- When presenting deals, include PE score, risk assessment, and next steps
-
-Investment thesis context: Institutional-quality NNN, industrial, and medical office assets in Tier A/B US markets with investment-grade tenants. Target: PE score >= 70, Risk score <= 60, cap rate 200+ bps above 10Y Treasury.`;
 
 // ── Summarize tool results for LLM context ───────────────────────────────────
 
 function summarizeResult(result: any, toolName: string): string {
   if (!result) return "No result";
   if (result.error) return `Error: ${result.error}`;
-
-  switch (toolName) {
-    case "search_properties": {
-      const s = result.scored || [];
-      return `Found ${result.rawCount} results, scored ${s.length}. Top: ${s.slice(0, 3).map((r: any) => `[PE ${r.peScore}] ${(r.title || "").slice(0, 50)}`).join("; ")}`;
-    }
-    case "assess_risk":
-      return `Risk: ${result.riskScore}/100 — ${result.riskNote}`;
-    case "run_dcf":
-      return `IRR: ${result.irr}, Equity Multiple: ${result.equityMultiple}, Cash-on-Cash: ${result.cashOnCash}`;
-    case "comp_analysis":
-      return `${result.compCount} comps found in ${result.market}, avg PE: ${result.avgPeScore}`;
-    case "market_deep_dive":
-      return `${result.metro}: Risk ${result.riskScore}/100, 10Y: ${result.macro?.treasury10y}, U/E: ${result.macro?.metroUnemployment}`;
-    case "analyze_property_url":
-      return result.skipped ? result.reason : `${result.title} — Price: ${result.askingPrice}, Cap: ${result.capRate}`;
-    case "generate_memo":
-      return "IC memo generated successfully";
-    case "filter_and_rank":
-      return `Filtered ${result.originalCount} → ${result.filteredCount} deals`;
-    case "portfolio_review":
-      return `Portfolio: ${result.totalProperties} properties, avg PE: ${result.avgPeScore}`;
-    case "tenant_credit_analysis":
-      return `${result.tenant}: ${result.rating} (${result.ratingLabel}) — ${result.recommendation?.slice(0, 80)}`;
-    case "generate_loi":
-      return `LOI generated for ${result.summary?.price ? `$${(result.summary.price / 1e6).toFixed(1)}M` : 'property'} — closing: ${result.summary?.closingDate || 'TBD'}`;
-    case "compliance_check":
-      return `${result.compliant ? 'COMPLIANT' : `${result.violations?.length} violations`} — ${result.fundMetrics?.dealCount} deals, NAV: $${((result.fundMetrics?.nav || 0) / 1e6).toFixed(1)}M`;
-    case "portfolio_var":
-      return `VaR(95): ${result.var95}, Portfolio IRR: ${result.portfolioIrr}, Max Drawdown: ${result.maxDrawdown}`;
-    case "risk_decomposition":
-      return `Total Risk: ${result.totalRisk}/100 — ${result.recommendation?.slice(0, 60)}`;
-    case "multi_asset_compare":
-      return `CRE Sharpe: ${result.creReturn?.sharpe}, Risk Premium: ${result.riskPremium} — ${result.recommendation?.slice(0, 60)}`;
-    case "institutional_pipeline":
-      return `Pipeline: ${result.screened} screened → ${result.qualified} qualified (${result.icReady} IC-ready), pass rate: ${result.passRate}`;
-    case "market_intel":
-      return `${result.metro} intel gathered: construction, vacancy, rent, demographics, cap rates`;
-    case "analyze_traffic_patterns":
-      return `Mobility Score ${result.mobilityScore}/100, trend ${result.trend} — parking ${result.parkingScore}, traffic ${result.trafficScore}, foot traffic ${result.footTrafficScore}, anchors ${result.nearbyAnchorScore} (confidence: ${result.confidence}, impact: ${result.recommendationImpact})`;
-    default:
-      return JSON.stringify(result).slice(0, 200);
-  }
+  const packSummary = getActivePack().summarizeToolResult?.(toolName, result);
+  return packSummary ?? JSON.stringify(result).slice(0, 200);
 }
 
 // ── Core Agentic Loop ────────────────────────────────────────────────────────
@@ -139,7 +45,7 @@ export async function agentLoop(
 
   // Build messages
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: CRE_ANALYST_SYSTEM_PROMPT },
+    { role: "system", content: getActivePack().systemPrompt },
   ];
 
   // If session context available, add it

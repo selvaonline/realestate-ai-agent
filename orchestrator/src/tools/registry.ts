@@ -617,46 +617,36 @@ const portfolioReview: RegisteredTool = {
   },
 };
 
-// ── Registry ──────────────────────────────────────────────────────────────
+// ── CRE tool collection ───────────────────────────────────────────────────
+// Tool keys are schema.name; registration into the platform registry happens
+// via loadPack(crePack) at bootstrap (src/bootstrap.ts).
 
-export const toolRegistry: Map<string, RegisteredTool> = new Map([
-  ["search_properties", searchProperties],
-  ["score_deals", scoreDeals],
-  ["assess_risk", assessRisk],
-  ["get_macro_data", getMacroData],
-  ["analyze_property_url", analyzePropertyUrl],
-  ["run_dcf", runDcf],
-  ["generate_memo", generateMemo],
-  ["comp_analysis", compAnalysis],
-  ["filter_and_rank", filterAndRank],
-  ["market_deep_dive", marketDeepDive],
-  ["portfolio_review", portfolioReview],
+export const creTools: RegisteredTool[] = [
+  searchProperties,
+  scoreDeals,
+  assessRisk,
+  getMacroData,
+  analyzePropertyUrl,
+  runDcf,
+  generateMemo,
+  compAnalysis,
+  filterAndRank,
+  marketDeepDive,
+  portfolioReview,
   // BlackRock-style institutional tools
-  ["tenant_credit_analysis", tenantCreditTool],
-  ["generate_loi", generateLoiTool],
-  ["compliance_check", complianceCheckTool],
-  ["portfolio_var", portfolioVarTool],
-  ["risk_decomposition", riskDecompositionTool],
-  ["multi_asset_compare", multiAssetCompareTool],
-  ["institutional_pipeline", institutionalPipelineTool],
-  ["market_intel", marketIntelTool],
+  tenantCreditTool,
+  generateLoiTool,
+  complianceCheckTool,
+  portfolioVarTool,
+  riskDecompositionTool,
+  multiAssetCompareTool,
+  institutionalPipelineTool,
+  marketIntelTool,
   // Location Intelligence / Foot Traffic Agent
-  ["analyze_traffic_patterns", analyzeTrafficPatternsTool],
-]);
+  analyzeTrafficPatternsTool,
+];
 
-/**
- * Convert registry to OpenAI function-calling format
- */
-export function getOpenAITools(): Array<{
-  type: "function";
-  function: { name: string; description: string; parameters: any };
-}> {
-  return Array.from(toolRegistry.entries()).map(([, tool]) => ({
-    type: "function" as const,
-    function: {
-      name: tool.schema.name,
-      description: tool.schema.description,
-      parameters: tool.schema.parameters,
-    },
-  }));
-}
+// Back-compat re-exports: existing consumers (agentLoop, supervisor,
+// routes/tools, routes/mcp) keep importing from this module; the actual
+// registry now lives in the platform core and is populated at bootstrap.
+export { toolRegistry, getOpenAITools } from "../platform/registry.js";

@@ -1,16 +1,13 @@
-// src/langgraph/specialists.ts — Platform-side view of the agent team.
-// The actual team definition (supervisor + specialists + prompts) lives in
-// the active domain pack (src/packs/cre/specialists.ts); this module
-// re-exports it for the LangGraph supervisor and keeps the generic helpers
-// (topology builder, JSON-schema→zod). Mirrors the Neuro SAN network
-// (neurosan/registries/dealsense.hocon) since both are generated from the
-// same pack data.
+// src/langgraph/specialists.ts — Generic helpers for the LangGraph layer.
+// The agent team definition (supervisor + specialists + prompts) lives in
+// the active domain pack (src/packs/*/specialists.ts); this module is fully
+// domain-agnostic: topology builder for the UI panel + JSON-schema→zod.
+// The Neuro SAN network HOCON is generated from the same pack data, so both
+// orchestrators expose an identical team.
 import { z, ZodTypeAny } from "zod";
 import { getActivePack, type SpecialistSpec } from "../platform/domainPack.js";
 
 export type SpecialistDef = SpecialistSpec;
-
-export { SUPERVISOR_NAME, SUPERVISOR_PROMPT, SPECIALISTS } from "../packs/cre/specialists.js";
 
 /** Same {nodes, edges} shape the Neuro SAN proxy serves, for the UI panel.
  *  Built from the active pack, so it adapts when the pack changes. */

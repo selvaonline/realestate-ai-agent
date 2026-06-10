@@ -1,4 +1,6 @@
-// src/langgraph/supervisor.ts — LangGraph.js supervisor over the DealSense team.
+// src/langgraph/supervisor.ts — LangGraph.js supervisor over the agent team
+// defined by the active domain pack (supervisor prompt, specialists, tool
+// subsets all come from the pack — no domain knowledge in this file).
 //
 // Runs IN-PROCESS: specialists call the tool registry directly (no HTTP hop,
 // no second runtime). Emits the same event vocabulary as the Neuro SAN proxy
@@ -9,11 +11,10 @@ import { HumanMessage } from "@langchain/core/messages";
 import { ChatOpenAI } from "@langchain/openai";
 import { MemorySaver } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { toolRegistry } from "../tools/registry.js";
+import { toolRegistry } from "../platform/registry.js";
+import { getActivePack, type SpecialistSpec } from "../platform/domainPack.js";
 import type { AgentContext } from "../lib/agentTypes.js";
-import {
-  SPECIALISTS, SUPERVISOR_NAME, SUPERVISOR_PROMPT, jsonSchemaToZod,
-} from "./specialists.js";
+import { jsonSchemaToZod } from "./specialists.js";
 
 export type Emit = (kind: string, payload?: Record<string, any>) => void;
 
@@ -61,6 +62,7 @@ const text = (content: any): string =>
 
 /** Wrap one registry tool for a given specialist, with live event emission. */
 function makeRegistryTool(toolName: string, specialist: string, runId: string, emit: Emit, hops: { n: number }) {
+  const SUPERVISOR_NAME = getActivePack().supervisorName;
   const reg = toolRegistry.get(toolName);
   if (!reg) throw new Error(`tool ${toolName} not in registry`);
 
@@ -100,7 +102,9 @@ function makeRegistryTool(toolName: string, specialist: string, runId: string, e
 }
 
 /** Expose one specialist sub-agent as a supervisor tool. */
-function makeSpecialistTool(spec: (typeof SPECIALISTS)[number], model: ChatOpenAI, runId: string, emit: Emit, hops: { n: number }) {
+function makeSpecialistTool(spec: SpecialistSpec, model: ChatOpenAI, runId: string, emit: Emit, hops: { n: number }) {
+  const SUPERVISOR_NAME = getActivePack().supervisorName;
+  const supervisorLabel = pretty(SUPERVISOR_NAME);
   const agent = createReactAgent({
     llm: model,
     tools: spec.tools.map((t) => makeRegistryTool(t, spec.name, runId, emit, hops)),
@@ -111,8 +115,8 @@ function makeSpecialistTool(spec: (typeof SPECIALISTS)[number], model: ChatOpenA
     async ({ inquiry, context }: { inquiry: string; context?: string | null }) => {
       hops.n++;
       emit("ns_hop", { chain: [SUPERVISOR_NAME, spec.name], target: spec.name, targetType: "specialist" });
-      emit("thinking", { text: `🤝 Deal Advisor → delegating to ${pretty(spec.name)}` });
-      emit("agent_step", { hop: hops.n, type: "delegate", toolName: spec.name, content: `Deal Advisor → ${pretty(spec.name)}: ${inquiry.slice(0, 160)}` });
+      emit("thinking", { text: `🤝 ${supervisorLabel} → delegating to ${pretty(spec.name)}` });
+      emit("agent_step", { hop: hops.n, type: "delegate", toolName: spec.name, content: `${supervisorLabel} → ${pretty(spec.name)}: ${inquiry.slice(0, 160)}` });
 
       const input = context ? `${inquiry}\n\nContext from other specialists:\n${context}` : inquiry;
       const res = await agent.invoke(
@@ -150,13 +154,14 @@ export async function runLangGraphSupervisor(
   emit: Emit,
   threadId?: string
 ): Promise<{ answer: string; hops: number }> {
+  const pack = getActivePack();
   const specialistModel = makeModel();
   const hops = { n: 0 };
 
   const supervisor = createReactAgent({
     llm: makeSupervisorModel(),
-    tools: SPECIALISTS.map((s) => makeSpecialistTool(s, specialistModel, runId, emit, hops)),
-    prompt: SUPERVISOR_PROMPT,
+    tools: pack.specialists.map((s) => makeSpecialistTool(s, specialistModel, runId, emit, hops)),
+    prompt: pack.supervisorPrompt,
     checkpointer,
   });
 

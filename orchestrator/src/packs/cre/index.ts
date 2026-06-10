@@ -20,4 +20,12 @@ export const crePack: DomainPack = {
   specialists: SPECIALISTS,
   tools: creTools,
   summarizeToolResult,
+  dataSources: [
+    { source: "CREXi, LoopNet, Brevitas", data: "Commercial real estate listings" },
+    { source: "FRED (Federal Reserve)", data: "10Y Treasury, 2s10 spread, CPI YoY" },
+    { source: "BLS (Bureau of Labor Statistics)", data: "Metro-level unemployment" },
+    { source: "PE Scoring Model", data: "7-factor 100-point institutional scoring" },
+    { source: "Mobility Intelligence (PoC)", data: "Foot traffic, parking, road traffic heuristics + provider hooks" },
+    { source: "Credit Database", data: "S&P-equivalent tenant credit ratings" },
+  ],
 };

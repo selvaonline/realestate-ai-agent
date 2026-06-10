@@ -29,6 +29,8 @@ export interface DomainPack {
   specialists: SpecialistSpec[];
   /** Tool implementations; registered into the platform registry on load. */
   tools: RegisteredTool[];
+  /** Shown on the MCP landing page / capabilities resource. */
+  dataSources?: Array<{ source: string; data: string }>;
   /** Optional compact tool-result summaries for LLM context windows.
    *  Return null/undefined to fall back to the generic JSON truncation. */
   summarizeToolResult?: (toolName: string, result: any) => string | null | undefined;

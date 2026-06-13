@@ -82,6 +82,35 @@ export async function fetchMacroData(metro?: string, ctx?: AgentContext) {
   return { tenYData, curve2s10, cpiYoY, nationalUnemp, bls, metroSeries };
 }
 
+/**
+ * Market-wide risk score (0-100) from live macro data, via riskBlender.
+ * The underlying FRED/BLS series are cached (12-24h) in infra/market.ts, so
+ * calling this repeatedly within a run does not re-hit the APIs and is
+ * deterministic — every deal-emitting tool gets the SAME number. Returns null
+ * when no macro data is available (e.g. FRED key missing) so callers can avoid
+ * fabricating a neutral 50.
+ */
+export async function getMarketRisk(query: string, ctx?: AgentContext): Promise<number | null> {
+  try {
+    const macro = await fetchMacroData(query, ctx);
+    const r = JSON.parse(String(await riskBlender.invoke(JSON.stringify({
+      query,
+      data: {
+        treasury10yBps: macro.tenYData.value != null ? Math.round(macro.tenYData.value * 10000) : null,
+        treasury10yDeltaBps: macro.tenYData.deltaBps,
+        curve2s10: macro.curve2s10,
+        cpiYoY: macro.cpiYoY,
+        bls: macro.bls,
+        nationalUnemp: macro.nationalUnemp,
+      }
+    }))));
+    return r.riskScore ?? null;
+  } catch (err) {
+    console.warn("[getMarketRisk] computation failed:", err);
+    return null;
+  }
+}
+
 // ── Tool Definitions ──────────────────────────────────────────────────────
 
 const searchProperties: RegisteredTool = {
@@ -117,30 +146,10 @@ const searchProperties: RegisteredTool = {
       ...(ctx.orgSettings?.peWeights ? { peWeights: ctx.orgSettings.peWeights } : {}),
     })))) as any[];
 
-    // Compute a market-wide risk score (same macro inputs as assess_risk) so the
-    // Screening Summary shows a real number even when the Risk Analyst specialist
-    // isn't invoked. One macro fetch per search, stamped on every source — this
-    // restores the behavior the legacy agent had before the LangGraph migration.
-    let marketRisk: number | null = null;
-    if (scored.length) {
-      try {
-        const macro = await fetchMacroData(query, ctx);
-        const riskResult = JSON.parse(String(await riskBlender.invoke(JSON.stringify({
-          query,
-          data: {
-            treasury10yBps: macro.tenYData.value != null ? Math.round(macro.tenYData.value * 10000) : null,
-            treasury10yDeltaBps: macro.tenYData.deltaBps,
-            curve2s10: macro.curve2s10,
-            cpiYoY: macro.cpiYoY,
-            bls: macro.bls,
-            nationalUnemp: macro.nationalUnemp,
-          }
-        }))));
-        marketRisk = riskResult.riskScore ?? null;
-      } catch (err) {
-        console.warn("[search_properties] market risk computation failed:", err);
-      }
-    }
+    // Market-wide risk so the Screening Summary shows a real number even when the
+    // Risk Analyst specialist isn't invoked. Macro series are cached, so this is
+    // cheap and deterministic across tools (see getMarketRisk).
+    const marketRisk = scored.length ? await getMarketRisk(query, ctx) : null;
 
     // Emit source_found for each result (legacy compat)
     scored.slice(0, 10).forEach((s: any, i: number) => {
@@ -201,7 +210,9 @@ const scoreDeals: RegisteredTool = {
       ...args,
       ...(ctx.orgSettings?.peWeights ? { peWeights: ctx.orgSettings.peWeights } : {}),
     }))));
-    return { scored: summarizeSearchResults(scored) };
+    // Carry the market risk through re-scoring so it isn't dropped vs search_properties.
+    const marketRisk = await getMarketRisk(args.query || "", ctx);
+    return { scored: summarizeSearchResults(scored), marketRisk };
   },
 };
 
@@ -320,6 +331,24 @@ const analyzePropertyUrl: RegisteredTool = {
       summary: { title: ext.title, address: ext.address, price: ext.askingPrice, noi: ext.noi, cap: ext.capRate ?? uw.capRate },
     });
 
+    // Per-deal risk when we have financials (price + NOI), else the market
+    // baseline. risk_decomposition is pure/synchronous and returns a deal-specific
+    // totalRisk (tenant/market/rate/inflation factors); this is genuine per-deal
+    // risk rather than the one-size-fits-all market number.
+    let riskScore: number | null = null;
+    if (ext.askingPrice && ext.noi) {
+      try {
+        const rd: any = await riskDecompositionTool.execute(
+          { purchasePrice: ext.askingPrice, noi: ext.noi, market: ext.address || undefined },
+          ctx
+        );
+        if (typeof rd?.totalRisk === "number") riskScore = rd.totalRisk;
+      } catch { /* fall through to market baseline */ }
+    }
+    if (riskScore == null) {
+      riskScore = await getMarketRisk(ext.address || ext.title || "", ctx);
+    }
+
     const deal = {
       title: ext.title,
       url: ext.finalUrl || url,
@@ -328,6 +357,7 @@ const analyzePropertyUrl: RegisteredTool = {
       askingPrice: ext.askingPrice,
       noi: ext.noi,
       capRate: ext.capRate ?? uw.capRate,
+      riskScore,
       screenshotBase64: ext.screenshotBase64,
       underwrite: uw,
     };

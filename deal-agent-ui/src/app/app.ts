@@ -3202,7 +3202,7 @@ export class App implements AfterViewInit, AfterViewChecked {
   getAvgRisk(): number {
     const s = this.sources().filter((src: any) => src.riskScore != null);
     if (!s.length) return 50;
-    return Math.round(s.reduce((sum: number, src: any) => sum + (src.riskScore ?? 50), 0) / s.length);
+    return Math.round(s.reduce((sum: number, src: any) => sum + src.riskScore, 0) / s.length);
   }
 
   getSegmentBreakdown(): { label: string; count: number; pct: number; fillClass: string }[] {
@@ -3230,7 +3230,7 @@ export class App implements AfterViewInit, AfterViewChecked {
     const result = { pursue: 0, monitor: 0, watchlist: 0, decline: 0 };
     this.sources().forEach((s: any) => {
       const pe = s.score ?? 0;
-      const risk = s.riskScore ?? 100;
+      const risk = s.riskScore ?? 50; // missing risk → neutral (consistent with computeSegment); avoids forcing every data-less deal into Decline
       if (pe >= 80 && risk <= 45) result.pursue++;
       else if (pe >= 70 && risk <= 55) result.monitor++;
       else if (pe >= 60 && risk <= 65) result.watchlist++;
@@ -3475,7 +3475,7 @@ export class App implements AfterViewInit, AfterViewChecked {
     // Calculate portfolio statistics
     const totalDeals = deals.length;
     const avgPE = deals.reduce((sum, d) => sum + (d.peScore || 0), 0) / totalDeals;
-    const avgRisk = deals.reduce((sum, d) => sum + (d.riskScore || 0), 0) / totalDeals;
+    const avgRisk = deals.reduce((sum, d) => sum + (d.riskScore ?? 50), 0) / totalDeals; // missing risk → neutral, not best-case 0
     
     // Tier distribution
     const tierCounts: Record<string, number> = {};

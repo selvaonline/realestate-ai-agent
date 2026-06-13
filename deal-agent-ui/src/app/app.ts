@@ -2619,21 +2619,27 @@ export class App implements AfterViewInit, AfterViewChecked {
       
       // Flatten all categories into one array
       this.allPrompts = Object.values(data.categories).flat() as string[];
-      
-      // Randomly select 20 prompts for the typing animation
-      this.exampleQueries = this.getRandomPrompts(20);
-      
+
+      // Prefer the multi-agent workflow prompts for the typing demo + empty-box
+      // run, so the suggested query exercises the full specialist graph
+      // (Property Scout → Risk → Market → Financial → Portfolio → Deal Writer)
+      // instead of only triggering Property Scout. Fall back to a random mix.
+      const multiAgent = (data.categories?.multi_agent ?? []) as string[];
+      this.exampleQueries = multiAgent.length
+        ? [...multiAgent].sort(() => Math.random() - 0.5)
+        : this.getRandomPrompts(20);
+
       console.log(`[prompts] Loaded ${this.allPrompts.length} prompts from ${Object.keys(data.categories).length} categories`);
       
       // Start animation after prompts are loaded
       this.startTypingAnimation();
     } catch (error) {
       console.error('[prompts] Failed to load prompts, using fallback:', error);
-      // Fallback prompts
+      // Fallback prompts — multi-agent so the demo still spans the full graph
       this.exampleQueries = [
-        'Find single-tenant NNN retail in Dallas, 4–6% cap, price $4M–$6M',
-        'CVS pharmacy properties for sale in Texas',
-        'Medical office buildings with hospital affiliation, cap rate 6-8%',
+        'Find single-tenant NNN retail in Dallas at a 5–6% cap under $6M, assess tenant credit risk, check the metro macro, run a DCF for IRR, evaluate portfolio fit, then draft an IC memo',
+        'Source grocery-anchored centers in Tampa above a 7% cap, score the deal risk, pull market intel and foot-traffic, model a 5-year DCF, and write an IC memo',
+        'Find medical office on a hospital campus, 6–8% cap; assess tenant credit; deep-dive the metro market; run a DCF for returns; check portfolio concentration; generate an IC memo',
       ];
       this.startTypingAnimation();
     }

@@ -1,5 +1,19 @@
 {
   "categories": {
+    "multi_agent": [
+      "Find single-tenant NNN retail in Dallas at a 5–6% cap under $6M, assess the tenant's credit risk, check the metro's macro conditions, run a DCF for IRR and equity multiple, evaluate portfolio concentration fit, then draft an IC memo",
+      "Source grocery-anchored centers in Tampa above a 7% cap, score the deal risk, pull market intel and foot-traffic for the trade area, model a 5-year DCF, and write an investment committee memo",
+      "Find Class B value-add multifamily in Phoenix at $90K–$120K/door, assess risk, analyze rent-growth macro for the metro, run a levered IRR DCF, and check how it fits our portfolio allocation limits",
+      "Search last-mile industrial near top-20 MSAs at a 5–6% cap, analyze tenant credit risk, get macro and traffic patterns, run a multi-asset DCF comparison, and draft an LOI for the top deal",
+      "Find medical office on a hospital campus, 6–8% cap, WALT 7+ yr; assess tenant credit; deep-dive the metro market; run a DCF for returns; check compliance and concentration; generate an IC memo",
+      "Find NNN Walgreens in Texas under $5M with a 6%+ cap, assess tenant credit risk, analyze the metro's macro conditions, run a DCF for IRR, check portfolio concentration fit, and draft an IC memo",
+      "Find self-storage in top-50 MSAs at a 6–7% cap, assess risk, analyze market intel and foot traffic, run a DCF, evaluate portfolio fit, and draft an IC memo",
+      "Compare CVS vs Walgreens NNN listings: assess tenant credit risk on each, pull macro and market context, run a multi-asset DCF comparison, and recommend the better portfolio fit with a short memo",
+      "Find a select-service Marriott or Hilton at $60K–$100K/key, assess operational and market risk, analyze the metro's macro and demand drivers, run a DCF for IRR, and write an IC memo",
+      "Source net-lease portfolios over $50M with IG tenants, assess concentration and credit risk, review macro conditions, run portfolio VaR and compliance checks, model blended returns, and draft a memo",
+      "Find QSR drive-thru pads in the Dallas metro with strong traffic, assess tenant credit, analyze foot-traffic and market intel, run a DCF, and generate an IC memo",
+      "Find data-center shell or powered land in Northern Virginia, assess risk, analyze the power and market macro, run a DCF on returns, check portfolio fit, and write an LOI"
+    ],
     "net_lease": [
       "Single-tenant NNN, IG-rated tenant, 10+ yr WALT, 5-6% going-in cap, Sun Belt MSAs",
       "Walgreens or CVS NNN, BBB+ credit, 12+ yr remaining term, $3M-$8M check size",
@@ -158,9 +172,9 @@
     ]
   },
   "meta": {
-    "total_prompts": 130,
-    "categories_count": 13,
-    "last_updated": "2026-03-02",
+    "total_prompts": 142,
+    "categories_count": 14,
+    "last_updated": "2026-06-13",
     "use_case": "Real estate private equity acquisitions team deal sourcing queries",
     "terminology": "Uses institutional PE language: WALT, DSCR, IG-rated, going-in cap, check size, basis, per-door/per-key/per-pad metrics, IRR targets, MSA references, credit ratings"
   }

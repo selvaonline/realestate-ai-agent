@@ -117,10 +117,35 @@ const searchProperties: RegisteredTool = {
       ...(ctx.orgSettings?.peWeights ? { peWeights: ctx.orgSettings.peWeights } : {}),
     })))) as any[];
 
+    // Compute a market-wide risk score (same macro inputs as assess_risk) so the
+    // Screening Summary shows a real number even when the Risk Analyst specialist
+    // isn't invoked. One macro fetch per search, stamped on every source — this
+    // restores the behavior the legacy agent had before the LangGraph migration.
+    let marketRisk: number | null = null;
+    if (scored.length) {
+      try {
+        const macro = await fetchMacroData(query, ctx);
+        const riskResult = JSON.parse(String(await riskBlender.invoke(JSON.stringify({
+          query,
+          data: {
+            treasury10yBps: macro.tenYData.value != null ? Math.round(macro.tenYData.value * 10000) : null,
+            treasury10yDeltaBps: macro.tenYData.deltaBps,
+            curve2s10: macro.curve2s10,
+            cpiYoY: macro.cpiYoY,
+            bls: macro.bls,
+            nationalUnemp: macro.nationalUnemp,
+          }
+        }))));
+        marketRisk = riskResult.riskScore ?? null;
+      } catch (err) {
+        console.warn("[search_properties] market risk computation failed:", err);
+      }
+    }
+
     // Emit source_found for each result (legacy compat)
     scored.slice(0, 10).forEach((s: any, i: number) => {
       ctx.pub?.("source_found", {
-        source: { id: i + 1, title: s.title, url: s.url, snippet: s.snippet, score: s.peScore }
+        source: { id: i + 1, title: s.title, url: s.url, snippet: s.snippet, score: s.peScore, riskScore: marketRisk }
       });
     });
 
@@ -135,7 +160,8 @@ const searchProperties: RegisteredTool = {
           askingPrice: s.peSignals?.price || null,
           noi: s.peSignals?.noi || null,
           capRate: s.peSignals?.cap || null,
-          raw: { peScore: s.peScore, peLabel: s.peLabel, peFactors: s.peFactors },
+          riskScore: marketRisk,
+          raw: { peScore: s.peScore, peLabel: s.peLabel, peFactors: s.peFactors, riskScore: marketRisk },
         });
       }
     }

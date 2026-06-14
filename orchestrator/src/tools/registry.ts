@@ -156,7 +156,10 @@ const searchProperties: RegisteredTool = {
     // screening risk is genuinely per-deal wherever the source data allows.
     const top = scored.slice(0, 10);
     const risks = await Promise.all(top.map(async (s: any): Promise<number | null> => {
-      const price = s.peSignals?.price, noi = s.peSignals?.noi;
+      const price = s.peSignals?.price, cap = s.peSignals?.cap;
+      // NOI is rarely stated explicitly, but price + cap rate usually are —
+      // derive NOI = price × cap so per-deal risk can fire on real listings.
+      const noi = s.peSignals?.noi ?? (price && cap ? Math.round(price * cap) : null);
       if (price && noi) {
         try {
           const rd: any = await riskDecompositionTool.execute({
@@ -358,10 +361,12 @@ const analyzePropertyUrl: RegisteredTool = {
     // totalRisk (tenant/market/rate/inflation factors); this is genuine per-deal
     // risk rather than the one-size-fits-all market number.
     let riskScore: number | null = null;
-    if (ext.askingPrice && ext.noi) {
+    const capForRisk = ext.capRate ?? uw.capRate;
+    const noiForRisk = ext.noi ?? (ext.askingPrice && capForRisk ? Math.round(ext.askingPrice * capForRisk) : null);
+    if (ext.askingPrice && noiForRisk) {
       try {
         const rd: any = await riskDecompositionTool.execute(
-          { purchasePrice: ext.askingPrice, noi: ext.noi, market: ext.address || undefined },
+          { purchasePrice: ext.askingPrice, noi: noiForRisk, market: ext.address || undefined },
           ctx
         );
         if (typeof rd?.totalRisk === "number") riskScore = rd.totalRisk;

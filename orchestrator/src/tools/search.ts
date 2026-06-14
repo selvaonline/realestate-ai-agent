@@ -114,7 +114,13 @@ function filterAndDedupe(rows: SearchRow[], maxResults: number): SearchRow[] {
   }
   if (dupeCount > 0) console.log(`[search] removed ${dupeCount} fuzzy duplicate(s)`);
 
-  return kept.slice(0, maxResults);
+  // Prefer individual listing detail pages (they carry price/cap/NOI) over
+  // category/index pages, which rank high in search but have no per-deal
+  // financials. Detail pages first, category pages as fallback — same count.
+  const detail = kept.filter(r => isDetailUrl(r.url));
+  const nonDetail = kept.filter(r => !isDetailUrl(r.url));
+  if (detail.length) console.log(`[search] ${detail.length} detail page(s), ${nonDetail.length} category/other`);
+  return [...detail, ...nonDetail].slice(0, maxResults);
 }
 
 // --------------- Serper API search ---------------

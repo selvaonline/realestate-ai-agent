@@ -17,7 +17,11 @@ langgraphRouter.get("/api/lg/network", (_req, res) => {
 /** GET /api/lg/health — in-process, healthy if an LLM key is configured */
 langgraphRouter.get("/api/lg/health", (_req, res) => {
   const ok = Boolean(process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY);
-  res.json({ ok });
+  // Macro data status — "degraded" means risk scoring falls back to a neutral 50.
+  const fred = Boolean(process.env.FRED_API_KEY);
+  const bls = Boolean(process.env.BLS_API_KEY);
+  const macro = fred ? (bls ? "live" : "live-national") : "degraded";
+  res.json({ ok, macro, fred, bls });
 });
 
 /**

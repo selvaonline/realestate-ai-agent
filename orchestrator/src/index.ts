@@ -204,4 +204,11 @@ const port = Number(process.env.PORT || 3001);
 app.listen(port, () => {
   console.log(`[orchestrator] listening on :${port}`);
   console.log(`[orchestrator] Comet Agent: monitoring ${process.env.COMET_ENABLED !== 'false' ? 'ENABLED' : 'DISABLED'}`);
+  // Macro-data health: without these keys, Market Risk silently degrades to a
+  // neutral 50 baseline. Surface it loudly at boot so it can't go unnoticed.
+  const fredOk = Boolean(process.env.FRED_API_KEY);
+  const blsOk = Boolean(process.env.BLS_API_KEY);
+  if (!fredOk) console.warn("[orchestrator] ⚠️  FRED_API_KEY missing — Market Risk will fall back to a neutral 50. Set FRED_API_KEY for live macro-driven risk.");
+  if (!blsOk) console.warn("[orchestrator] ⚠️  BLS_API_KEY missing — metro-level unemployment unavailable (national fallback only).");
+  if (fredOk) console.log(`[orchestrator] Macro data: FRED configured${blsOk ? " + BLS (live risk)" : " (BLS missing → national labor only)"}`);
 });

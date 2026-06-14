@@ -685,11 +685,11 @@ export class SafeHtmlPipe implements PipeTransform {
             </div>
             <div class="kpi-label">Avg PE Score</div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card" title="Macro/market risk (Treasury rates, yield curve, CPI, labor) for these deals. Per-deal risk is shown when a listing's financials are available or the Risk Analyst is run.">
             <div class="kpi-value" [class.green]="getAvgRisk() <= 45" [class.amber]="getAvgRisk() > 45 && getAvgRisk() <= 60" [class.red]="getAvgRisk() > 60">
               {{ getAvgRisk() }}
             </div>
-            <div class="kpi-label">Avg Risk Score</div>
+            <div class="kpi-label">Market Risk</div>
           </div>
         </div>
 
@@ -885,7 +885,7 @@ export class SafeHtmlPipe implements PipeTransform {
           <span class="ticker-value">{{ getAvgPE() }}</span>
         </div>
         <div class="ticker-item">
-          <span class="ticker-label">⚠️ Avg Risk</span>
+          <span class="ticker-label">⚠️ Market Risk</span>
           <span class="ticker-value">{{ getAvgRisk() }}</span>
         </div>
       </div>

@@ -7,7 +7,7 @@
     "dev:no-watch": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx --test src/tools/locationIntel/scoring.test.ts"
+    "test": "tsx --test src/tools/riskBlender.test.ts src/tools/peScorePro.test.ts src/tools/locationIntel/scoring.test.ts"
   },
   "dependencies": {
     "@langchain/core": "^0.3.5",

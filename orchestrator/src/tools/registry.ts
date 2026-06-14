@@ -146,21 +146,43 @@ const searchProperties: RegisteredTool = {
       ...(ctx.orgSettings?.peWeights ? { peWeights: ctx.orgSettings.peWeights } : {}),
     })))) as any[];
 
-    // Market-wide risk so the Screening Summary shows a real number even when the
-    // Risk Analyst specialist isn't invoked. Macro series are cached, so this is
-    // cheap and deterministic across tools (see getMarketRisk).
+    // Market-wide risk baseline (cached, deterministic) — used as the fallback
+    // when a listing doesn't expose enough financials for a deal-specific score.
     const marketRisk = scored.length ? await getMarketRisk(query, ctx) : null;
 
+    // Per-deal risk where the listing exposes price + NOI: decompose deal-specific
+    // risk (tenant credit, rate sensitivity, liquidity, inflation) via the same
+    // engine the Risk Analyst uses. Falls back to the market baseline otherwise, so
+    // screening risk is genuinely per-deal wherever the source data allows.
+    const top = scored.slice(0, 10);
+    const risks = await Promise.all(top.map(async (s: any): Promise<number | null> => {
+      const price = s.peSignals?.price, noi = s.peSignals?.noi;
+      if (price && noi) {
+        try {
+          const rd: any = await riskDecompositionTool.execute({
+            purchasePrice: price,
+            noi,
+            market: query,
+            tenantName: s.peSignals?.tenantName || undefined,
+            propertyType: s.peSignals?.sectorIndustrial ? "industrial" : "NNN retail",
+          }, ctx);
+          if (typeof rd?.totalRisk === "number") return rd.totalRisk;
+        } catch { /* fall through to market baseline */ }
+      }
+      return marketRisk;
+    }));
+
     // Emit source_found for each result (legacy compat)
-    scored.slice(0, 10).forEach((s: any, i: number) => {
+    top.forEach((s: any, i: number) => {
       ctx.pub?.("source_found", {
-        source: { id: i + 1, title: s.title, url: s.url, snippet: s.snippet, score: s.peScore, riskScore: marketRisk }
+        source: { id: i + 1, title: s.title, url: s.url, snippet: s.snippet, score: s.peScore, riskScore: risks[i] }
       });
     });
 
     // Push to deal accumulator if available
     if (ctx._dealAccumulator) {
-      for (const s of scored.slice(0, 5)) {
+      for (let i = 0; i < Math.min(5, top.length); i++) {
+        const s = top[i];
         ctx._dealAccumulator.push({
           title: s.title,
           url: s.url,
@@ -169,8 +191,8 @@ const searchProperties: RegisteredTool = {
           askingPrice: s.peSignals?.price || null,
           noi: s.peSignals?.noi || null,
           capRate: s.peSignals?.cap || null,
-          riskScore: marketRisk,
-          raw: { peScore: s.peScore, peLabel: s.peLabel, peFactors: s.peFactors, riskScore: marketRisk },
+          riskScore: risks[i],
+          raw: { peScore: s.peScore, peLabel: s.peLabel, peFactors: s.peFactors, riskScore: risks[i] },
         });
       }
     }

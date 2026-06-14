@@ -139,7 +139,7 @@ export class AgentNetworkPanelComponent implements OnDestroy {
   @Input() activeChain: string[] = [];
   @Input() visited: string[] = [];
   @Input() nodeCalls: Record<string, number> = {};
-  @Input() orchestrator = 'LangGraph.js';
+  @Input() orchestrator = 'Neuro SAN';
   @Input() hops = 0;
   @Input() canReplay = false;
   @Output() replay = new EventEmitter<void>();

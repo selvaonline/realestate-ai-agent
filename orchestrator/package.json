@@ -6,21 +6,25 @@
     "dev": "tsx watch src/index.ts",
     "dev:no-watch": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "tsx --test src/tools/riskBlender.test.ts src/tools/peScorePro.test.ts src/tools/locationIntel/scoring.test.ts"
   },
   "dependencies": {
     "@langchain/core": "^0.3.5",
+    "@langchain/langgraph": "^0.4.9",
     "@langchain/openai": "^0.4.3",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@types/node-cron": "^3.0.11",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.2.1",
     "node-cron": "^4.2.1",
     "openai": "^4.77.0",
     "playwright": "^1.46.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

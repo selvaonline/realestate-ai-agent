@@ -10,7 +10,12 @@ interface ChatMessage {
   content: string;
   toolUsed?: string;
   toolResult?: any;
+  toolsUsed?: string[];
+  steps?: any[];
+  hops?: number;
   timestamp?: number;
+  _showSteps?: boolean;
+  [key: string]: any;
 }
 
 interface QuickAction {
@@ -67,10 +72,32 @@ interface QuickAction {
             <div class="message-content">
               <div class="message-text" [innerHTML]="formatMessage(msg.content)"></div>
               
-              <!-- Tool usage indicator -->
-              <div class="tool-indicator" *ngIf="msg.toolUsed">
+              <!-- Tool usage indicator (legacy single tool) -->
+              <div class="tool-indicator" *ngIf="msg.toolUsed && !msg.toolsUsed?.length">
                 <span class="tool-icon">🔧</span>
                 <span class="tool-name">{{ formatToolName(msg.toolUsed) }}</span>
+              </div>
+
+              <!-- Multi-tool usage indicator -->
+              <div class="tools-used" *ngIf="msg.toolsUsed?.length">
+                <div class="tools-header" (click)="toggleSteps(msg)">
+                  <span class="tool-icon">🔧</span>
+                  <span class="tools-summary">{{ msg.toolsUsed!.length }} tools used</span>
+                  <span class="hops-badge" *ngIf="msg.hops">{{ msg.hops }} hops</span>
+                  <span class="expand-arrow">{{ msg['_showSteps'] ? '▾' : '▸' }}</span>
+                </div>
+                <div class="tools-list" *ngIf="msg['_showSteps']">
+                  <div *ngFor="let tool of msg.toolsUsed" class="tool-tag">{{ formatToolName(tool) }}</div>
+                </div>
+              </div>
+
+              <!-- Reasoning steps (collapsible) -->
+              <div class="reasoning-preview" *ngIf="msg.steps?.length && msg['_showSteps']">
+                <div *ngFor="let step of msg.steps" class="rstep" [ngClass]="'rstep-' + step.type">
+                  <span class="rstep-icon">{{ step.type === 'thinking' ? '💭' : step.type === 'tool_call' ? '🔧' : step.type === 'tool_result' ? '✓' : '📝' }}</span>
+                  <span class="rstep-text">{{ step.toolName ? formatToolName(step.toolName) : (step.content || '').slice(0, 80) }}</span>
+                  <span class="rstep-dur" *ngIf="step.durationMs">{{ step.durationMs }}ms</span>
+                </div>
               </div>
 
               <!-- Timestamp -->
@@ -304,6 +331,69 @@ interface QuickAction {
       color: #92400e;
     }
 
+    .tools-used {
+      margin-top: 8px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .tools-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #fef3c7;
+      font-size: 12px;
+      color: #92400e;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .tools-header:hover { background: #fde68a; }
+    .tools-summary { font-weight: 500; }
+    .hops-badge {
+      font-size: 10px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: auto;
+    }
+    .expand-arrow { font-size: 10px; margin-left: 4px; }
+    .tools-list {
+      padding: 6px 12px;
+      background: #fffbeb;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tool-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      color: #4b5563;
+    }
+    .reasoning-preview {
+      padding: 8px 12px;
+      background: #f9fafb;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .rstep {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 3px 0;
+    }
+    .rstep-icon { font-size: 12px; flex-shrink: 0; }
+    .rstep-text { color: #4b5563; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rstep-dur { font-size: 10px; color: #9ca3af; flex-shrink: 0; }
+
     .message-time {
       margin-top: 4px;
       font-size: 11px;
@@ -456,6 +546,25 @@ interface QuickAction {
     .chat-messages::-webkit-scrollbar-thumb:hover {
       background: #9ca3af;
     }
+
+    @media (max-width: 768px) {
+      .chat-panel { bottom: 12px; right: 12px; }
+      .chat-toggle { padding: 10px 16px; font-size: 13px; }
+      .chat-window {
+        bottom: 0; right: 0; left: 0;
+        width: 100%; height: 100vh;
+        border-radius: 0;
+        position: fixed;
+      }
+      .chat-header { padding: 14px 16px; }
+      .chat-title { font-size: 16px; }
+      .chat-messages { padding: 12px; gap: 12px; }
+      .message-text { padding: 10px 12px; font-size: 13px; }
+      .message-avatar { width: 28px; height: 28px; font-size: 15px; }
+      .quick-actions-grid { grid-template-columns: 1fr; }
+      .quick-action-btn { font-size: 12px; padding: 8px 10px; }
+      .chat-input-area { padding: 10px 12px; }
+    }
   `]
 })
 export class ChatPanelComponent {
@@ -549,6 +658,9 @@ export class ChatPanelComponent {
         content: response.content || 'I received your request.',
         toolUsed: response.toolUsed,
         toolResult: response.toolResult,
+        toolsUsed: response.toolsUsed,
+        steps: response.steps,
+        hops: response.hops,
         timestamp: Date.now()
       };
       
@@ -602,13 +714,28 @@ export class ChatPanelComponent {
     return formatted;
   }
 
+  toggleSteps(msg: any) {
+    msg['_showSteps'] = !msg['_showSteps'];
+  }
+
   formatToolName(toolName: string): string {
     const names: Record<string, string> = {
       'web_search': 'Web Search',
       'pe_score_pro': 'PE Scoring',
       'risk_blender': 'Risk Analysis',
       'generate_ic_memo': 'IC Memo Generated',
-      'analyze_context': 'Context Analysis'
+      'analyze_context': 'Context Analysis',
+      'search_properties': 'Property Search',
+      'score_deals': 'Deal Scoring',
+      'assess_risk': 'Risk Assessment',
+      'get_macro_data': 'Macro Data',
+      'analyze_property_url': 'Property Analysis',
+      'run_dcf': 'DCF Analysis',
+      'generate_memo': 'IC Memo',
+      'comp_analysis': 'Comp Analysis',
+      'filter_and_rank': 'Filter & Rank',
+      'market_deep_dive': 'Market Deep Dive',
+      'portfolio_review': 'Portfolio Review',
     };
     return names[toolName] || toolName;
   }

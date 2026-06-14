@@ -73,17 +73,22 @@ export async function fred10Y(apiKey?: string) {
 // 10Y with MoM delta
 export async function fred10YMoM(apiKey?: string) {
   if (!apiKey) return { value: null, deltaBps: null, date: null };
+  const k = "fred:DGS10:mom";
+  const cached = getCache<{ value: number | null; deltaBps: number | null; date: string | null }>(k, 12 * 60 * 60 * 1000); // 12h
+  if (cached) return cached;
   const url = `https://api.stlouisfed.org/fred/series/observations?series_id=DGS10&api_key=${apiKey}&file_type=json`;
   const r = await fetch(url);
   const j: any = await r.json();
   const obs = (j?.observations || []).filter((o: any) => o.value !== "." && o.value != null);
   if (obs.length < 2) return { value: null, deltaBps: null, date: null };
-  
+
   const last = Number(obs[obs.length - 1].value) / 100; // decimal
   const prior = Number(obs[obs.length - 2].value) / 100;
   const deltaBps = Math.round((last - prior) * 10000); // bps
-  
-  return { value: last, deltaBps, date: obs[obs.length - 1].date };
+
+  const ret = { value: last, deltaBps, date: obs[obs.length - 1].date };
+  setCache(k, ret);
+  return ret;
 }
 
 // 2Y UST (percent)
@@ -101,6 +106,9 @@ export async function fred2s10(apiKey?: string) {
 // CPI YoY (approx): compute from CPIAUCSL series
 export async function fredCpiYoY(apiKey?: string) {
   if (!apiKey) return null;
+  const k = "fred:CPIAUCSL:yoy";
+  const cached = getCache<number>(k, 12 * 60 * 60 * 1000); // 12h
+  if (cached != null) return cached;
   const url = `https://api.stlouisfed.org/fred/series/observations?series_id=CPIAUCSL&api_key=${apiKey}&file_type=json`;
   const r = await fetch(url);
   const j: any = await r.json();
@@ -110,6 +118,7 @@ export async function fredCpiYoY(apiKey?: string) {
   const prior12 = Number(obs[obs.length - 13].value);
   if (!isFinite(last) || !isFinite(prior12) || prior12 === 0) return null;
   const yoy = (last / prior12 - 1); // decimal, e.g., 0.032 for 3.2%
+  setCache(k, yoy);
   return yoy;
 }
 

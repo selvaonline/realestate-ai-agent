@@ -1,0 +1,5 @@
+# Neuro SAN agent network manifest for DealSense.
+# Each key is a registry hocon served by the neuro-san server.
+{
+    "dealsense.hocon": true,
+}

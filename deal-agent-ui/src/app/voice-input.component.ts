@@ -3,6 +3,7 @@
 
 import { Component, EventEmitter, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from './toast.service';
 
 @Component({
   selector: 'app-voice-input',
@@ -88,7 +89,7 @@ export class VoiceInputComponent {
   
   private recognition: any = null;
 
-  constructor() {
+  constructor(private toast: ToastService) {
     this.initializeSpeechRecognition();
   }
 
@@ -128,7 +129,7 @@ export class VoiceInputComponent {
         console.warn('[voice-input] No speech detected');
       } else if (event.error === 'not-allowed') {
         console.error('[voice-input] Microphone permission denied');
-        alert('Please allow microphone access to use voice input');
+        this.toast.warning('Please allow microphone access to use voice input');
       }
     };
 

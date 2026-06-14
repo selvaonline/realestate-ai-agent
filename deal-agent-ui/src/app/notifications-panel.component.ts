@@ -84,16 +84,21 @@ type CometAlert = {
     </div>
   `,
   styles: [`
+    :host { display: contents; }
+
     .notifications-panel {
       position: fixed;
       top: 10px;
       right: 20px;
-      z-index: 999998;
+      z-index: 999999;
+      pointer-events: auto;
     }
 
     .notifications-toggle {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       border: 2px solid #e5e7eb;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
       width: 48px;
       height: 48px;
       border-radius: 50%;
@@ -387,7 +392,7 @@ export class NotificationsPanelComponent implements OnInit, OnDestroy {
     // Connect to SSE
     // Use relative URL if apiUrl is empty (production with proxy) or absolute URL (development)
     const baseUrl = environment.apiUrl || window.location.origin;
-    const url = `${baseUrl}/ui/events`;
+    const url = `${baseUrl}/api/ui/events`;
     console.log('[notifications-panel] Connecting to:', url);
     this.eventSource = new EventSource(url);
     

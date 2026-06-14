@@ -271,10 +271,19 @@ async function runOnce(
       hasCapRate: extracted.capRate !== null
     });
     
-    // Capture screenshot for progressive display
-    console.log("[extract] 📸 Capturing screenshot...");
-    let shot = await safeScreenshot(page);
-    console.log(`[extract] Screenshot result: ${shot ? `${shot.length} chars` : 'NULL'}`);
+    // Try to extract the actual property hero image first
+    console.log("[extract] 🖼️ Attempting hero image extraction...");
+    let heroImage = await withTimeout(extractHeroImage(page), 5000, "heroImage").catch(() => null);
+    
+    // Fall back to page screenshot if no hero image found
+    let shot: string | null = heroImage;
+    if (!heroImage) {
+      console.log("[extract] 📸 No hero image found, falling back to screenshot...");
+      shot = await safeScreenshot(page);
+    } else {
+      console.log(`[extract] ✅ Using hero image (${Math.round(heroImage.length / 1024)}KB)`);
+    }
+    console.log(`[extract] Image result: ${shot ? `${shot.length} chars` : 'NULL'}`);
 
     // Second-chance auto-drill: if all nulls and not drilled yet, try one more time
     const allNull =
@@ -291,7 +300,8 @@ async function runOnce(
         finalUrl = page.url();
         console.log("[extract] 📊 Re-extracting from detail page...");
         extracted = await extractOnce(page, selectors || {});
-        shot = await safeScreenshot(page);
+        heroImage = await withTimeout(extractHeroImage(page), 5000, "heroImage2").catch(() => null);
+        shot = heroImage || await safeScreenshot(page);
         console.log("[extract] ✅ Second extraction complete");
       } else {
         console.log("[extract] ⚠️ No detail link found for auto-drill");
@@ -558,6 +568,106 @@ async function gotoWithGrace(page: Page, u: string) {
 
 function toNum(v: any) {
   return v ? Number(String(v).replace(/[^0-9.]/g, "")) : null;
+}
+
+async function extractHeroImage(page: Page): Promise<string | null> {
+  try {
+    const imageUrl = await page.evaluate(() => {
+      // 1. Open Graph image (most reliable for listings)
+      const ogImg = document.querySelector('meta[property="og:image"]');
+      if (ogImg) {
+        const content = ogImg.getAttribute('content');
+        if (content && content.startsWith('http') && !content.includes('logo') && !content.includes('favicon')) {
+          return content;
+        }
+      }
+
+      // 2. Site-specific hero image selectors
+      const heroSelectors = [
+        // Crexi
+        '.gallery-image img', '.listing-image img', '[class*="hero"] img',
+        '.property-image img', '.carousel img:first-of-type',
+        '[class*="gallery"] img:first-of-type', '[class*="slider"] img:first-of-type',
+        // LoopNet
+        '.mosaic-tile img', '.photo-gallery img', '.slide img',
+        '[data-testid*="photo"] img', '[data-testid*="image"] img',
+        // Generic CRE
+        '.listing-photos img', '.property-photos img',
+        '[class*="photo"] img:first-of-type',
+        'main img:first-of-type', 'article img:first-of-type',
+      ];
+
+      for (const sel of heroSelectors) {
+        const el = document.querySelector(sel) as HTMLImageElement | null;
+        if (el) {
+          const src = el.src || el.dataset['src'] || el.getAttribute('data-lazy-src') || '';
+          if (src && src.startsWith('http') && !src.includes('logo') && !src.includes('icon')
+              && !src.includes('avatar') && !src.includes('placeholder')) {
+            const rect = el.getBoundingClientRect();
+            if (rect.width >= 100 && rect.height >= 80) {
+              return src;
+            }
+          }
+        }
+      }
+
+      // 3. Largest visible image on page (likely the property photo)
+      const imgs = Array.from(document.querySelectorAll('img')) as HTMLImageElement[];
+      let best: HTMLImageElement | null = null;
+      let bestArea = 0;
+      for (const img of imgs) {
+        const src = img.src || '';
+        if (!src.startsWith('http') || src.includes('logo') || src.includes('icon')
+            || src.includes('avatar') || src.includes('tracking') || src.includes('pixel')) continue;
+        const rect = img.getBoundingClientRect();
+        const area = rect.width * rect.height;
+        if (area > bestArea && rect.width >= 150 && rect.height >= 100 && rect.top < 800) {
+          bestArea = area;
+          best = img;
+        }
+      }
+      return best?.src || null;
+    });
+
+    if (!imageUrl) {
+      console.log("[heroImage] No suitable image URL found on page");
+      return null;
+    }
+
+    console.log(`[heroImage] Found image URL: ${imageUrl.slice(0, 120)}...`);
+
+    // Fetch image and convert to base64 using the page context (same cookies/session)
+    const base64 = await page.evaluate(async (url: string) => {
+      try {
+        const resp = await fetch(url, { credentials: 'include' });
+        if (!resp.ok) return null;
+        const contentType = resp.headers.get('content-type') || '';
+        if (!contentType.startsWith('image/')) return null;
+        const blob = await resp.blob();
+        if (blob.size > 2 * 1024 * 1024) return null; // skip if > 2MB
+        return new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            const b64 = result.split(',')[1] || null;
+            resolve(b64);
+          };
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      } catch { return null; }
+    }, imageUrl);
+
+    if (base64 && base64.length > 500) {
+      console.log(`[heroImage] ✅ Extracted hero image: ${Math.round(base64.length / 1024)}KB`);
+      return base64;
+    }
+    console.log("[heroImage] Image fetch returned empty or too small");
+    return null;
+  } catch (e) {
+    console.log(`[heroImage] ⚠️ Failed: ${(e as Error).message?.slice(0, 100)}`);
+    return null;
+  }
 }
 
 async function extractOnce(page: Page, sels: Record<string, string>) {

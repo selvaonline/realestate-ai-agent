@@ -1,11 +1,12 @@
 {
   "weights": {
-    "tenantLease": 25,
-    "yieldSpread": 20,
+    "tenantLease": 20,
+    "yieldSpread": 15,
     "marketQuality": 20,
-    "assetFit": 15,
-    "dealEconomics": 10,
-    "executionRisk": 10
+    "assetFit": 10,
+    "dealEconomics": 15,
+    "executionRisk": 10,
+    "mobility": 10
   },
   "benchmarks": {
     "riskFreeBps": 430,

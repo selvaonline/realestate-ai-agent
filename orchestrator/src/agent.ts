@@ -4,8 +4,12 @@ import { browseAndExtract } from "./tools/browser.js";
 import { quickUnderwrite } from "./tools/finance.js";
 import { peScorePro } from "./tools/peScorePro.js"; // DealSense PE: Professional scorer
 import { riskBlender } from "./tools/riskBlender.js";
+import { computeDcf } from "./tools/dcfServer.js";
+import { riskDecompositionTool } from "./tools/riskDecomposition.js";
+import { multiAssetCompare } from "./tools/multiAssetCompare.js";
 import { fred10Y, fred10YMoM, fred2s10, fredCpiYoY, fredUnrate, blsMetroUnemp, inferMetroSeriesIdFromText } from "./infra/market.js";
 import type { Deal } from "./lib/types.js";
+import { agentLoop } from "./agentLoop.js";
 
 // ---- Multi-source URL patterns ----
 const DETAIL_RX = {
@@ -32,8 +36,13 @@ const DEMO_FALLBACK_URLS: string[] = [
   // Extraction is too slow/unreliable, disabled for now
 ];
 
-// simple ctx for SSE
-type Ctx = { runId?: string; pub?: (kind: string, payload?: Record<string, any>) => void };
+// simple ctx for SSE + data sources + org settings
+type Ctx = {
+  runId?: string;
+  pub?: (kind: string, payload?: Record<string, any>) => void;
+  dataSources?: { enabledDomains: string[]; apiKeys: Record<string, string> };
+  orgSettings?: any;
+};
 const nop = () => {};
 const emit = (ctx?: Ctx, kind?: string, payload?: Record<string, any>) =>
   (ctx?.pub || nop)(kind!, payload || {});
@@ -113,7 +122,20 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     }
   }
 
-  // ── Perplexity-style flow: Thinking → Searching → Sources → Answer ──────────
+  // ── Feature flag: agentic (LLM-driven) vs pipeline (existing heuristic) ──────
+  const agentMode = (process.env.AGENT_MODE || "pipeline").toLowerCase();
+  if (agentMode === "agentic") {
+    console.log("[agent] AGENT_MODE=agentic — delegating to LLM-driven agentLoop");
+    return agentLoop(q, {
+      runId: ctx?.runId,
+      pub: ctx?.pub,
+      dataSources: ctx?.dataSources,
+      orgSettings: ctx?.orgSettings,
+      maxHops: 8,
+    });
+  }
+
+  // ── Pipeline mode (existing behavior) ──────────────────────────────────────
   emit(ctx, "thinking", { text: "🔍 Understanding your query..." });
   emit(ctx, "thinking", { text: "📊 Loading DealSense PE scoring model..." });
   emit(ctx, "thinking", { text: "📈 Fetching real-time market data (Treasury rates, labor statistics)..." });
@@ -123,7 +145,23 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   const plan = `Searching multiple CRE sources for: ${q}`;
   
   // Multi-domain constants (exclude PDFs and CDN hosts)
-  const DOMAINS = ["crexi.com","loopnet.com","brevitas.com","commercialexchange.com","biproxi.com"];
+  // Dynamic based on user data source toggles
+  const DOMAIN_MAP: Record<string, string> = {
+    crexi: "crexi.com",
+    loopnet: "loopnet.com",
+  };
+  const ALWAYS_INCLUDED = ["brevitas.com", "commercialexchange.com", "biproxi.com"];
+
+  let DOMAINS: string[];
+  if (ctx?.dataSources?.enabledDomains) {
+    const userDomains = ctx.dataSources.enabledDomains
+      .filter(id => DOMAIN_MAP[id])
+      .map(id => DOMAIN_MAP[id]);
+    DOMAINS = [...userDomains, ...ALWAYS_INCLUDED];
+  } else {
+    DOMAINS = [...Object.values(DOMAIN_MAP), ...ALWAYS_INCLUDED];
+  }
+
   const MD_QUERY = `${q} (${DOMAINS.map(d=>` site:${d}`).join(" OR ")}) "for sale" -filetype:pdf -site:images.loopnet.com`;
 
   emit(ctx, "thinking", { text: "🏢 Searching commercial real estate listings..." });
@@ -151,7 +189,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   
   // ✨ SCORE ALL RESULTS with DealSense PE algorithm
   emit(ctx, "thinking", { text: "Analyzing deal quality with DealSense PE scoring model..." });
-  const scored = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ rows: detail, query: q })))) as Array<{
+  const scored = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ rows: detail, query: q, ...(ctx?.orgSettings?.peWeights ? { peWeights: ctx.orgSettings.peWeights } : {}) })))) as Array<{
     title: string; 
     url: string; 
     snippet: string; 
@@ -168,8 +206,10 @@ export async function runAgent(goal: string, ctx?: Ctx) {
   // 🌐 FETCH MARKET DATA for Risk Intelligence
   emit(ctx, "thinking", { text: "Gathering real-time market data (Treasury rates, labor statistics)..." });
   
-  const fredKey = process.env.FRED_API_KEY;
-  const blsKey = process.env.BLS_API_KEY;
+  const fredEnabled = !ctx?.dataSources || ctx.dataSources.enabledDomains.includes('fred');
+  const blsEnabled = !ctx?.dataSources || ctx.dataSources.enabledDomains.includes('bls');
+  const fredKey = (ctx?.dataSources?.apiKeys?.fred) || process.env.FRED_API_KEY;
+  const blsKey = (ctx?.dataSources?.apiKeys?.bls) || process.env.BLS_API_KEY;
   
   // Infer metro from query or top result
   let metroSeries = inferMetroSeriesIdFromText(q);
@@ -178,12 +218,15 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     metroSeries = inferMetroSeriesIdFromText(probe);
   }
   
-  // Fetch macro data (cached 12-24h) - Multi-factor model
-  const tenYData = await fred10YMoM(fredKey); // 10Y with MoM delta
-  const curve2s10 = await fred2s10(fredKey); // 2s10s spread
-  const cpiYoY = await fredCpiYoY(fredKey); // CPI YoY
-  const nationalUnemp = await fredUnrate(fredKey); // National unemployment fallback
-  const bls = metroSeries ? await blsMetroUnemp(metroSeries, blsKey) : { latestRate: null, yoyDelta: null, period: null, seriesId: null };
+  // Fetch macro data (cached 12-24h) - Multi-factor model (skip if source disabled)
+  const nullFred = { value: null, deltaBps: null, date: null };
+  const nullBls = { latestRate: null, yoyDelta: null, period: null, seriesId: null };
+
+  const tenYData = fredEnabled ? await fred10YMoM(fredKey) : nullFred;
+  const curve2s10 = fredEnabled ? await fred2s10(fredKey) : null;
+  const cpiYoY = fredEnabled ? await fredCpiYoY(fredKey) : null;
+  const nationalUnemp = fredEnabled ? await fredUnrate(fredKey) : null;
+  const bls = (blsEnabled && metroSeries) ? await blsMetroUnemp(metroSeries, blsKey) : nullBls;
   
   console.log(`[agent] 📈 Market Data: 10Y=${tenYData.value ? (tenYData.value*100).toFixed(2)+'%' : 'N/A'} (${tenYData.deltaBps ? (tenYData.deltaBps > 0 ? '+' : '') + tenYData.deltaBps + 'bps MoM' : 'no Δ'}), 2s10=${curve2s10 ? (curve2s10*100).toFixed(1)+'%' : 'N/A'}, CPI=${cpiYoY ? (cpiYoY*100).toFixed(1)+'%' : 'N/A'}, U/E=${bls.latestRate ? bls.latestRate.toFixed(1)+'%' : nationalUnemp ? (nationalUnemp*100).toFixed(1)+'% (US)' : 'N/A'}`);
   
@@ -222,52 +265,166 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     });
   }
   
+  // ── Pre-fetch og:image for all top results in parallel (3s timeout each) ──
+  const imageMap = new Map<string, string | null>();
+  if (topResults.length) {
+    const imagePromises = topResults.map(async (s) => {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 3000);
+        const resp = await fetch(s.url, {
+          signal: ctrl.signal,
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; DealSenseBot/1.0)" },
+          redirect: "follow",
+        });
+        clearTimeout(timer);
+        const reader = resp.body?.getReader();
+        let html = "";
+        if (reader) {
+          let bytes = 0;
+          while (bytes < 10000) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            html += new TextDecoder().decode(value);
+            bytes += value.length;
+          }
+          reader.cancel().catch(() => {});
+        }
+        const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+                      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+        return { url: s.url, imageUrl: ogMatch?.[1] || null };
+      } catch { return { url: s.url, imageUrl: null }; }
+    });
+    const imageResults = await Promise.allSettled(imagePromises);
+    for (const r of imageResults) {
+      if (r.status === "fulfilled") imageMap.set(r.value.url, r.value.imageUrl);
+    }
+  }
+
   if (topResults.length) {
     emit(ctx, "answer_chunk", { text: `<div class="deal-card-list" style='background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; overflow:hidden; margin-top:12px;'>` });
   }
 
-  topResults.forEach((s, index) => {
+  let loopIndex = 0;
+  for (const s of topResults) {
     sourceId++;
     const source = { id: sourceId, title: s.title, url: s.url, snippet: s.snippet, score: s.peScore, riskScore: riskBase.riskScore };
     sources.push(source);
     emit(ctx, "source_found", { source });
 
-    // Enhanced color-coded scoring with classification labels
-    const scoreTier = s.peScore >= 80 ? 'Premium' : s.peScore >= 70 ? 'Investment Grade' : 'Watchlist';
+    // ── Extract signals and factors from peScorePro output ──
+    const signals = (s as any).peSignals || {};
+    const peFactors = s.peFactors || {};
+    const price = signals.price ?? null;
+    const derivedNoi = signals.noi ?? (price && signals.cap ? price * signals.cap : null);
+
+    // ── Inline full-score computation (pure CPU, ~0ms each) ──
+    let dcf: ReturnType<typeof computeDcf> = null;
+    if (price && derivedNoi && derivedNoi < price) {
+      dcf = computeDcf({ purchasePrice: price, noi: derivedNoi });
+    }
+
+    let riskDecomp: any = null;
+    if (price && derivedNoi) {
+      try {
+        riskDecomp = await riskDecompositionTool.execute({
+          purchasePrice: price, noi: derivedNoi,
+          tenantName: signals.tenantName ?? undefined,
+          propertyType: signals.sectorIndustrial ? 'NNN industrial' : undefined,
+        }, ctx as any);
+      } catch { /* degrade gracefully */ }
+    }
+
+    let multiAssetResult: any = null;
+    if (dcf?.irr != null) {
+      try {
+        multiAssetResult = await multiAssetCompare.execute({
+          creIrr: dcf.irr,
+          creEquityMultiple: dcf.equityMultiple,
+          riskScore: riskDecomp?.totalRisk ?? riskBase.riskScore,
+        }, ctx as any);
+      } catch { /* degrade gracefully */ }
+    }
+
+    const icTag = s.peScore >= 80 ? 'IC Ready' : s.peScore >= 70 ? 'Under Review' : 'Watchlist';
+
+    // ── Build enriched deal object ──
+    const dealFromScore: Deal = {
+      title: s.title || "Investment Property",
+      url: s.url,
+      source: (() => { try { return new URL(s.url).hostname; } catch { return "CRE"; } })(),
+      address: null,
+      askingPrice: price,
+      noi: derivedNoi,
+      capRate: signals.cap ?? null,
+      assetType: signals.sectorIndustrial ? 'Industrial' : null,
+      screenshotBase64: null,
+      raw: {
+        peScore: s.peScore,
+        peLabel: s.peLabel,
+        peFactors,
+        peSignals: signals,
+        riskScore: riskBase.riskScore,
+        snippet: s.snippet,
+        icTag,
+        dcf: dcf ? {
+          irr: dcf.irr, equityMultiple: dcf.equityMultiple,
+          cashOnCash: dcf.cashOnCash, exitValue: dcf.exitValue,
+          equity: dcf.equity, loanAmount: dcf.loanAmount,
+        } : null,
+        riskDecomp: riskDecomp ? {
+          totalRisk: riskDecomp.totalRisk,
+          factors: riskDecomp.factors,
+          recommendation: riskDecomp.recommendation,
+        } : null,
+        multiAsset: multiAssetResult ? {
+          sharpe: multiAssetResult.creReturn?.sharpe,
+          rating: multiAssetResult.creReturn?.rating,
+          riskPremium: multiAssetResult.riskPremium,
+        } : null,
+        imageUrl: imageMap.get(s.url) || null,
+      },
+    };
+    deals.push(dealFromScore);
+    emit(ctx, "deal_found", { deal: dealFromScore, count: deals.length });
+
+    // ── Inline HTML card for answer stream ──
     const scoreColor = s.peScore >= 70 ? '#2f8f5b' : s.peScore >= 40 ? '#f28b30' : '#d9534f';
     const scoreBg = s.peScore >= 70 ? '#e5f5ec' : s.peScore >= 40 ? '#fff1e3' : '#fdecea';
     const classification = s.peScore >= 85 ? 'Core' : s.peScore >= 75 ? 'Core+' : s.peScore >= 60 ? 'Value-add' : 'Opportunistic';
     const classDesc = s.peScore >= 85 ? 'institutional-grade' : s.peScore >= 75 ? 'high-quality' : s.peScore >= 60 ? 'repositioning' : 'sub-scale';
-    
     const analystNote = (s as any).analystNote || '';
-    const factors = s.peFactors || {};
     const snippet = (s.snippet || '').replace(/\s+/g, ' ').trim();
-    
-    // Enhanced risk color coding
     const riskColor = riskBase.riskScore < 40 ? '#3c9a5f' : riskBase.riskScore < 70 ? '#f0ad4e' : '#d9534f';
     const riskBg = riskBase.riskScore < 40 ? '#e8f7f0' : riskBase.riskScore < 70 ? '#fff4e5' : '#fdecea';
     const riskLabel = riskBase.riskScore < 40 ? 'Low' : riskBase.riskScore < 70 ? 'Moderate' : 'High';
     const riskDesc = riskBase.riskScore < 40 ? 'favorable macro' : riskBase.riskScore < 70 ? 'elevated Treasury' : 'elevated Treasury, labor stress';
-    
-    // Next Step guidance based on PE + Risk
     const nextStep = (() => {
       if (s.peScore >= 80 && riskBase.riskScore <= 45) return 'Assign to analyst for comps review and site visit coordination';
       if (s.peScore >= 70 && riskBase.riskScore <= 55) return 'Request rent roll, tenant covenants, and trailing 12-month financials';
       if (s.peScore >= 60 && riskBase.riskScore <= 65) return 'Add to watchlist; revisit if market conditions improve';
       return 'Pass; fundamentals do not meet investment criteria';
     })();
-    
-    const isLast = index === topResults.length - 1;
+    const isLast = loopIndex === topResults.length - 1;
     const dividerStyle = isLast ? '' : 'border-bottom: 1px solid #e2e8f0;';
 
-    // Build Quick Facts row
-    const quickFacts = `<div style="display:flex; gap:16px; flex-wrap:wrap; margin:12px 0; padding:12px; background:#f8fafc; border-radius:8px; font-size:12px;"><div><span style="color:#64748b; font-weight:600;">Tenant:</span> <span style="color:#1a2332;">Not disclosed</span></div><div><span style="color:#64748b; font-weight:600;">Lease:</span> <span style="color:#1a2332;">Pending extraction</span></div><div><span style="color:#64748b; font-weight:600;">Cap Rate:</span> <span style="color:#1a2332;">Not stated</span></div><div><span style="color:#64748b; font-weight:600;">NOI:</span> <span style="color:#1a2332;">Not stated</span></div><div><span style="color:#64748b; font-weight:600;">Classification:</span> <span style="color:${scoreColor}; font-weight:600;">${classification}</span></div></div>`;
-    
-    emit(ctx, "answer_chunk", { text: `<div class="deal-card" data-score="${s.peScore}" data-factors='${JSON.stringify(factors)}' data-card-id="${sourceId}" data-url="${s.url}" data-title="${(s.title || 'Investment Opportunity').replace(/"/g, '&quot;')}" style="padding: 22px 26px; ${dividerStyle}"><div style="display:flex; align-items:flex-start; gap:24px;"><div style="flex:0 0 auto;"><div style="width:56px; height:56px; border-radius:14px; background:${scoreBg}; display:flex; align-items:center; justify-content:center; font-weight:700; color:${scoreColor}; font-size:18px;">${sourceId}</div></div><div style="flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; align-items:center; gap:16px;"><div style="min-width:0;"><div style="color:#1a2332; font-size:18px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.title || 'Investment Opportunity'}</div><div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${scoreBg}; color:${scoreColor}; border-radius:999px; font-size:12px; font-weight:600;">PE ${s.peScore}/100 → ${classification} (${classDesc})</span><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${riskBg}; color:${riskColor}; border-radius:999px; font-size:12px; font-weight:600;">Risk ${riskBase.riskScore}/100 → ${riskLabel} (${riskDesc})</span></div></div><div style="flex:0 0 auto; display:flex; flex-direction:column; gap:6px;"><button type="button" onclick="event.stopPropagation(); window.open('${s.url}', '_blank');" style="padding:10px 20px; background:#111928; color:#ffffff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s;">View Listing</button><button type="button" class="add-to-watchlist-btn-inline" data-url="${s.url}" data-title="${(s.title || 'Investment Opportunity').replace(/"/g, '&quot;')}" data-score="${s.peScore}" data-risk="${riskBase.riskScore}" style="padding:8px 14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#ffffff; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap;">📋 Add to Watchlist</button><button type="button" class="show-breakdown" style="padding:6px 12px; background:#f8fafc; border:1px solid #d0d5dd; color:#475569; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;">📊 Deal Factors</button></div></div>${quickFacts}${snippet ? `<div style="margin-top:14px; color:#64748b; font-size:13px; line-height:1.6;">${snippet}</div>` : ''}${analystNote ? `<div style="margin-top:12px; color:#475569; font-size:13px; line-height:1.6; background:#f8fafc; padding:12px 14px; border-radius:10px;">${analystNote}</div>` : ''}<div style="margin-top:16px; padding:12px; background:#f0f9ff; border-left:3px solid #3b82f6; border-radius:6px; font-size:13px;"><strong style="color:#1e40af;">Next Step:</strong> <span style="color:#475569;">${nextStep}</span></div></div></div><div id="chart-container-${sourceId}" style="display:none; margin:18px 0 0 0; padding:18px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;"><canvas id="factor-chart-${sourceId}" width="400" height="200"></canvas></div></div>` });
+    // Quick Facts with real extracted data
+    const tenantDisplay = signals.tenantName || 'Not disclosed';
+    const leaseDisplay = signals.nnn ? 'NNN' + (signals.longTerm ? ' / Long-term' : '') : 'Pending extraction';
+    const capDisplay = signals.cap ? (signals.cap * 100).toFixed(2) + '%' : 'Not stated';
+    const noiDisplay = derivedNoi ? '$' + derivedNoi.toLocaleString() : 'Not stated';
+    const irrDisplay = dcf?.irr != null ? (dcf.irr * 100).toFixed(1) + '%' : '—';
+    const emDisplay = dcf?.equityMultiple != null ? dcf.equityMultiple.toFixed(2) + 'x' : '—';
+    const sharpeDisplay = multiAssetResult?.creReturn?.sharpe != null ? multiAssetResult.creReturn.sharpe.toFixed(2) : '—';
+
+    const quickFacts = `<div style="display:flex; gap:16px; flex-wrap:wrap; margin:12px 0; padding:12px; background:#f8fafc; border-radius:8px; font-size:12px;"><div><span style="color:#64748b; font-weight:600;">Tenant:</span> <span style="color:#1a2332;">${tenantDisplay}</span></div><div><span style="color:#64748b; font-weight:600;">Lease:</span> <span style="color:#1a2332;">${leaseDisplay}</span></div><div><span style="color:#64748b; font-weight:600;">Cap Rate:</span> <span style="color:#1a2332;">${capDisplay}</span></div><div><span style="color:#64748b; font-weight:600;">NOI:</span> <span style="color:#1a2332;">${noiDisplay}</span></div><div><span style="color:#64748b; font-weight:600;">IRR:</span> <span style="color:#1a2332;">${irrDisplay}</span></div><div><span style="color:#64748b; font-weight:600;">EM:</span> <span style="color:#1a2332;">${emDisplay}</span></div><div><span style="color:#64748b; font-weight:600;">Sharpe:</span> <span style="color:#1a2332;">${sharpeDisplay}</span></div><div><span style="color:#64748b; font-weight:600;">Classification:</span> <span style="color:${scoreColor}; font-weight:600;">${classification}</span></div></div>`;
+
+    emit(ctx, "answer_chunk", { text: `<div class="deal-card" data-score="${s.peScore}" data-factors='${JSON.stringify(peFactors)}' data-card-id="${sourceId}" data-url="${s.url}" data-title="${(s.title || 'Investment Opportunity').replace(/"/g, '&quot;')}" style="padding: 22px 26px; ${dividerStyle}"><div style="display:flex; align-items:flex-start; gap:24px;"><div style="flex:0 0 auto;"><div style="width:56px; height:56px; border-radius:14px; background:${scoreBg}; display:flex; align-items:center; justify-content:center; font-weight:700; color:${scoreColor}; font-size:18px;">${sourceId}</div></div><div style="flex:1; min-width:0;"><div style="display:flex; justify-content:space-between; align-items:center; gap:16px;"><div style="min-width:0;"><div style="color:#1a2332; font-size:18px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.title || 'Investment Opportunity'}</div><div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;"><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${scoreBg}; color:${scoreColor}; border-radius:999px; font-size:12px; font-weight:600;">PE ${s.peScore}/100 → ${classification} (${classDesc})</span><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:${riskBg}; color:${riskColor}; border-radius:999px; font-size:12px; font-weight:600;">Risk ${riskBase.riskScore}/100 → ${riskLabel} (${riskDesc})</span></div></div><div style="flex:0 0 auto; display:flex; flex-direction:column; gap:6px;"><button type="button" onclick="event.stopPropagation(); window.open('${s.url}', '_blank');" style="padding:10px 20px; background:#111928; color:#ffffff; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s;">View Listing</button><button type="button" class="add-to-watchlist-btn-inline" data-url="${s.url}" data-title="${(s.title || 'Investment Opportunity').replace(/"/g, '&quot;')}" data-score="${s.peScore}" data-risk="${riskBase.riskScore}" style="padding:8px 14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#ffffff; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap;">📋 Add to Watchlist</button><button type="button" class="show-breakdown" style="padding:6px 12px; background:#f8fafc; border:1px solid #d0d5dd; color:#475569; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s;">📊 Deal Factors</button></div></div>${quickFacts}${snippet ? `<div style="margin-top:14px; color:#64748b; font-size:13px; line-height:1.6;">${snippet}</div>` : ''}${analystNote ? `<div style="margin-top:12px; color:#475569; font-size:13px; line-height:1.6; background:#f8fafc; padding:12px 14px; border-radius:10px;">${analystNote}</div>` : ''}<div style="margin-top:16px; padding:12px; background:#f0f9ff; border-left:3px solid #3b82f6; border-radius:6px; font-size:13px;"><strong style="color:#1e40af;">Next Step:</strong> <span style="color:#475569;">${nextStep}</span></div></div></div><div id="chart-container-${sourceId}" style="display:none; margin:18px 0 0 0; padding:18px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;"><canvas id="factor-chart-${sourceId}" width="400" height="200"></canvas></div></div>` });
     if (!isLast) {
       emit(ctx, "answer_chunk", { text: `<div style="border-top:1px solid #e2e8f0;"></div>` });
     }
-  });
+    loopIndex++;
+  }
 
   if (topResults.length) {
     emit(ctx, "answer_chunk", { text: `</div>` });
@@ -305,7 +462,7 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     console.log(`[agent] Strategy 2 returned ${broader.length} results`);
     
     // Score broader results
-    const scoredBroader = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ rows: broader, query: q })))) as Array<{
+    const scoredBroader = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ rows: broader, query: q, ...(ctx?.orgSettings?.peWeights ? { peWeights: ctx.orgSettings.peWeights } : {}) })))) as Array<{
       title: string; url: string; snippet: string; peScore: number; peLabel: string;
     }>;
     
@@ -373,9 +530,10 @@ export async function runAgent(goal: string, ctx?: Ctx) {
     
     if (listPages.length > 0) {
       // Score the list pages too so we prioritize better ones
-      const scoredList = JSON.parse(String(await peScorePro.invoke(JSON.stringify({ 
-        rows: listPages, 
-        query: q 
+      const scoredList = JSON.parse(String(await peScorePro.invoke(JSON.stringify({
+        rows: listPages,
+        query: q,
+        ...(ctx?.orgSettings?.peWeights ? { peWeights: ctx.orgSettings.peWeights } : {}),
       })))) as Array<{ title: string; url: string; snippet: string; peScore: number; peLabel: string }>;
       
       // Push up to 3 highest-scoring list pages; runOnce() will bounded-drill to detail from each

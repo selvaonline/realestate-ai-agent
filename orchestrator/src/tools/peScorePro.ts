@@ -2,6 +2,7 @@
 import { DynamicTool } from "@langchain/core/tools";
 import fs from "node:fs";
 import path from "node:path";
+import { mobilityFactorFromText } from "./locationIntel/scoring.js";
 
 type SerpRow = { title: string; url: string; snippet: string };
 
@@ -68,9 +69,31 @@ function mortgagePmt(p: number, rate: number, years: number) {
   return (p * (mRate * Math.pow(1 + mRate, n))) / (Math.pow(1 + mRate, n) - 1);
 }
 
-function scoreRow(row: SerpRow, query?: string) {
+/** Weight overrides from Organization Settings (optional). */
+type WeightOverrides = {
+  tenantLease?: number;
+  yieldSpread?: number;
+  marketQuality?: number;
+  assetFit?: number;
+  dealEconomics?: number;
+  executionRisk?: number;
+  mobility?: number;
+};
+
+function scoreRow(row: SerpRow, query?: string, weightOverrides?: WeightOverrides) {
   const t = `${row.title} ${row.snippet}`.toLowerCase();
   const url = row.url;
+
+  // Effective weights: user overrides > config defaults
+  const w = {
+    tenantLease: weightOverrides?.tenantLease ?? cfg.weights.tenantLease,
+    yieldSpread: weightOverrides?.yieldSpread ?? cfg.weights.yieldSpread,
+    marketQuality: weightOverrides?.marketQuality ?? cfg.weights.marketQuality,
+    assetFit: weightOverrides?.assetFit ?? cfg.weights.assetFit,
+    dealEconomics: weightOverrides?.dealEconomics ?? cfg.weights.dealEconomics,
+    executionRisk: weightOverrides?.executionRisk ?? cfg.weights.executionRisk,
+    mobility: weightOverrides?.mobility ?? cfg.weights.mobility ?? 10,
+  };
 
   // Extract signals
   const cap = capFrom(t);
@@ -82,14 +105,14 @@ function scoreRow(row: SerpRow, query?: string) {
   const guarantee = /(corporate guarantee|corporate guaranteed|guaranteed)/i.test(t);
   const sectorIndustrial = isIndustrial(t);
   const tier = geoTier(t);
-  
+
   const tenantName = (() => {
     const all = [...cfg.tenantCredit.investmentGrade, ...cfg.tenantCredit.upperMid, ...cfg.tenantCredit.lowerMid];
     const hit = all.find(br => t.includes(br.toLowerCase()));
     return hit || null;
   })();
 
-  // 1. Tenant & Lease Quality (25 points)
+  // 1. Tenant & Lease Quality
   let tenantLease = 0;
   if (tenantName && has(tenantName, cfg.tenantCredit.investmentGrade)) tenantLease += 18;
   else if (tenantName && has(tenantName, cfg.tenantCredit.upperMid)) tenantLease += 12;
@@ -97,9 +120,9 @@ function scoreRow(row: SerpRow, query?: string) {
   if (nnn) tenantLease += 5;
   if (longTerm) tenantLease += 2;
   if (guarantee) tenantLease += 2;
-  tenantLease = Math.min(cfg.weights.tenantLease, tenantLease);
+  tenantLease = Math.min(w.tenantLease, tenantLease);
 
-  // 2. Yield vs Benchmark (20 points)
+  // 2. Yield vs Benchmark
   const rf = cfg.benchmarks.riskFreeBps / 10000; // e.g., 0.043
   let yieldSpread = 0;
   if (cap != null) {
@@ -108,23 +131,23 @@ function scoreRow(row: SerpRow, query?: string) {
     else if (spreadBps > 0) yieldSpread = Math.max(6, Math.round(spreadBps / 20)); // ~20 bps per point
     if (cap * 10000 < cfg.benchmarks.minCapBps) yieldSpread -= 4; // too tight cap
   }
-  yieldSpread = Math.max(0, Math.min(cfg.weights.yieldSpread, yieldSpread));
+  yieldSpread = Math.max(0, Math.min(w.yieldSpread, yieldSpread));
 
-  // 3. Market Quality (20 points)
+  // 3. Market Quality
   let marketQuality = 8; // neutral base
   if (tier === "A") marketQuality += 10;
   else if (tier === "B") marketQuality += 5;
   else if (tier === "C") marketQuality += 0;
-  marketQuality = Math.min(cfg.weights.marketQuality, marketQuality);
+  marketQuality = Math.min(w.marketQuality, marketQuality);
 
-  // 4. Asset Fit (15 points)
+  // 4. Asset Fit
   let assetFit = 5;
   if (sectorIndustrial) assetFit += 7;
   const sectorPref = sectorIndustrial ? cfg.sectorPrefs.industrial : cfg.sectorPrefs.retail_nnn || 0.7;
   assetFit += Math.round(3 * sectorPref);
-  assetFit = Math.min(cfg.weights.assetFit, assetFit);
+  assetFit = Math.min(w.assetFit, assetFit);
 
-  // 5. Deal Economics (10 points)
+  // 5. Deal Economics
   let dealEconomics = 0;
   if (noi && price && price > 0) {
     const impliedCap = noi / price;
@@ -143,14 +166,14 @@ function scoreRow(row: SerpRow, query?: string) {
     const dscr = noi / debtSvcAnnual;
     if (dscr >= cfg.dscr.minDscr) dealEconomics += 2;
   }
-  dealEconomics = Math.min(cfg.weights.dealEconomics, dealEconomics);
+  dealEconomics = Math.min(w.dealEconomics, dealEconomics);
 
-  // 6. Execution Risk (10 points)
+  // 6. Execution Risk
   let executionRisk = 6; // start slightly positive
   if (CREXI_DETAIL.test(url)) executionRisk += 3;
   if (CREXI_PROFILE.test(url) && cfg.executionRules.penalizeProfilePages) executionRisk -= 3;
   if (CREXI_CATEGORY.test(url) && cfg.executionRules.penalizeCategoryPages) executionRisk -= 2;
-  
+
   // Institutional-only deal size preference: reward institutional scale, penalize sub-scale
   if (mode === "institutional") {
     const bounds = cfg.institutional || {};
@@ -168,8 +191,12 @@ function scoreRow(row: SerpRow, query?: string) {
       executionRisk -= 1;
     }
   }
-  
-  executionRisk = Math.max(0, Math.min(cfg.weights.executionRisk, executionRisk));
+
+  executionRisk = Math.max(0, Math.min(w.executionRisk, executionRisk));
+
+  // 7. Mobility / Real-World Activity (heuristic location-activity factor, 0-10)
+  const mobilityRaw = mobilityFactorFromText(t);
+  const mobility = Math.max(0, Math.min(w.mobility, Math.round(mobilityRaw * (w.mobility / 10))));
 
   const raw = {
     tenantLease,
@@ -178,17 +205,19 @@ function scoreRow(row: SerpRow, query?: string) {
     assetFit,
     dealEconomics,
     executionRisk,
+    mobility,
   };
 
   const total = Math.round(
-    (tenantLease + yieldSpread + marketQuality + assetFit + dealEconomics + executionRisk) *
+    (tenantLease + yieldSpread + marketQuality + assetFit + dealEconomics + executionRisk + mobility) *
       (100 /
-        (cfg.weights.tenantLease +
-          cfg.weights.yieldSpread +
-          cfg.weights.marketQuality +
-          cfg.weights.assetFit +
-          cfg.weights.dealEconomics +
-          cfg.weights.executionRisk))
+        (w.tenantLease +
+          w.yieldSpread +
+          w.marketQuality +
+          w.assetFit +
+          w.dealEconomics +
+          w.executionRisk +
+          w.mobility))
   );
 
   // Analyst label
@@ -217,6 +246,7 @@ function scoreRow(row: SerpRow, query?: string) {
     longTerm ? `Long-term lease indicators.` : null,
     guarantee ? `Corporate guarantee language.` : null,
     noi && price ? `Implied cap ≈ ${((noi / price) * 100).toFixed(1)}%. DSCR check applied.` : null,
+    mobilityRaw >= 7 ? `Strong real-world activity signals (anchors/traffic).` : null,
     mode === "institutional" && price != null
       ? `Deal size ≈ $${Math.round(price / 1e6)}M.`
       : null,
@@ -246,12 +276,17 @@ export const peScorePro = new DynamicTool({
     })();
     const rows: SerpRow[] = payload.rows || [];
     const query: string = payload.query || "";
+    const peWeights: WeightOverrides | undefined = payload.peWeights;
+
+    if (peWeights) {
+      console.log(`[DealSense PE] Using custom weights: ${JSON.stringify(peWeights)}`);
+    }
 
     console.log(`[DealSense PE] Scoring ${rows.length} opportunities...`);
 
     const out = rows
       .map((r) => {
-        const sc = scoreRow(r, query);
+        const sc = scoreRow(r, query, peWeights);
         return {
           ...r,
           peScore: sc.score,

@@ -1,0 +1,686 @@
+{
+  "search_properties": {
+    "category": "search",
+    "description": "Search commercial real estate listings across CREXi, LoopNet, Brevitas, and other CRE marketplaces. Returns PE-scored and ranked results. Call this when the user asks to find, search, or discover properties.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Natural language search query. Include property type, location, tenant, size, cap rate range as needed."
+        },
+        "maxResults": {
+          "type": "number",
+          "description": "Max results to return (default 20, max 30)"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  "score_deals": {
+    "category": "analysis",
+    "description": "Apply DealSense PE scoring model to a list of search result rows. Use this after search_properties if you need to re-score with different criteria.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "description": "Array of {title, url, snippet} objects",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Listing title"
+              },
+              "url": {
+                "type": "string",
+                "description": "Listing URL"
+              },
+              "snippet": {
+                "type": "string",
+                "description": "Listing description/snippet"
+              }
+            }
+          }
+        },
+        "query": {
+          "type": "string",
+          "description": "Original query for context"
+        }
+      },
+      "required": [
+        "rows"
+      ]
+    }
+  },
+  "assess_risk": {
+    "category": "market",
+    "description": "Compute a 0-100 Market Risk Score using live FRED Treasury data, CPI, yield curve, and BLS metro unemployment. Call this when macro context is needed for a recommendation.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Property search query or location context"
+        },
+        "forceMetro": {
+          "type": "string",
+          "description": "Specific metro name to look up, e.g. 'Dallas' or 'Miami'"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  "get_macro_data": {
+    "category": "market",
+    "description": "Fetch raw macro-economic data for a metro market: 10Y Treasury, 2s10 curve, CPI YoY, national unemployment, and metro unemployment. Use when you need raw numbers rather than a blended risk score.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "metro": {
+          "type": "string",
+          "description": "Metro name, e.g. 'Dallas', 'Miami', 'Austin'"
+        }
+      }
+    }
+  },
+  "analyze_property_url": {
+    "category": "search",
+    "description": "Extract full property details from a CREXi or LoopNet listing URL using a headless browser. Returns address, price, NOI, cap rate, tenant info, and a screenshot. Only call this for direct property URLs.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Direct property listing URL"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    }
+  },
+  "run_dcf": {
+    "category": "analysis",
+    "description": "Run a server-side discounted cash flow analysis. Computes IRR, equity multiple, cash-on-cash, and annual cash flows for a hold period. Use when the user asks for DCF, returns, or valuation.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "purchasePrice": {
+          "type": "number",
+          "description": "Purchase price in dollars"
+        },
+        "noi": {
+          "type": "number",
+          "description": "Annual Net Operating Income in dollars"
+        },
+        "ltv": {
+          "type": "number",
+          "description": "Loan-to-value ratio, e.g. 0.65 (default: 0.65)"
+        },
+        "interestRate": {
+          "type": "number",
+          "description": "Annual interest rate, e.g. 0.055 (default: 0.055)"
+        },
+        "holdYears": {
+          "type": "number",
+          "description": "Hold period in years (default: 5)"
+        },
+        "noiGrowth": {
+          "type": "number",
+          "description": "Annual NOI growth rate, e.g. 0.02 (default: 0.02)"
+        },
+        "exitCapSpread": {
+          "type": "number",
+          "description": "Exit cap rate spread over entry, e.g. 0.005 (default: 0.005)"
+        }
+      },
+      "required": [
+        "purchasePrice",
+        "noi"
+      ]
+    }
+  },
+  "generate_memo": {
+    "category": "document",
+    "description": "Generate a professional Investment Committee memorandum for a specific property.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Property title"
+        },
+        "url": {
+          "type": "string",
+          "description": "Listing URL"
+        },
+        "peScore": {
+          "type": "number",
+          "description": "PE score 0-100"
+        },
+        "peTier": {
+          "type": "string",
+          "description": "PE tier label"
+        },
+        "riskScore": {
+          "type": "number",
+          "description": "Risk score 0-100"
+        },
+        "riskNote": {
+          "type": "string",
+          "description": "Risk summary note"
+        },
+        "snippet": {
+          "type": "string",
+          "description": "Property description"
+        }
+      },
+      "required": [
+        "title",
+        "url"
+      ]
+    }
+  },
+  "comp_analysis": {
+    "category": "search",
+    "description": "Find comparable properties (comps) in the same market, property type, and size range as a subject property. Returns 5-10 comps with PE scores for benchmarking.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "market": {
+          "type": "string",
+          "description": "City/metro, e.g. 'Dallas, TX'"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "E.g. 'industrial', 'NNN retail', 'medical office'"
+        },
+        "subjectTitle": {
+          "type": "string",
+          "description": "Title of subject property for context"
+        }
+      },
+      "required": [
+        "market",
+        "propertyType"
+      ]
+    }
+  },
+  "filter_and_rank": {
+    "category": "analysis",
+    "description": "Apply filters to a set of deals already in session context. E.g. 'show only deals in Texas with PE score above 75'. Returns the filtered + sorted subset.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "description": "Natural language filter/sort instruction"
+        },
+        "minPeScore": {
+          "type": "number",
+          "description": "Minimum PE score threshold"
+        },
+        "maxRiskScore": {
+          "type": "number",
+          "description": "Maximum risk score threshold"
+        },
+        "location": {
+          "type": "string",
+          "description": "Filter by location keyword"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Filter by property type keyword"
+        },
+        "sortBy": {
+          "type": "string",
+          "description": "Sort field: peScore, riskScore, capRate, price",
+          "enum": [
+            "peScore",
+            "riskScore",
+            "capRate",
+            "price"
+          ]
+        }
+      },
+      "required": [
+        "instruction"
+      ]
+    }
+  },
+  "market_deep_dive": {
+    "category": "market",
+    "description": "Fetch comprehensive market intelligence for a specific metro: Treasury context, metro unemployment (BLS), and investment activity summary. Use for market-level analysis.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "metro": {
+          "type": "string",
+          "description": "Metro name, e.g. 'Austin TX' or 'South Florida'"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Optional: focus analysis on specific asset class"
+        }
+      },
+      "required": [
+        "metro"
+      ]
+    }
+  },
+  "portfolio_review": {
+    "category": "portfolio",
+    "description": "Analyze the user's saved portfolio properties from session memory. Identify geographic concentration, asset type gaps, risk distribution, and suggest diversification opportunities.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "focus": {
+          "type": "string",
+          "description": "What aspect to focus on: 'concentration', 'risk', 'yield', 'diversification'"
+        }
+      }
+    }
+  },
+  "tenant_credit_analysis": {
+    "category": "analysis",
+    "description": "Analyze a tenant's credit quality with S&P-equivalent ratings, financial health indicators, and lease covenant analysis. Returns watchlist flags for risky tenants.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tenantName": {
+          "type": "string",
+          "description": "Tenant name, e.g. 'Walgreens', 'Dollar General', 'FedEx'"
+        },
+        "leaseTermYears": {
+          "type": "number",
+          "description": "Remaining lease term in years"
+        },
+        "annualRent": {
+          "type": "number",
+          "description": "Annual rent in dollars"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Property type, e.g. 'NNN retail', 'industrial'"
+        },
+        "propertySqft": {
+          "type": "number",
+          "description": "Property square footage for occupancy cost analysis"
+        }
+      },
+      "required": [
+        "tenantName"
+      ]
+    }
+  },
+  "generate_loi": {
+    "category": "document",
+    "description": "Generate a professional Letter of Intent (LOI) for a commercial real estate acquisition. Includes purchase terms, earnest money, due diligence timeline, and financing contingency.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "propertyTitle": {
+          "type": "string",
+          "description": "Property name or title"
+        },
+        "propertyAddress": {
+          "type": "string",
+          "description": "Property street address"
+        },
+        "purchasePrice": {
+          "type": "number",
+          "description": "Purchase price in dollars"
+        },
+        "buyerName": {
+          "type": "string",
+          "description": "Buyer entity name (default: DealSense Fund I, LLC)"
+        },
+        "earnestMoneyPct": {
+          "type": "number",
+          "description": "Earnest money as a percentage of purchase price, e.g. 0.01 for 1% (default: 0.01)"
+        },
+        "dueDiligenceDays": {
+          "type": "number",
+          "description": "Due diligence period in calendar days (default: 45)"
+        },
+        "closingDays": {
+          "type": "number",
+          "description": "Days to close after due diligence period (default: 30)"
+        },
+        "financingType": {
+          "type": "string",
+          "description": "Financing type, e.g. 'conventional', 'SBA 504', 'bridge', 'all cash' (default: conventional)"
+        },
+        "ltv": {
+          "type": "number",
+          "description": "Loan-to-value ratio, e.g. 0.65 for 65% (default: 0.65)"
+        },
+        "specialConditions": {
+          "type": "string",
+          "description": "Any special conditions or contingencies to include in the LOI"
+        }
+      },
+      "required": [
+        "propertyTitle",
+        "purchasePrice"
+      ]
+    }
+  },
+  "compliance_check": {
+    "category": "portfolio",
+    "description": "Check portfolio compliance against fund mandates and compute LP/GP waterfall distribution. Identifies concentration violations, DSCR breaches, and LTV limits.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "portfolio": {
+          "type": "array",
+          "description": "Array of {title, purchasePrice, noi, market, propertyType, peScore?}",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Property title"
+              },
+              "purchasePrice": {
+                "type": "number",
+                "description": "Purchase price in dollars"
+              },
+              "noi": {
+                "type": "number",
+                "description": "Annual NOI in dollars"
+              },
+              "market": {
+                "type": "string",
+                "description": "Market/metro name"
+              },
+              "propertyType": {
+                "type": "string",
+                "description": "Property type"
+              },
+              "peScore": {
+                "type": "number",
+                "description": "PE score 0-100"
+              }
+            }
+          }
+        },
+        "fundSize": {
+          "type": "number",
+          "description": "Total fund AUM"
+        },
+        "mandates": {
+          "type": "object",
+          "description": "Optional overrides: {maxSingleAssetPct, maxGeoPct, minDscr, maxLtv, minPeScore}",
+          "properties": {
+            "maxSingleAssetPct": {
+              "type": "number",
+              "description": "Max single-asset concentration (default 0.10)"
+            },
+            "maxGeoPct": {
+              "type": "number",
+              "description": "Max geographic concentration (default 0.25)"
+            },
+            "minDscr": {
+              "type": "number",
+              "description": "Minimum DSCR (default 1.25)"
+            },
+            "maxLtv": {
+              "type": "number",
+              "description": "Maximum LTV (default 0.65)"
+            },
+            "minPeScore": {
+              "type": "number",
+              "description": "Minimum PE score (default 60)"
+            }
+          }
+        },
+        "totalReturn": {
+          "type": "number",
+          "description": "Total fund return for waterfall calculation"
+        },
+        "lpSplit": {
+          "type": "object",
+          "description": "Optional LP/GP split overrides: {preferredReturn, catchUpPct, carriedInterest, gpCommit}",
+          "properties": {
+            "preferredReturn": {
+              "type": "number",
+              "description": "LP preferred return (default 0.08)"
+            },
+            "catchUpPct": {
+              "type": "number",
+              "description": "GP catch-up percentage (default 0.50)"
+            },
+            "carriedInterest": {
+              "type": "number",
+              "description": "GP carried interest (default 0.20)"
+            },
+            "gpCommit": {
+              "type": "number",
+              "description": "GP co-invest commitment (default 0.02)"
+            }
+          }
+        }
+      },
+      "required": [
+        "portfolio",
+        "fundSize"
+      ]
+    }
+  },
+  "portfolio_var": {
+    "category": "portfolio",
+    "description": "Compute Value at Risk (VaR) and run stress test scenarios on a CRE property or portfolio. Stress tests include rate shock, NOI decline, vacancy spike, and cap rate expansion.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "type": "array",
+          "description": "Array of property objects with {purchasePrice, noi, ltv?, interestRate?, title?}",
+          "items": {
+            "type": "object",
+            "properties": {
+              "purchasePrice": {
+                "type": "number",
+                "description": "Purchase price in dollars"
+              },
+              "noi": {
+                "type": "number",
+                "description": "Annual NOI in dollars"
+              },
+              "ltv": {
+                "type": "number",
+                "description": "Loan-to-value ratio (optional)"
+              },
+              "interestRate": {
+                "type": "number",
+                "description": "Annual interest rate (optional)"
+              },
+              "title": {
+                "type": "string",
+                "description": "Property title (optional)"
+              }
+            }
+          }
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "description": "VaR confidence level (default 0.95)"
+        },
+        "scenarios": {
+          "type": "array",
+          "description": "Subset of stress scenarios to run. Options: \"rate_shock\", \"noi_decline\", \"vacancy_spike\", \"cap_expansion\". Defaults to all.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "properties"
+      ]
+    }
+  },
+  "risk_decomposition": {
+    "category": "analysis",
+    "description": "Decompose a CRE deal's risk into individual factors: interest rate sensitivity, credit/tenant risk, liquidity risk, and inflation risk. Shows IRR impact per 100bps rate change.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "purchasePrice": {
+          "type": "number",
+          "description": "Purchase price in dollars"
+        },
+        "noi": {
+          "type": "number",
+          "description": "Annual Net Operating Income in dollars"
+        },
+        "market": {
+          "type": "string",
+          "description": "Metro name for market tier assessment, e.g. 'Dallas' or 'Miami'"
+        },
+        "tenantName": {
+          "type": "string",
+          "description": "Tenant name for credit risk scoring, e.g. 'Walgreens', 'FedEx'"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Property type, e.g. 'NNN retail', 'industrial', 'office'"
+        },
+        "interestRate": {
+          "type": "number",
+          "description": "Annual interest rate, e.g. 0.055 (default: 0.055)"
+        },
+        "ltv": {
+          "type": "number",
+          "description": "Loan-to-value ratio, e.g. 0.65 (default: 0.65)"
+        }
+      },
+      "required": [
+        "purchasePrice",
+        "noi"
+      ]
+    }
+  },
+  "multi_asset_compare": {
+    "category": "analysis",
+    "description": "Compare a CRE deal's returns against Treasury bonds, S&P 500, REIT index, and private CRE benchmarks. Computes risk-adjusted returns (Sharpe ratio) for each asset class.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "creIrr": {
+          "type": "number",
+          "description": "The CRE deal's IRR as a decimal (e.g., 0.12 for 12%)"
+        },
+        "creEquityMultiple": {
+          "type": "number",
+          "description": "Equity multiple from DCF (e.g., 1.85)"
+        },
+        "holdYears": {
+          "type": "number",
+          "description": "Hold period in years (default 5)"
+        },
+        "riskScore": {
+          "type": "number",
+          "description": "Risk score 0-100 from assess_risk"
+        },
+        "treasury10y": {
+          "type": "number",
+          "description": "Current 10Y Treasury yield as decimal (default 0.043)"
+        }
+      },
+      "required": [
+        "creIrr"
+      ]
+    }
+  },
+  "institutional_pipeline": {
+    "category": "search",
+    "description": "Screen properties through an institutional deal pipeline. Filters by deal size, PE score, and tenant quality. Tags deals as IC-ready, under review, or watchlist.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search query for property listings"
+        },
+        "minDealSize": {
+          "type": "number",
+          "description": "Minimum deal size in dollars (default 5000000)",
+          "default": 5000000
+        },
+        "minPeScore": {
+          "type": "number",
+          "description": "Minimum PE score to qualify (default 70)",
+          "default": 70
+        },
+        "tenantGrade": {
+          "type": "string",
+          "description": "Tenant quality filter: investment_grade, any, or all",
+          "enum": [
+            "investment_grade",
+            "any",
+            "all"
+          ],
+          "default": "investment_grade"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  "market_intel": {
+    "category": "market",
+    "description": "Gather comprehensive market intelligence for a US metro: construction pipeline, absorption/vacancy, rent growth, demographics, and cap rate trends via targeted web searches.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "metro": {
+          "type": "string",
+          "description": "Metro name, e.g. \"Austin TX\", \"Miami\""
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Property type focus, e.g. \"industrial\", \"NNN retail\""
+        }
+      },
+      "required": [
+        "metro"
+      ]
+    }
+  },
+  "analyze_traffic_patterns": {
+    "category": "location",
+    "description": "Estimate foot traffic, parking utilization, road traffic, and nearby anchor strength for a property. Returns a 0-100 Mobility Score with trend, confidence, signals, and risks for investment underwriting. Call this when the user asks about foot traffic, parking, road traffic, visibility, site quality, location strength, retail activity, or nearby anchors \u2014 and for retail, pharmacy, QSR, grocery, urgent care, and medical office properties.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Property address"
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Property type such as retail, medical office, pharmacy, grocery, QSR"
+        },
+        "tenant": {
+          "type": "string",
+          "description": "Tenant name if available"
+        },
+        "metro": {
+          "type": "string",
+          "description": "Metro or city"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    }
+  }
+}

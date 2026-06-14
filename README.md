@@ -1,274 +1,162 @@
-# 🏢 RealEstate AI Deal Agent
+<div align="center">
 
-An intelligent agent that finds and analyzes commercial real estate investment opportunities using a **Perplexity-style interface** with transparent reasoning, source citations, and streaming answers.
+# DealSense — Multi-Agent AI for CRE Private Equity
 
-##Demo Question
-Find retail centers under $20M, 8%+ cap, strong demographics, repositioning opportunity
+**A supervisor-orchestrated agent team that sources, scores, underwrites, and documents commercial real estate deals — built on a generic, pack-based multi-agent platform.**
 
-Find retail centers under $20M, 8%+ cap, strong demographics, repositioning opportunity
+[**Live Demo**](https://reagent.selvaonline.com) · [**Documentation**](https://reagent.selvaonline.com/docs/) · [**MCP Server**](https://reagent.selvaonline.com/mcp)
 
-Find medical office buildings or urgent care facilities, cap rate 7%+
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6.svg?logo=typescript&logoColor=white)
+![LangGraph.js](https://img.shields.io/badge/LangGraph.js-supervisor-1c3c3c.svg)
+![MCP](https://img.shields.io/badge/MCP-server%20built--in-8b5cf6.svg)
+![Angular](https://img.shields.io/badge/Angular-17-dd0031.svg?logo=angular)
+![AWS CDK](https://img.shields.io/badge/AWS-CDK%20deployed-ff9900.svg?logo=amazonwebservices&logoColor=white)
 
-## ✨ Features
+<img src="docs/assets/network-panel.png" alt="Live multi-agent orchestration: a Deal Advisor supervisor delegating to six specialists over twenty tools" width="900"/>
 
-### 🤖 Intelligent Agent Flow
+*A real run, live in the UI: the supervisor delegates to specialists, every tool call animates, and a hop counter and replay button make the orchestration tangible.*
 
-- **Transparent Thinking** - See the agent's reasoning process in real-time
-- **Source Citations** - Numbered references [1], [2], [3] for all information
-- **Streaming Answers** - Progressive text generation with inline citations
-- **Multi-Source Search** - Aggregates from LoopNet, Crexi, and broker sites
-
-### 💬 AI Chatbot (NEW!)
-
-- **Conversational Interface** - Ask questions about deals, scores, and analytics
-- **Explainability** - "Why is the Risk Score 56?" - Get detailed breakdowns
-- **Artifact Generation** - "Create an IC memo for deal #1" - Instant reports
-- **Portfolio Q&A** - "How many Tier A deals?" - Query your results
-- **Quick Actions** - Pre-configured prompts for common tasks
-- **Context-Aware** - Knows about your current search results
-
-👉 **See [CHATBOT_QUICK_START.md](./CHATBOT_QUICK_START.md) to get started!**
-
-### 📊 Property Analysis
-
-- **Automated Extraction** - Property details, pricing, NOI, cap rate
-- **Financial Underwriting** - DSCR, cash flow, ROI calculations
-- **Visual Confirmation** - Screenshots of source listings
-- **Deal Cards** - Clean presentation of investment opportunities
-
-### 🎨 Modern UI
-
-- **Perplexity-Inspired Design** - Clean, professional, engaging
-- **Progressive Disclosure** - Thinking → Sources → Answer → Deals
-- **Responsive Layout** - Works on desktop and mobile
-- **Dark Theme** - Easy on the eyes with blue accents
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- OpenAI API key
-- Serper API key (for web search)
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/selvaonline/realestate-ai-agent.git
-cd realestate-ai-agent
-
-# Setup backend
-cd orchestrator
-npm install
-cp .env.example .env
-# Edit .env with your API keys
-
-# Setup frontend
-cd ../deal-agent-ui
-npm install
-```
-
-### Running
-
-```bash
-# Terminal 1: Start backend (port 3001)
-cd orchestrator
-npm run dev
-
-# Terminal 2: Start frontend (port 4200)
-cd deal-agent-ui
-ng serve
-
-# Open browser
-open http://localhost:4200
-```
-
-## 📖 Documentation
-
-- **[Perplexity Flow Overview](./PERPLEXITY_FLOW.md)** - Detailed explanation of the flow
-- **[Flow Diagrams](./docs/FLOW_DIAGRAM.md)** - Visual sequence and state diagrams
-- **[Developer Guide](./docs/DEVELOPER_GUIDE.md)** - How to extend and customize
-- **[Before/After Comparison](./docs/BEFORE_AFTER.md)** - See the improvements
-
-## 🎯 How It Works
-
-### 1. **Query Understanding**
-
-```
-User: "Find multifamily deals in Dallas with cap rate > 6%"
-Agent: 🔍 Understanding your query...
-```
-
-### 2. **Source Discovery**
-
-```
-Agent: 🔍 Searching commercial real estate listings...
-
-Sources found:
-[1] Crexi - Multifamily Property in Dallas
-[2] LoopNet - 123 Main Street Investment
-[3] Broker Site - Dallas Multifamily Portfolio
-```
-
-### 3. **Data Extraction**
-
-```
-Agent: 🔍 Analyzing property listings...
-      🌐 Navigating to crexi.com...
-      📸 [Screenshot captured]
-```
-
-### 4. **Answer Synthesis**
-
-```
-Found a promising listing [1]: **Crexi Multifamily Property**
-located at 123 Main St, Dallas, TX. The asking price is
-$2,500,000. Net Operating Income (NOI) is $200,000.
-The cap rate is 8.00%. DSCR is 1.45. • • •
-```
-
-### 5. **Source Attribution**
-
-```
-Sources:
-[1] Crexi - Multifamily Property Dallas
-    123 Main Street, Dallas, TX investment opportunity
-    https://www.crexi.com/property/...
-```
-
-## 🏗️ Architecture
-
-```
-┌─────────────┐
-│   Angular   │  ← UI Layer (Perplexity-style interface)
-│     UI      │
-└──────┬──────┘
-       │ SSE Stream
-       ▼
-┌─────────────┐
-│   Express   │  ← API Layer (Event orchestration)
-│   Server    │
-└──────┬──────┘
-       │ Function Calls
-       ▼
-┌─────────────┐
-│  LangChain  │  ← Agent Layer (Decision making)
-│    Agent    │
-└──────┬──────┘
-       │ Tool Invocations
-       ▼
-┌─────────────┐
-│   Tools     │  ← Tool Layer (Search, Browse, Finance)
-│  Layer      │
-└─────────────┘
-```
-
-## 🛠️ Tech Stack
-
-### Backend
-
-- **Node.js + TypeScript** - Runtime and type safety
-- **Express** - HTTP server
-- **LangChain** - Agent orchestration
-- **Playwright** - Browser automation
-- **OpenAI GPT-4** - Language model
-- **Serper** - Web search API
-
-### Frontend
-
-- **Angular 17** - Framework with signals
-- **TypeScript** - Type safety
-- **Server-Sent Events** - Real-time streaming
-- **Responsive CSS** - Modern design
-
-## 📊 Example Output
-
-### Thinking Steps
-
-```
-🔍 Understanding your query...
-🔍 Searching commercial real estate listings...
-🔍 Analyzing property listings...
-```
-
-### Answer with Citations
-
-```
-Found a promising listing [1]: **Vista Ridge Apartments** located
-at 5847 Forest Ln, Dallas, TX 75230. The asking price is $16,500,000.
-Net Operating Income (NOI) is $1,251,642. The cap rate is 7.58%.
-DSCR is 1.52.
-```
-
-### Sources
-
-```
-[1] Crexi - Vista Ridge Apartments
-    Dallas multifamily investment opportunity...
-    https://www.crexi.com/property/...
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-```bash
-# orchestrator/.env
-OPENAI_API_KEY=sk-...          # OpenAI API key
-SERPER_API_KEY=...             # Serper search API key
-OPENAI_MODEL=gpt-4o-mini       # Model to use
-PORT=3001                      # Server port
-
-# Optional: Browser debugging
-BROWSER_HEADED=false           # Show browser window
-BROWSER_ENGINE=chromium        # chromium | webkit
-BROWSER_DEVTOOLS=false         # Open DevTools
-```
-
-### Customization
-
-See [Developer Guide](./docs/DEVELOPER_GUIDE.md) for:
-
-- Adding new event types
-- Customizing thinking messages
-- Styling the UI
-- Adding new tools
-
-## 🐛 Troubleshooting
-
-### Events not showing in UI
-
-1. Check browser console for errors
-2. Verify SSE connection in Network tab
-3. Ensure backend is running on port 3001
-
-### No search results
-
-1. Verify `SERPER_API_KEY` is set
-2. Check query format (be specific)
-3. Try broader search terms
-
-### Browser automation failing
-
-1. Install Playwright browsers: `npx playwright install`
-2. Try different engine: `BROWSER_ENGINE=webkit`
-3. Enable headed mode for debugging: `BROWSER_HEADED=true`
-
-## 🤝 Contributing
-
-Contributions welcome! Please read our [Developer Guide](./docs/DEVELOPER_GUIDE.md) first.
-
-## 📄 License
-
-MIT License - see LICENSE file for details
-
-## 🙏 Acknowledgments
-
-- Inspired by [Perplexity AI](https://www.perplexity.ai)
-- Built with [LangChain](https://js.langchain.com/)
-- Powered by [OpenAI GPT-4](https://openai.com/)
+</div>
 
 ---
 
-Made with ❤️ for commercial real estate investors
+## What it does
+
+Ask in plain English:
+
+> *"Find NNN Walgreens deals in Florida, assess the risk and tenant credit of the best one, run a 10-year DCF on it, and draft an investment committee memo."*
+
+A **Deal Advisor** supervisor decomposes the request and delegates to a team of six specialists — Property Scout, Risk Analyst, Market Analyst, Financial Modeler, Portfolio Manager, Deal Writer — who execute **20 deterministic tools** (marketplace search, PE scoring, FRED/BLS macro risk, tenant credit, DCF, VaR, IC memos, LOIs…) and synthesize a sectioned, citation-backed report.
+
+## Why it's interesting (beyond the demo)
+
+| | |
+|---|---|
+| **Platform / domain-pack architecture** | The orchestration core is domain-agnostic. The entire CRE vertical — tools, prompts, specialist team — ships as a **domain pack** (`orchestrator/src/packs/cre/`) loaded at bootstrap via `DOMAIN_PACK=cre`. A new vertical is a new pack, zero core changes. |
+| **Zero-token tool calls** | Tools execute as plain API calls (`POST /api/tools/execute`), not LLM round-trips. PE scoring, DCF math, and tenant credit are deterministic, golden-testable, and free. |
+| **Judge-grade evals** | A behavioral eval suite (`orchestrator/evals/`) asserts **routing, faithfulness, completeness, honesty, and resilience** against the live SSE stream — and it caught a real defect: a flash-tier supervisor silently dropping 2 of 4 requested tasks. The fix (model tiering) was architectural, measured by the same eval. |
+| **Built-in MCP server** | All 20 tools are auto-exposed over Model Context Protocol (Streamable HTTP) — connect Claude Desktop, Cursor, or Windsurf to the [hosted endpoint](https://reagent.selvaonline.com/mcp) with three lines of config. Wrappers are generated from the tool registry, never hand-written. |
+| **Conversation memory** | LangGraph checkpointing per browser session: *"now run a DCF on that property"* resolves against prior turns. |
+| **Glass-box UX** | Live agent network graph, per-specialist progress stepper with clickable tool chips, full specialist reports, and a **replay** button that re-animates any run in seconds. |
+| **Production deployment** | One CDK stack: ECS Fargate (Playwright-capable backend + SSE), CloudFront + S3 (Angular SPA), Secrets Manager, ALB. |
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph UI["Angular UI — live network graph · stepper · replay"]
+        direction LR
+        G[Network panel] ~~~ S[Specialist stepper] ~~~ A[Report + citations]
+    end
+
+    subgraph EX["Express front door (:3001)"]
+        LGR["/api/lg/run · /api/lg/network"]
+        TE["/api/tools/execute — zero-token"]
+        MCP["/mcp — MCP server (auto-generated)"]
+        EV["/events/:runId — SSE"]
+    end
+
+    subgraph CORE["Platform core (domain-agnostic)"]
+        SUP["LangGraph.js supervisor<br/>deal_advisor + 6 specialists<br/>MemorySaver checkpointing"]
+        REG["Tool registry"]
+    end
+
+    PACK["Domain pack: CRE (DealSense)<br/>20 tools · prompts · specialist team<br/>swappable via DOMAIN_PACK"]
+
+    UI -->|start run| EX
+    EX -->|SSE events| UI
+    LGR --> SUP
+    SUP -->|in-process call| REG
+    TE --> REG
+    MCP --> REG
+    PACK -->|loaded at bootstrap| REG
+```
+
+The orchestrator is deliberately a commodity: any engine that emits the same SSE event vocabulary drives the same UI. The lasting value lives below it (deterministic tools, scoring models) and above it (the glass-box UX).
+
+## Quick start
+
+Prereqs: **Node 20+** and one LLM key (`OPENAI_API_KEY`, `GEMINI_API_KEY`, or `GROQ_API_KEY`).
+
+```bash
+git clone https://github.com/selvaonline/realestate-ai-agent.git
+cd realestate-ai-agent
+
+# Backend — tool registry + LangGraph supervisor, all in one process
+cd orchestrator
+npm install
+cp .env.example .env        # add your LLM key
+npm run dev                 # :3001
+
+# Frontend
+cd ../deal-agent-ui
+npm install
+npx ng serve                # http://localhost:4200
+```
+
+Verify: `curl localhost:3001/api/lg/health` → `{"ok":true}` and
+`curl localhost:3001/api/tools/registry` lists 20 tools.
+
+Optional keys for richer data: `SERPER_API_KEY` (web search), `FRED_API_KEY` / `BLS_API_KEY` (live macro data).
+
+### Try these prompts
+
+```text
+Find NNN Walgreens deals in Florida and identify the best one
+How creditworthy is Walgreens as a tenant on a 12-year NNN lease?
+Run a DCF on a $4.2M NNN property with $290k NOI, 10 year hold — what's the IRR?
+Give me a market deep dive on the Dallas metro for industrial
+Find medical office buildings cap rate 7%+, then check portfolio fit and draft an IC memo
+```
+
+Follow-ups work — the conversation is threaded: *"now run a 10-year DCF on that property"*.
+
+## Connect your AI assistant (MCP)
+
+```json
+{ "mcpServers": { "dealsense": { "url": "https://reagent.selvaonline.com/mcp" } } }
+```
+
+Claude Desktop, Cursor, Windsurf, or `claude mcp add dealsense --transport http https://reagent.selvaonline.com/mcp`. All 20 tools, generated from the registry.
+
+## Evals
+
+```bash
+cd orchestrator
+python3 evals/run_judge_evals.py            # full behavioral suite
+python3 evals/run_judge_evals.py --only routing_dcf
+```
+
+Six dimensions: routing, faithfulness (answer numbers must match tool outputs verbatim), completeness, honesty/refusal, resilience (search retry), latency budgets. Cases are data (`evals/judge_cases.json`); checks are typed. [The defect the evals caught →](https://reagent.selvaonline.com/docs/evals/)
+
+## Project structure
+
+```
+orchestrator/
+  src/platform/        # domain-agnostic core: tool registry, DomainPack interface
+  src/packs/cre/       # the CRE vertical: 20 tools, prompts, specialist team
+  src/langgraph/       # supervisor + topology (reads the active pack)
+  src/routes/          # /api/lg, /api/tools, /mcp (auto-generated wrappers)
+  evals/               # judge-grade behavioral evals
+deal-agent-ui/         # Angular 17: network graph, stepper, dashboards, DCF/sensitivity panels
+infra/                 # AWS CDK: Fargate + ALB + CloudFront + S3 + Secrets Manager
+docs/                  # MkDocs site (served at /docs in prod)
+```
+
+## Roadmap
+
+- [ ] **Second domain pack** (equity research) as proof-of-genericity
+- [ ] `agents.yaml` pack manifest — declare a specialist team without writing TypeScript
+- [ ] UI panel registry — packs declare which result panels render which tool outputs
+- [ ] Provider hooks for Placer.ai / SafeGraph / Google Places mobility data
+
+## About
+
+Built by **[Selvakumar Murugesan](https://www.linkedin.com/in/selvaonline/)** — solution architect exploring production-grade multi-agent systems: orchestration, evals, MCP, and platformization. **Open to opportunities** in AI engineering and agentic systems.
+
+If this project is useful or interesting, a ⭐ helps more people find it.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

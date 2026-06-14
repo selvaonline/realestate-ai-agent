@@ -8,5 +8,7 @@ export function sub(runId: string, fn: Subscriber) {
   return () => channels.get(runId)!.delete(fn);
 }
 export function pub(runId: string, ev: any) {
-  channels.get(runId)?.forEach(fn => fn(ev));
+  channels.get(runId)?.forEach(fn => {
+    try { fn(ev); } catch { /* ignore */ }
+  });
 }

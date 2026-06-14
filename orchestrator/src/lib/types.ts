@@ -12,6 +12,7 @@ export type Deal = {
     askingPrice?: number | null;
     noi?: number | null;
     capRate?: number | null;
+    riskScore?: number | null;
     yearBuilt?: string | null;
     occupancy?: string | null;
     screenshotBase64?: string | null;

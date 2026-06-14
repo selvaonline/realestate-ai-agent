@@ -1,0 +1,24 @@
+{
+  "name": "dealsense-mcp",
+  "version": "1.0.0",
+  "description": "DealSense AI Agent — MCP server exposing CRE investment analysis tools",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "dealsense-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  }
+}
